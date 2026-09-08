@@ -1,0 +1,435 @@
+name: Build Flambo
+
+on:
+  push:
+    branches: [main, beta]
+  pull_request:
+    branches: [main, beta]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Force build type'
+        required: false
+        default: 'auto'
+        type: choice
+        options: [auto, preview, release]
+
+# Cancel previous beta preview runs when a new commit lands on the same branch
+# -> preview APK from the old run is automatically superseded.
+concurrency:
+  group: flambo-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: write
+  pull-requests: write
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
+
+jobs:
+  build:
+    name: Build signed APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    # Resolve which flavor we are building
+    outputs:
+      apk_path: ${{ steps.findapk.outputs.apk }}
+      version_name: ${{ steps.version.outputs.name }}
+      version_code: ${{ steps.version.outputs.code }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept SDK licenses & install platforms
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" || sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Cache Gradle wrapper & dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.android/build-cache
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Resolve version
+        id: version
+        run: |
+          # Version name: tag if pushing a tag, else 1.0.<run_number> for preview, or 1.0.0 for main
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VN="${GITHUB_REF#refs/tags/v}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # derive from gradle versionName + run number patch
+            BASE=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "1.0.0")
+            # if BASE already contains run number logic, just use it; else suffix
+            VN="$BASE"
+            # optionally append build metadata for uniqueness if versionName is static
+            if [[ "$VN" == "1.0.0" ]]; then
+              VN="1.0.${{ github.run_number }}"
+            fi
+          else
+            VN="1.0.${{ github.run_number }}-beta"
+          fi
+          echo "name=$VN" >> "$GITHUB_OUTPUT"
+          echo "code=$((1 + ${{ github.run_number }}))" >> "$GITHUB_OUTPUT"
+          echo "FLAMBO_VERSION_NAME=$VN" >> "$GITHUB_ENV"
+          echo "Version: $VN (code $((1 + ${{ github.run_number }})))"
+
+      - name: Prepare signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            echo "→ Decoding keystore from secrets.KEYSTORE_BASE64"
+            echo "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+            echo "KEYSTORE_PATH=app/release.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "→ No secrets.KEYSTORE_BASE64 — generating ephemeral preview keystore"
+            # Deterministic ephemeral keystore so PR previews are still signed (not debug unsigned)
+            keytool -genkeypair -v \
+              -keystore app/release.keystore \
+              -storepass flambo123 \
+              -alias flambo \
+              -keypass flambo123 \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Flambo Preview, OU=CI, O=Flambo, L=Cairo, S=Cairo, C=EG"
+            echo "KEYSTORE_PATH=app/release.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=flambo123" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=flambo" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=flambo123" >> "$GITHUB_ENV"
+          fi
+          ls -lh app/release.keystore
+
+      - name: Build signed assembleRelease
+        run: |
+          ./gradlew :app:assembleRelease --stacktrace --info
+          echo "Build finished, APKs:"
+          find app/build -name "*.apk" -type f -exec ls -lh {} \;
+
+      - name: Find APK path
+        id: findapk
+        run: |
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n1)
+          if [[ -z "$APK" ]]; then
+            echo "No APK found!"
+            find app/build -type f | head -n 100
+            exit 1
+          fi
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          echo "APK=$APK"
+
+          # Checksums for release notes
+          sha256sum "$APK" > "$APK.sha256"
+          cat "$APK.sha256"
+
+          # Rename to friendly name with version
+          VN="${{ steps.version.outputs.name }}"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          OUT="Flambo-${VN}-${BRANCH}.apk"
+          cp "$APK" "$OUT"
+          echo "friendly=$OUT" >> "$GITHUB_OUTPUT"
+          ls -lh "$OUT"*
+
+      - name: Upload preview artifact (beta) — auto-expires
+        if: github.ref == 'refs/heads/beta' || (github.event_name == 'pull_request' && github.base_ref == 'beta')
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flambo-preview-${{ steps.version.outputs.name }}-build${{ github.run_number }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/*.apk.sha256
+            Flambo-*.apk
+          retention-days: 7
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Upload release artifact (main)
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flambo-release-${{ steps.version.outputs.name }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/*.apk.sha256
+            Flambo-*.apk
+          retention-days: 30
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Upload artifact for PRs
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flambo-PR-${{ github.event.number }}-${{ steps.version.outputs.name }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Beta preview: rolling prerelease that is overwritten on every push
+  # New push => old preview APK/link is replaced automatically.
+  # ---------------------------------------------------------------------------
+  preview-release:
+    name: Publish beta preview (auto-replace)
+    needs: build
+    if: github.ref == 'refs/heads/beta' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: Flambo-preview-${{ needs.build.outputs.version_name }}-build${{ github.run_number }}
+          path: ./dist
+
+      - name: Prepare preview metadata
+        id: meta
+        run: |
+          ls -lh ./dist/** || ls -lh ./dist/
+          APK=$(find ./dist -name "*.apk" | head -n1)
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Delete older beta prereleases (keep only latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          echo "Cleaning up older beta-preview releases (keeping tag beta-latest)..."
+          # List prereleases with tag beta-preview or beta-latest, delete all except the one we will (re)create
+          # We keep the release with tag 'beta-latest' and will overwrite it; delete any dated beta-preview-* tags
+          gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease == true) | .tagName' | while read -r tag; do
+            if [[ "$tag" == beta-preview-* ]]; then
+              echo "→ Deleting old preview tag $tag"
+              gh release delete "$tag" --yes --cleanup-tag || true
+            fi
+          done
+
+          # Delete old workflow runs for beta to keep Actions tab tidy (keeps storage low)
+          # Keep last 3 runs
+          echo "Pruning old beta workflow runs (keep 3)..."
+          gh run list --branch beta --limit 100 --json databaseId,status --jq '.[] | select(.status == "completed") | .databaseId' | tail -n +4 | while read -r runId; do
+            echo "→ Deleting run $runId"
+            gh run delete "$runId" || true
+          done || true
+
+      - name: Create / update rolling preview release (beta-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: beta-latest
+          name: "Flambo Preview – ${{ needs.build.outputs.version_name }} (#${{ github.run_number }})"
+          prerelease: true
+          generate_release_notes: true
+          make_latest: false
+          files: |
+            ./dist/**/*.apk
+            ./dist/**/*.sha256
+          body: |
+            ### Flambo — Beta Preview
+
+            > ⚡ **Rolling preview** — this release is **overwritten on every push to `beta`**.
+            > The previous preview APK is automatically deleted when a new commit lands.
+
+            **Branch:** `beta` @ `${{ github.sha }}`
+            **Version:** `${{ needs.build.outputs.version_name }}` · **Build:** `#${{ github.run_number }}`
+            **Commit:** `${{ github.event.head_commit.message }}`
+
+            #### Install
+            1. Download `Flambo-*.apk` below
+            2. Allow “Install unknown apps” if prompted
+            3. Install — it is signed with the preview keystore
+
+            #### Changes in this preview
+            ${{ github.event.head_commit.message }}
+
+            ---
+            *Artifact retention: 7 days · Old previews are pruned automatically.*
+
+      - name: Comment preview link on associated PR (if any)
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find open PR that has beta as head
+          PR=$(gh pr list --head beta --state open --json number --jq '.[0].number' || true)
+          if [[ -n "$PR" && "$PR" != "null" ]]; then
+            gh pr comment "$PR" --body "### ✅ Preview APK ready
+          **Version:** \`${{ needs.build.outputs.version_name }}\` · **Build:** \`#${{ github.run_number }}\`
+          Download from the [beta-latest prerelease](https://github.com/${{ github.repository }}/releases/tag/beta-latest) — this link always points to the newest beta build (old previews are auto-deleted)."
+          fi || true
+
+  # ---------------------------------------------------------------------------
+  # Main release: versioned release with full notes, changelog, checksums
+  # ---------------------------------------------------------------------------
+  github-release:
+    name: Publish release (main)
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: Flambo-release-${{ needs.build.outputs.version_name }}
+          path: ./dist
+
+      - name: Gather metadata for notes
+        id: meta
+        run: |
+          ls -lh ./dist/** || ls -lh ./dist/
+          APK=$(find ./dist -name "*.apk" | head -n1)
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          if [[ -f "$APK.sha256" ]]; then
+            SHA=$(cat "$APK.sha256")
+            echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          else
+            SHA=$(sha256sum "$APK")
+            echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          fi
+
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+          echo "Previous tag: $PREV_TAG"
+
+          if [[ -n "$PREV_TAG" ]]; then
+            LOG=$(git log "$PREV_TAG"..HEAD --pretty=format:'- %h %s (%an) — %ad' --date=short)
+          else
+            LOG=$(git log --pretty=format:'- %h %s (%an) — %ad' --date=short -n 30)
+          fi
+          # Escape for output
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          SIZE=$(du -h "$APK" | cut -f1)
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Generate full release notes
+        id: notes
+        run: |
+          cat > release_notes.md <<'EOF'
+          # Flambo ${{ needs.build.outputs.version_name }}
+
+          A calm yet expressive voice recorder — crafted with Material 3 Expressive.
+
+          ## 📦 Build info
+          | Field | Value |
+          |-------|-------|
+          | **Version** | `${{ needs.build.outputs.version_name }}` |
+          | **Version code** | `${{ needs.build.outputs.version_code }}` |
+          | **Branch** | `main` @ `${{ github.sha }}` |
+          | **Build** | `#${{ github.run_number }}` · `${{ github.workflow }} ` |
+          | **APK size** | `${{ steps.meta.outputs.size }}` |
+          | **SHA-256** | `${{ steps.meta.outputs.sha }}` |
+
+          ## ✨ Highlights
+          - One-tap recording with animated waveform & countdown
+          - Pause / resume with continuous timeline
+          - Smart waveform visualizer (Material motion)
+          - Inline rename, tags, favorites
+          - Playback: scrubber, 5 s / 10 s skip, 0.5×–2× speed, mini-player
+          - Soft delete + undo, trash with auto-purge (7 days)
+          - Share / export via system share sheet
+          - Quality presets: Voice · High · Lossless-ish
+          - Dynamic color (Material You) + full light/dark + Expressive shapes
+
+          ## 📝 Changelog
+          EOF
+          echo "" >> release_notes.md
+          if [[ -n "${{ steps.meta.outputs.prev_tag }}" ]]; then
+            echo "_Changes since \`${{ steps.meta.outputs.prev_tag }}\`:_" >> release_notes.md
+          else
+            echo "_Recent commits (no previous tag found):_" >> release_notes.md
+          fi
+          echo "" >> release_notes.md
+          echo "${{ steps.meta.outputs.changelog }}" >> release_notes.md
+          echo "" >> release_notes.md
+          cat >> release_notes.md <<'EOF'
+
+          ## 📲 Install
+
+          1. Download `Flambo-*.apk` below
+          2. On Android 13+ allow **Install unknown apps** for your browser/file manager
+          3. Tap the APK to install (signed release — updates install over previous Flambo builds)
+
+          > Previous beta previews (`beta-latest`) remain prereleases and are **not** marked as `latest`.
+
+          ## 🔒 Signing
+
+          Release APKs are signed with the repository's release keystore (`secrets.KEYSTORE_BASE64`).
+          If no secret is configured, CI generates an ephemeral keystore and notes it here — for production, add your real keystore as a secret.
+
+          ## 🙏 Thank you
+
+          Thanks for trying Flambo! File issues & feature requests on the **Issues** tab.
+
+          ---
+          *This release was auto-generated by `build.yaml` on push to `main`.*
+          EOF
+          cat release_notes.md
+          echo "notes_path=release_notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create versioned GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.version_name }}
+          name: "Flambo v${{ needs.build.outputs.version_name }}"
+          body_path: ${{ steps.notes.outputs.notes_path }}
+          generate_release_notes: true
+          make_latest: true
+          prerelease: false
+          files: |
+            ./dist/**/*.apk
+            ./dist/**/*.sha256
+          # Attach friendly renamed APK as well if present
+          fail_on_unmatched_files: false
+
+      - name: Mark previous beta prerelease as outdated (optional)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Leave beta-latest as prerelease; no deletion — just ensure main releases are `latest`
+          echo "Main release v${{ needs.build.outputs.version_name }} is now latest."
+          gh release view v${{ needs.build.outputs.version_name }} --json tagName,name,isLatest | cat || true

@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+app/build/
+gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+
+# Android
+*.iml
+.idea/
+*.ap_
+*.aab
+*.apk
+!app/release.keystore
+app/release.keystore
+captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+!gradle/wrapper/gradle-wrapper.properties
+
+# Kotlin
+*.class
+
+# OS
+.DS_Store
+Thumbs.db

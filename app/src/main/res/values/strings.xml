@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Flambo</string>
+    <string name="recording_notification_channel">Recording</string>
+    <string name="recording_notification_title">Recording in progress</string>
+    <string name="recording_notification_text">Tap to return to Flambo</string>
+</resources>

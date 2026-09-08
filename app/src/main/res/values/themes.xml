@@ -1,0 +1,4 @@
+<resources>
+    <!-- Base theme for edge-to-edge; Compose will handle colors -->
+    <style name="Theme.Flambo" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
@@ -46,6 +47,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -382,7 +384,7 @@ private fun ActiveRecordingPanel(
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(if (isPaused) "Resume" else "Pause")
                 }
-                androidx.compose.material3.FilledButton(
+                Button(
                     onClick = onStop,
                     shape = ShapeFull,
                     modifier = Modifier.weight(1f)

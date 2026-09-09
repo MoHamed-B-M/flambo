@@ -292,7 +292,7 @@ fun DetailScreen(
                                 },
                                 modifier = Modifier
                             ) {
-                                Text("${speed}x", style = ButtonDefaults.textStyleFor(ButtonDefaults.SmallContainerHeight))
+                                Text("${speed}x", style = MaterialTheme.typography.labelLarge)
                             }
                         }
                     }

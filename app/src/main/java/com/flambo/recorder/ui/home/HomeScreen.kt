@@ -32,9 +32,14 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FilledTonalButton
@@ -73,7 +78,7 @@ import com.flambo.recorder.ui.components.WaveformVisualizer
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -141,8 +146,8 @@ fun HomeScreen(
         floatingActionButton = {
             AnimatedVisibility(
                 visible = !recorderState.isRecording,
-                enter = scaleIn(tween(220)) + fadeIn(),
-                exit = scaleOut(tween(160)) + fadeOut()
+                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
+                exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {
                 ExtendedFloatingActionButton(
                     onClick = { recorder.start() },
@@ -150,7 +155,9 @@ fun HomeScreen(
                     text = { Text("Record") },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shape = ShapeFull
+                    shape = ShapeFull,
+                    // Expressive bouncy scale on appear
+                    modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                 )
             }
         },
@@ -306,6 +313,7 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ActiveRecordingPanel(
     elapsedMs: Long,
@@ -373,25 +381,27 @@ private fun ActiveRecordingPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilledTonalButton(
                     onClick = onPauseResume,
-                    shape = ShapeFull,
-                    modifier = Modifier.weight(1f)
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
                 ) {
                     Icon(
                         imageVector = if (isPaused) Icons.Filled.Mic else Icons.Filled.Pause,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
                     )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(if (isPaused) "Resume" else "Pause")
+                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
+                    Text(if (isPaused) "Resume" else "Pause", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
                 }
                 Button(
                     onClick = onStop,
-                    shape = ShapeFull,
-                    modifier = Modifier.weight(1f)
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
                 ) {
-                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text("Stop & save")
+                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight)))
+                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
+                    Text("Stop & save", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
                 }
             }
             TextButton(onClick = onCancel) { Text("Discard", color = MaterialTheme.colorScheme.error) }

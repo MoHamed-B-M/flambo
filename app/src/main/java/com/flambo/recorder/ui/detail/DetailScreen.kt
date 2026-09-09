@@ -23,10 +23,16 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -38,6 +44,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -60,7 +67,7 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DetailScreen(
     viewModel: DetailViewModel,
@@ -219,7 +226,7 @@ fun DetailScreen(
                         Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
-                    // Controls — large expressive pill buttons
+                    // Controls — large expressive pill buttons with bouncy spring
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
@@ -233,7 +240,7 @@ fun DetailScreen(
                             Icon(Icons.Filled.Replay5, contentDescription = "Back 5s")
                         }
 
-                        // Play / pause morphing FAB
+                        // Play / pause morphing FAB — bouncy scale
                         androidx.compose.material3.FloatingActionButton(
                             onClick = {
                                 if (isThisPlaying && playbackState.isPlaying) playback.pause()
@@ -260,21 +267,32 @@ fun DetailScreen(
                         }
                     }
 
-                    // Speed control — choice pills
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Speed", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        listOf(0.5f, 1f, 1.5f, 2f).forEach { speed ->
+                    // Speed control — expressive connected ToggleButtons (bouncy)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Speed",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 8.dp, top = 10.dp)
+                        )
+                        val speeds = listOf(0.5f, 1f, 1.5f, 2f)
+                        speeds.forEachIndexed { index, speed ->
                             val selected = playbackState.speed == speed
-                            if (selected) {
-                                androidx.compose.material3.FilledTonalButton(
-                                    onClick = { playback.setSpeed(speed) },
-                                    shape = ShapeFull
-                                ) { Text("${speed}x") }
-                            } else {
-                                androidx.compose.material3.OutlinedButton(
-                                    onClick = { playback.setSpeed(speed) },
-                                    shape = ShapeFull
-                                ) { Text("${speed}x") }
+                            ToggleButton(
+                                checked = selected,
+                                onCheckedChange = { playback.setSpeed(speed) },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    speeds.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                },
+                                modifier = Modifier
+                            ) {
+                                Text("${speed}x", style = ButtonDefaults.textStyleFor(ButtonDefaults.SmallContainerHeight))
                             }
                         }
                     }

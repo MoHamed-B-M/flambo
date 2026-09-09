@@ -26,3 +26,8 @@ captures/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local catalog reference (not part of app)
+Compose-Material-3-Expressive-Catalog/
+.opencode/
+

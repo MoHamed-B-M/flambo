@@ -1,11 +1,22 @@
 package com.flambo.recorder.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,9 +29,6 @@ import com.flambo.recorder.ui.detail.DetailViewModel
 import com.flambo.recorder.ui.home.HomeScreen
 import com.flambo.recorder.ui.home.HomeViewModel
 import com.flambo.recorder.ui.settings.SettingsScreen
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 
 sealed class Dest(val route: String) {
     data object Home : Dest("home")
@@ -30,6 +38,53 @@ sealed class Dest(val route: String) {
     }
 }
 
+// Expressive bouncy spring — low damping for playful overshoot, medium stiffness
+private val expressiveSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioMediumBouncy, // 0.7f bouncy
+    stiffness = Spring.StiffnessMediumLow // ~300f
+)
+private val expressiveSpringInt = spring<Int>(
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
+
+// Slide + scale + fade — feels alive, not just sliding
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveEnter() =
+    slideInHorizontally(
+        initialOffsetX = { it / 5 },
+        animationSpec = expressiveSpringInt
+    ) + fadeIn(animationSpec = spring(dampingRatio = 0.8f)) + scaleIn(
+        initialScale = 0.96f,
+        animationSpec = expressiveSpring
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveExit() =
+    slideOutHorizontally(
+        targetOffsetX = { -it / 6 },
+        animationSpec = expressiveSpringInt
+    ) + fadeOut(animationSpec = spring(dampingRatio = 0.9f)) + scaleOut(
+        targetScale = 0.98f,
+        animationSpec = spring(dampingRatio = 0.9f)
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopEnter() =
+    slideInHorizontally(
+        initialOffsetX = { -it / 5 },
+        animationSpec = expressiveSpringInt
+    ) + fadeIn(animationSpec = spring(dampingRatio = 0.8f)) + scaleIn(
+        initialScale = 0.98f,
+        animationSpec = expressiveSpring
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit() =
+    slideOutHorizontally(
+        targetOffsetX = { it / 4 },
+        animationSpec = expressiveSpringInt
+    ) + fadeOut(animationSpec = spring(dampingRatio = 0.9f)) + scaleOut(
+        targetScale = 0.96f,
+        animationSpec = expressiveSpring
+    )
+
 @Composable
 fun FlamboNavGraph() {
     val navController = rememberNavController()
@@ -37,12 +92,22 @@ fun FlamboNavGraph() {
     val app = context.applicationContext as FlamboApp
     val scope = rememberCoroutineScope()
 
-    // singletons — keep one playback controller for mini-player continuity
     val playback = remember { PlaybackController(context) }
 
-    NavHost(navController = navController, startDestination = Dest.Home.route) {
-        composable(Dest.Home.route) {
-            // create HomeViewModel with factory so it gets repo + controller
+    NavHost(
+        navController = navController,
+        startDestination = Dest.Home.route,
+        // Default bouncy transitions for all destinations unless overridden per-composable
+        enterTransition = { expressiveEnter() },
+        exitTransition = { expressiveExit() },
+        popEnterTransition = { expressivePopEnter() },
+        popExitTransition = { expressivePopExit() }
+    ) {
+        composable(
+            route = Dest.Home.route,
+            enterTransition = { expressivePopEnter() },
+            exitTransition = { expressiveExit() }
+        ) {
             val factory = remember {
                 object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST")
@@ -63,7 +128,11 @@ fun FlamboNavGraph() {
 
         composable(
             route = Dest.Detail.route,
-            arguments = listOf(navArgument("id") { type = NavType.LongType })
+            arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            enterTransition = { expressiveEnter() },
+            exitTransition = { expressiveExit() },
+            popEnterTransition = { expressivePopEnter() },
+            popExitTransition = { expressivePopExit() }
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable
             val factory = remember(id) {
@@ -83,7 +152,23 @@ fun FlamboNavGraph() {
             )
         }
 
-        composable(Dest.Settings.route) {
+        composable(
+            route = Dest.Settings.route,
+            // Settings slides up like a modal sheet — vertical expressive motion
+            enterTransition = {
+                slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = expressiveSpringInt) +
+                    fadeIn(spring(dampingRatio = 0.8f)) + scaleIn(initialScale = 0.97f, animationSpec = expressiveSpring)
+            },
+            exitTransition = {
+                slideOutHorizontally(targetOffsetX = { it / 4 }, animationSpec = expressiveSpringInt) +
+                    fadeOut(spring(dampingRatio = 0.9f))
+            },
+            popEnterTransition = { expressivePopEnter() },
+            popExitTransition = {
+                slideOutHorizontally(targetOffsetX = { it / 3 }, animationSpec = expressiveSpringInt) +
+                    fadeOut(spring(dampingRatio = 0.9f)) + scaleOut(targetScale = 0.97f)
+            }
+        ) {
             SettingsScreen(
                 prefs = app.prefs,
                 scope = scope,

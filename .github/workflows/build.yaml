@@ -152,13 +152,16 @@ jobs:
           sha256sum "$APK" > "$APK.sha256"
           cat "$APK.sha256"
 
-          # Rename to friendly name with version
+          # Rename to friendly name: Flambo-x.x.x-beta.apk (beta) or Flambo-x.x.x.apk (main)
+          # VN already contains -beta suffix for beta builds
           VN="${{ steps.version.outputs.name }}"
-          BRANCH="${GITHUB_REF#refs/heads/}"
-          OUT="Flambo-${VN}-${BRANCH}.apk"
+          OUT="Flambo-${VN}.apk"
           cp "$APK" "$OUT"
+          sha256sum "$OUT" > "$OUT.sha256"
+          cat "$OUT.sha256"
           echo "friendly=$OUT" >> "$GITHUB_OUTPUT"
-          ls -lh "$OUT"*
+          ls -lh "$OUT"*  # only Flambo-*.apk should be released (app-release.apk is hidden, not published)
+          echo "Original app-release.apk kept for local debug but NOT included in release assets"
 
       - name: Upload preview artifact (beta) — auto-expires
         if: github.ref == 'refs/heads/beta' || (github.event_name == 'pull_request' && github.base_ref == 'beta')
@@ -166,9 +169,8 @@ jobs:
         with:
           name: Flambo-preview-${{ steps.version.outputs.name }}-build${{ github.run_number }}
           path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/release/*.apk.sha256
             Flambo-*.apk
+            Flambo-*.apk.sha256
           retention-days: 7
           if-no-files-found: error
           overwrite: true
@@ -179,9 +181,8 @@ jobs:
         with:
           name: Flambo-release-${{ steps.version.outputs.name }}
           path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/release/*.apk.sha256
             Flambo-*.apk
+            Flambo-*.apk.sha256
           retention-days: 30
           if-no-files-found: error
           overwrite: true
@@ -192,7 +193,8 @@ jobs:
         with:
           name: Flambo-PR-${{ github.event.number }}-${{ steps.version.outputs.name }}
           path: |
-            app/build/outputs/apk/release/*.apk
+            Flambo-*.apk
+            Flambo-*.apk.sha256
           retention-days: 7
 
   # ---------------------------------------------------------------------------
@@ -257,8 +259,8 @@ jobs:
           generate_release_notes: true
           make_latest: false
           files: |
-            ./dist/**/*.apk
-            ./dist/**/*.sha256
+            ./dist/Flambo-*.apk
+            ./dist/Flambo-*.apk.sha256
           body: |
             ### Flambo — Beta Preview
 
@@ -421,9 +423,8 @@ jobs:
           make_latest: true
           prerelease: false
           files: |
-            ./dist/**/*.apk
-            ./dist/**/*.sha256
-          # Attach friendly renamed APK as well if present
+            ./dist/Flambo-*.apk
+            ./dist/Flambo-*.apk.sha256
           fail_on_unmatched_files: false
 
       - name: Mark previous beta prerelease as outdated (optional)

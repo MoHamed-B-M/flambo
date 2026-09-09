@@ -130,9 +130,16 @@ jobs:
           fi
           ls -lh app/release.keystore
 
+      - name: Clean build cache
+        run: |
+          ./gradlew clean --stacktrace || true
+          rm -rf ~/.gradle/caches/build-cache-1
+          rm -rf ~/.gradle/caches/modules-2 || true
+          echo "Cleaned build caches"
+
       - name: Build signed assembleRelease
         run: |
-          ./gradlew :app:assembleRelease --stacktrace --info
+          ./gradlew :app:assembleRelease --stacktrace --info --no-build-cache
           echo "Build finished, APKs:"
           find app/build -name "*.apk" -type f -exec ls -lh {} \;
 

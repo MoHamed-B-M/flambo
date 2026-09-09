@@ -107,6 +107,8 @@ dependencies {
     // Expressive adaptive
     implementation(libs.androidx.adaptive)
     implementation(libs.androidx.adaptive.layout)
+    // Offline speech-to-text
+    implementation(libs.vosk.android)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

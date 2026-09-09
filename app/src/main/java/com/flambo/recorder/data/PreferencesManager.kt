@@ -18,6 +18,9 @@ class PreferencesManager(private val context: Context) {
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val RECORDING_REMINDER = booleanPreferencesKey("recording_reminder")
         val DARK_THEME = stringPreferencesKey("dark_theme") // system, light, dark
+        val STT_ENGINE = stringPreferencesKey("stt_engine") // auto, system, vosk
+        val STT_LANGUAGE = stringPreferencesKey("stt_language") // BCP-47 tag, e.g. en-US
+        val UPDATE_CHANNEL = stringPreferencesKey("update_channel") // beta, stable
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -46,5 +49,27 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setDarkTheme(mode: String) {
         context.dataStore.edit { it[Keys.DARK_THEME] = mode }
+    }
+
+    val sttEngineFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.STT_ENGINE] ?: "auto" }
+
+    // Empty = follow system locale
+    val sttLanguageFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.STT_LANGUAGE] ?: "" }
+
+    suspend fun setSttEngine(engine: String) {
+        context.dataStore.edit { it[Keys.STT_ENGINE] = engine }
+    }
+
+    suspend fun setSttLanguage(tag: String) {
+        context.dataStore.edit { it[Keys.STT_LANGUAGE] = tag }
+    }
+
+    val updateChannelFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.UPDATE_CHANNEL] ?: "beta" }
+
+    suspend fun setUpdateChannel(channel: String) {
+        context.dataStore.edit { it[Keys.UPDATE_CHANNEL] = channel }
     }
 }

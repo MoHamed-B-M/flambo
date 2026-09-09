@@ -34,6 +34,9 @@ interface RecordingDao {
     @Query("DELETE FROM recordings WHERE isTrashed = 1 AND trashedAt < :cutoff")
     suspend fun purgeOldTrash(cutoff: Long): Int
 
-    @Query("SELECT * FROM recordings WHERE isTrashed = 0 AND (title LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%') ORDER BY createdAt DESC")
+    @Query("SELECT * FROM recordings WHERE isTrashed = 0 AND (title LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' OR transcriptText LIKE '%' || :query || '%') ORDER BY createdAt DESC")
     fun search(query: String): Flow<List<Recording>>
+
+    @Query("UPDATE recordings SET transcriptText = :transcript WHERE id = :id")
+    suspend fun updateTranscript(id: Long, transcript: String)
 }

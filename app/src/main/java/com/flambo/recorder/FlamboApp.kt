@@ -5,6 +5,7 @@ import com.flambo.recorder.data.AppDatabase
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.RecordingRepository
 import com.flambo.recorder.record.RecordingController
+import com.flambo.recorder.stt.TranscriptionManager
 
 class FlamboApp : Application() {
 
@@ -17,4 +18,5 @@ class FlamboApp : Application() {
     }
     val prefs by lazy { PreferencesManager(this) }
     val recorder by lazy { RecordingController(this, repository) }
+    val transcription by lazy { TranscriptionManager(this, prefs, recorder) }
 }

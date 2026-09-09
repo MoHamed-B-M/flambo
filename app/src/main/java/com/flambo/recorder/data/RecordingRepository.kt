@@ -44,6 +44,14 @@ class RecordingRepository(
         }
     }
 
+    suspend fun saveTranscript(id: Long, transcript: String) {
+        dao.updateTranscript(id, transcript.trim())
+    }
+
+    suspend fun clearTranscript(id: Long) {
+        dao.updateTranscript(id, "")
+    }
+
     suspend fun updateTags(id: Long, tags: List<String>) {
         getById(id)?.let {
             dao.update(it.copy(tags = tags.joinToString(",") { t -> t.trim() }.trim(',')))

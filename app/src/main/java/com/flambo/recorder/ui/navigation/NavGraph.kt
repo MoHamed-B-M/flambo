@@ -122,6 +122,7 @@ fun FlamboNavGraph() {
                 viewModel = vm,
                 recorder = app.recorder,
                 playback = playback,
+                transcription = app.transcription,
                 onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
                 onOpenSettings = { navController.navigate(Dest.Settings.route) }
             )
@@ -140,7 +141,7 @@ fun FlamboNavGraph() {
                 object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        return DetailViewModel(app.repository, id) as T
+                        return DetailViewModel(app.repository, id, app.transcription, app.prefs) as T
                     }
                 }
             }
@@ -173,6 +174,7 @@ fun FlamboNavGraph() {
             SettingsScreen(
                 prefs = app.prefs,
                 scope = scope,
+                transcription = app.transcription,
                 onBack = { navController.popBackStack() }
             )
         }

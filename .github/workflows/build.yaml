@@ -130,9 +130,15 @@ jobs:
           fi
           ls -lh app/release.keystore
 
+      - name: Clear KSP cache
+        run: |
+          rm -rf ~/.gradle/caches/modules-2/files-2.1/com.google.devtools.ksp || true
+          rm -rf .gradle/ || true
+          ./gradlew clean --stacktrace || true
+          echo "Cleared KSP cache"
+
       - name: Clean build cache
         run: |
-          ./gradlew clean --stacktrace || true
           rm -rf ~/.gradle/caches/build-cache-1
           rm -rf ~/.gradle/caches/modules-2 || true
           echo "Cleaned build caches"

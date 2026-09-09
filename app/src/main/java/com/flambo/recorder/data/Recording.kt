@@ -16,7 +16,9 @@ data class Recording(
     val tags: String = "",
     // stored as comma-separated amplitudes (normalized 0..1) for waveform preview
     val amplitudePeaks: String = "",
-    val quality: String = "HIGH"
+    val quality: String = "HIGH",
+    // saved speech-to-text result (empty = not transcribed yet)
+    val transcriptText: String = ""
 ) {
     val tagList: List<String>
         get() = if (tags.isBlank()) emptyList() else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }

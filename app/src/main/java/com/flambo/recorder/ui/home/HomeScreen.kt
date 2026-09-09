@@ -171,13 +171,10 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Search — lozenge-shaped expressive search bar
-            SearchBar(
-                query = uiState.query,
-                onQueryChange = viewModel::onQueryChange,
-                onSearch = {},
-                active = false,
-                onActiveChange = {},
+            // Search — expressive outlined field (replaces legacy SearchBar which broke in M3 1.5.0-alpha26)
+            androidx.compose.material3.OutlinedTextField(
+                value = uiState.query,
+                onValueChange = viewModel::onQueryChange,
                 placeholder = { Text("Search recordings") },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 trailingIcon = {
@@ -186,10 +183,11 @@ fun HomeScreen(
                     }
                 },
                 shape = ShapeFull,
+                singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {}
+            )
 
             // Active recording panel — morphing container
             AnimatedVisibility(

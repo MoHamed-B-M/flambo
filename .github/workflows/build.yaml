@@ -26,7 +26,9 @@ permissions:
   pull-requests: write
 
 env:
-  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
+  GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dkotlin.daemon.jvm.options=-Xmx3g
+  JAVA_OPTS: -Xmx4g
+  KOTLIN_DAEMON_JVM_OPTIONS: -Xmx3g
 
 jobs:
   build:
@@ -145,7 +147,7 @@ jobs:
 
       - name: Build signed assembleRelease
         run: |
-          ./gradlew :app:assembleRelease --stacktrace --info --no-build-cache
+          ./gradlew :app:assembleRelease --stacktrace --info --no-build-cache --max-workers=2 -Dorg.gradle.jvmargs="-Xmx4g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" -Dkotlin.daemon.jvmargs="-Xmx3g"
           echo "Build finished, APKs:"
           find app/build -name "*.apk" -type f -exec ls -lh {} \;
 

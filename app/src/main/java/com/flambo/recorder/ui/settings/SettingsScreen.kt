@@ -41,6 +41,7 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -105,6 +106,9 @@ fun SettingsScreen(
     val modelProgress by transcription.modelProgress.collectAsState()
     val updateChannel by prefs.updateChannelFlow.collectAsState(initial = UpdateChecker.CHANNEL_BETA)
 
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+
     var checkingUpdate by remember { mutableStateOf(false) }
     var updateResult by remember { mutableStateOf<UpdateCheck?>(null) }
     var installedLabel by remember { mutableStateOf("") }
@@ -119,8 +123,6 @@ fun SettingsScreen(
     var showVoskModelsDialog by remember { mutableStateOf(false) }
     var modelsTick by remember { mutableStateOf(0) }
 
-    val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
     var speechLanguages by remember { mutableStateOf<List<Locale>>(emptyList()) }
     LaunchedEffect(Unit) {
         speechLanguages = SpeechLanguages.fetchSupported(context.applicationContext)

@@ -9,6 +9,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,7 +44,7 @@ private val expressiveSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioMediumBouncy, // 0.7f bouncy
     stiffness = Spring.StiffnessMediumLow // ~300f
 )
-private val expressiveSpringInt = spring<Int>(
+private val expressiveSpringOffset = spring<IntOffset>(
     dampingRatio = Spring.DampingRatioMediumBouncy,
     stiffness = Spring.StiffnessMediumLow
 )
@@ -52,7 +53,7 @@ private val expressiveSpringInt = spring<Int>(
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveEnter() =
     slideInHorizontally(
         initialOffsetX = { it / 5 },
-        animationSpec = expressiveSpringInt
+        animationSpec = expressiveSpringOffset
     ) + fadeIn(animationSpec = spring(dampingRatio = 0.8f)) + scaleIn(
         initialScale = 0.96f,
         animationSpec = expressiveSpring
@@ -61,7 +62,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveEnter() 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveExit() =
     slideOutHorizontally(
         targetOffsetX = { -it / 6 },
-        animationSpec = expressiveSpringInt
+        animationSpec = expressiveSpringOffset
     ) + fadeOut(animationSpec = spring(dampingRatio = 0.9f)) + scaleOut(
         targetScale = 0.98f,
         animationSpec = spring(dampingRatio = 0.9f)
@@ -70,7 +71,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveExit() =
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopEnter() =
     slideInHorizontally(
         initialOffsetX = { -it / 5 },
-        animationSpec = expressiveSpringInt
+        animationSpec = expressiveSpringOffset
     ) + fadeIn(animationSpec = spring(dampingRatio = 0.8f)) + scaleIn(
         initialScale = 0.98f,
         animationSpec = expressiveSpring
@@ -79,7 +80,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopEnter
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit() =
     slideOutHorizontally(
         targetOffsetX = { it / 4 },
-        animationSpec = expressiveSpringInt
+        animationSpec = expressiveSpringOffset
     ) + fadeOut(animationSpec = spring(dampingRatio = 0.9f)) + scaleOut(
         targetScale = 0.96f,
         animationSpec = expressiveSpring
@@ -156,16 +157,16 @@ fun FlamboNavGraph() {
             route = Dest.Settings.route,
             // Settings slides up like a modal sheet — vertical expressive motion
             enterTransition = {
-                slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = expressiveSpringInt) +
+                slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = expressiveSpringOffset) +
                     fadeIn(spring(dampingRatio = 0.8f)) + scaleIn(initialScale = 0.97f, animationSpec = expressiveSpring)
             },
             exitTransition = {
-                slideOutHorizontally(targetOffsetX = { it / 4 }, animationSpec = expressiveSpringInt) +
+                slideOutHorizontally(targetOffsetX = { it / 4 }, animationSpec = expressiveSpringOffset) +
                     fadeOut(spring(dampingRatio = 0.9f))
             },
             popEnterTransition = { expressivePopEnter() },
             popExitTransition = {
-                slideOutHorizontally(targetOffsetX = { it / 3 }, animationSpec = expressiveSpringInt) +
+                slideOutHorizontally(targetOffsetX = { it / 3 }, animationSpec = expressiveSpringOffset) +
                     fadeOut(spring(dampingRatio = 0.9f)) + scaleOut(targetScale = 0.97f)
             }
         ) {

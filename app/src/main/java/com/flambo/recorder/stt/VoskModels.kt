@@ -86,11 +86,14 @@ class VoskModelManager(private val context: Context) {
         try {
             setProgress(code, 0f)
             val url = URL(BASE_URL + model.file)
-            (url.openConnection() as HttpURLConnection).apply {
+            // Note: HttpURLConnection is not Closeable, so no .use {} here —
+            // disconnect explicitly in finally instead.
+            val conn = (url.openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000
                 readTimeout = 30_000
                 instanceFollowRedirects = true
-            }.use { conn ->
+            }
+            try {
                 conn.connect()
                 require(conn.responseCode in 200..299) { "Download failed (HTTP ${conn.responseCode})." }
                 val total = conn.contentLengthLong.takeIf { it > 0 } ?: (model.sizeMb * 1024L * 1024L)
@@ -107,6 +110,8 @@ class VoskModelManager(private val context: Context) {
                         }
                     }
                 }
+            } finally {
+                conn.disconnect()
             }
             unzipIntoPlace(zip, code)
             setProgress(code, 1f)

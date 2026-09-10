@@ -22,6 +22,15 @@
 - **Self-updates** — Settings checks the beta rolling preview (by build number) or stable releases (by version)
 - **Material 3 Expressive throughout** — dynamic Material You color, tonal surfaces instead of shadows, morphing shapes, bouncy spring motion, edge-to-edge layout
 
+## Screenshots
+
+> [!TIP]
+> Drop PNGs into `screenshots/` (e.g. `home.png`, `recording.png`, `playback.png`, `settings.png`) and they show up here automatically — same filenames, no README edits needed.
+
+| Home | Recording | Playback | Settings |
+|---|---|---|---|
+| ![Home](screenshots/home.png) | ![Recording](screenshots/recording.png) | ![Playback](screenshots/playback.png) | ![Settings](screenshots/settings.png) |
+
 ## Get the app
 
 Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.0.0-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):

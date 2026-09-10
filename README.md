@@ -1,145 +1,101 @@
-# Flambo — Expressive Voice Recorder
+<div align="center">
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="120" alt="Flambo app icon" />
+  <h1>Flambo</h1>
+  <p>A calm yet expressive voice recorder for Android — record, transcribe, and keep everything on your device.</p>
+  <p>
+    <img src="https://img.shields.io/badge/Material_3-Expressive-%23D8572A" alt="Material 3 Expressive" />
+    <img src="https://img.shields.io/badge/Kotlin-2.3.10-7F52FF" alt="Kotlin 2.3.10" />
+    <img src="https://img.shields.io/badge/minSdk-26-lightgrey" alt="minSdk 26" />
+    <img src="https://img.shields.io/badge/targetSdk-36-green" alt="targetSdk 36" />
+  </p>
+</div>
 
-A calm yet expressive voice recorder built with **Jetpack Compose + Material 3 Expressive**. Warm, tactile, and private — every recording stays on your device.
+## Features
 
-![Material 3 Expressive](https://img.shields.io/badge/Material%203-Expressive-%23D8572A)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.12-blue)
-![Min SDK](https://img.shields.io/badge/minSdk-26-lightgrey)
-![Target](https://img.shields.io/badge/targetSdk-36-green)
+- **One-tap recording** with an animated-shape record button, live waveform, and pause/resume on a continuous timeline
+- **Two sources** — microphone, or system sound (music, videos, app audio) via AudioPlaybackCapture on Android 10+
+- **Live notification** with running timer plus Pause/Resume and Save actions, so recording survives the screen turning off
+- **Offline transcription** — Vosk turns saved recordings into text on-device; downloadable language models, copy/share/edit, transcripts are searchable
+- **Playback** with waveform scrubber, 0.5x–2x speed pills, 5 s / 10 s skips, and a floating mini-player
+- **Library** — inline rename, tags, favorites, full-text search, soft delete with Undo, auto-purging Trash
+- **Onboarding tour** on first launch, replayable anytime from Settings → About
+- **Self-updates** — Settings checks the beta rolling preview (by build number) or stable releases (by version)
+- **Material 3 Expressive throughout** — dynamic Material You color, tonal surfaces instead of shadows, morphing shapes, bouncy spring motion, edge-to-edge layout
 
-## ✨ Features
+## Get the app
 
-- **One-tap record** with elegant countdown + morphing FAB
-- **Live waveform** / pulse visualizer driven by amplitude sampling
-- **Pause / resume** with continuous timeline preservation
-- **Inline rename, tags, favorite** while the sheet is still open
-- **Search** across titles & tags (lozenge-shaped expressive search bar)
-- **Playback** with scrubber, waveform progress, 0.5×–2× speed, 5 s / 10 s skips
-- **Floating mini-player** when you navigate away during playback
-- **Soft delete + Undo** via Snackbar; Trash auto-purges after 7 days
-- **Share** via system share sheet / FileProvider
-- **Quality presets** — Voice (16 kHz 32 kbps) · High (44.1 kHz 128 kbps) · Lossless-ish (48 kHz 192 kbps)
-- **Dynamic color** (Material You on Android 12+) + seed fallback, light/dark/system
-- **Edge-to-edge** with proper WindowInsets, large-top-app-bar, 8dp spacing system
-- **Privacy-first**: files in app-private `getExternalFilesDir` via `MediaStore`/`FileProvider` — no broad storage permission
+Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.0.0-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
 
-## 🏗️ Tech Stack
+| File suffix | Architecture | Most devices |
+|---|---|---|
+| `*-arm64.apk` | arm64-v8a | ✅ phones from ~2017 on |
+| `*-armv7.apk` | armeabi-v7a | Older 32-bit devices |
 
-- Kotlin 2.0.21, Compose BOM 2024.12.01, Material3 1.3.1, Activity 1.9.3
-- Navigation Compose 2.8.5, Lifecycle ViewModel 2.8.7, Room 2.6.1, DataStore 1.1.1, Media3 ExoPlayer 1.4.1
-- MVVM + `StateFlow`/`UiState`, Repository pattern, `MediaRecorder` + `ExoPlayer` wrappers
-- ForegroundService with ongoing notification while recording
+> [!NOTE]
+> Enable *Install unknown apps* for your browser when sideloading. Release builds are signed with the project keystore, so updates install cleanly over previous ones.
 
-## 🎨 Material 3 Expressive
-
-This app follows the **material-3 skill** strictly:
-
-- **Color**: `ColorScheme` roles via `MaterialTheme.colorScheme`, dynamic color + `FlamboLightColors`/`FlamboDarkColors` fallback, no hardcoded hex in composables
-- **Typography**: `FlamboTypography` (Display → Label) with expressive large titles for timer
-- **Shape**: `FlamboShapes` + `ShapeLargeIncreased` / `ShapeFull` (pill) / `ShapeExtraLarge` per spec
-- **Elevation**: tonal surfaces (`surfaceContainer`, `surfaceContainerHigh`), not shadows
-- **Motion**: `FlamboMotion` emphasized easing, spring for FAB morph, animatedContent for timer
-- **Layout**: `LargeTopAppBar` + `Scaffold` + `WindowInsets`, readable max-width, adaptive list-detail ready
-- **Components**: `md3` cards (outlined tonal), `SearchBar`, `ExtendedFloatingActionButton`, `ListItem`, `Slider`, `AssistChip`, `Switch`, dialogs
-- **Accessibility**: 48dp touch targets, content descriptions, proper contrast pairs (`primary` on `surface` via `onPrimary` etc.)
-
-## 🚀 Building
-
-### Local
+## Build it yourself
 
 ```bash
-./gradlew :app:assembleRelease   # signed via debug keystore fallback if no release.keystore
-# or
-./gradlew :app:assembleDebug
+git clone https://github.com/MoHamed-B-M/flambo.git
+cd flambo
+git checkout beta            # active development happens here
+./gradlew :app:assembleRelease
 ```
 
-Debug keystore fallback means you never need a real keystore to run `assembleRelease` locally.
+Debug keystore fallback means `assembleRelease` works locally with no secrets configured. Per-ABI APKs land in `app/build/outputs/apk/release/`.
 
-### CI — GitHub Actions (`build.yaml`)
+## How releases work
 
-| Branch | Trigger | Artifact | Behavior |
-|--------|---------|----------|----------|
-| `beta` | push to `beta` | `Flambo-preview-*.apk` (signed, prerelease `beta-latest`) | **Auto-replaces** previous preview — old APK/release & workflow run are deleted. Retention **7 days**. |
-| `main` | push to `main` | `Flambo-release-*.apk` (signed, versioned `v*`) | Full release with **release notes, changelog, checksums, APK size**. Retention **30 days**, marked `latest`. |
+[`build.yaml`](.github/workflows/build.yaml) builds every push to `beta` and `main`:
 
-Both use:
-- JDK 17 Temurin, Android SDK 36, Gradle 8.13 wrapper
-- **Signing**: if repo secret `KEYSTORE_BASE64` (+ `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) exists, it is decoded to `app/release.keystore`; otherwise a **deterministic ephemeral keystore** is generated so previews are still installable.
-- `concurrency: cancel-in-progress` on `beta` — new push cancels old runs (preview superseded).
+- **`beta`** → signed dev build `1.0.0-dev(#N)` (arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
+- **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
 
-#### Setting up real release signing (one-time)
+### Required secrets
 
-```bash
-# From your real release keystore
-base64 -w 0 my-release.keystore | pbcopy   # macOS, or `base64 my-release.keystore | tr -d '\n'` on Linux
-# Add to GitHub → Settings → Secrets and variables → Actions:
-#   KEYSTORE_BASE64  = <paste>
-#   KEYSTORE_PASSWORD = <store pass>
-#   KEY_ALIAS         = <alias>
-#   KEY_PASSWORD      = <key pass>
-```
+| Secret | Purpose |
+|---|---|
+| `KEYSTORE_BASE64` | Release keystore, base64-encoded |
+| `KEYSTORE_PASSWORD` | Keystore password |
+| `KEY_ALIAS` | Key alias |
+| `KEY_PASSWORD` | Key password |
 
-After that, pushes to `main` produce a Play-Store-ready signed APK. Without the secret, `beta` previews still work (ephemeral keystore).
+Without them CI falls back to an ephemeral keystore (fine for previews, not for Play Store continuity).
 
-#### Workflow dispatch
-
-You can also trigger manually via **Actions → Build Flambo → Run workflow**.
-
-## 📂 Project Structure
+## Project structure
 
 ```
 app/src/main/java/com/flambo/recorder/
-├── FlamboApp.kt                 # Application + singletons (DB, prefs, recorder)
-├── MainActivity.kt              # edge-to-edge, permissions, theme
-├── data/                        # Room + DataStore
-│   ├── Recording.kt / Dao / Db
-│   ├── RecordingRepository.kt
-│   └── PreferencesManager.kt
-├── domain/                      # Quality, format helpers
-├── record/                      # MediaRecorder wrapper + ForegroundService
-├── playback/                    # ExoPlayer mini-controller
-└── ui/
-    ├── theme/                   # Color / Type / Shape / Theme / Motion (M3 tokens)
-    ├── navigation/              # NavGraph (home → detail → settings)
-    ├── home/                    # LazyColumn cards, search, trash, empty state
-    ├── detail/                  # Waveform scrubber, speed pills, share
-    ├── settings/                # Quality, dynamic color, theme
-    └── components/              # WaveformVisualizer, RecordingCard, MiniPlayer
+├── ui/
+│   ├── home/          # Library, search, recording panel, mini-player
+│   ├── detail/        # Playback, waveform scrubber, transcribe sheet, transcript card
+│   ├── settings/      # Segmented preference groups, Vosk model manager, updates, about
+│   ├── onboarding/    # First-launch expressive pager tour
+│   ├── components/    # Waveform, cards, segmented list, mini-player
+│   └── theme/         # M3 Expressive color / type / shape / motion tokens
+├── record/            # MediaRecorder + system-audio (AudioRecord) engines, foreground service
+├── stt/               # Vosk offline transcription, model downloads, PCM decoding
+├── playback/          # ExoPlayer controller with persistent mini-player state
+├── update/            # Beta/stable release checker against the GitHub API
+└── data/              # Room database, repository, DataStore preferences
 ```
 
-## 🔐 Permissions
+MVVM throughout: `ViewModel` + `StateFlow` UI state, repository pattern, thin platform wrappers.
 
-- `RECORD_AUDIO` — requested at runtime with rationale
-- `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MICROPHONE` — ongoing recording
-- `POST_NOTIFICATIONS` (Android 13+) — foreground notification
+## Permissions
 
-No broad `READ_EXTERNAL_STORAGE` / `MANAGE_EXTERNAL_STORAGE`.
+| Permission | Why |
+|---|---|
+| `RECORD_AUDIO` | Microphone recording (runtime prompt) |
+| System-capture consent | One-time system dialog for system-sound recording, like a screen recorder |
+| `FOREGROUND_SERVICE_*` | Keeps recording alive with the screen off (mic / playback / projection types, narrowed per take) |
+| `POST_NOTIFICATIONS` | Recording timer notification (Android 13+) |
+| `INTERNET` | Only for Vosk model downloads and the update checker — audio never leaves the device |
 
-## 🧪 MD3 Compliance Audit
+> [!IMPORTANT]
+> When enabling system-sound capture, Android shows a *screen-recording* consent dialog. Flambo only captures audio — no pixels are ever read (the codebase contains no virtual display; the MediaProjection token feeds `AudioPlaybackCaptureConfiguration` exclusively).
 
-Run the skill audit mentally:
+## Tech stack
 
-| Category | Score | Notes |
-|----------|-------|-------|
-| Color tokens | 9/10 | `MaterialTheme.colorScheme` + dynamic + fallback, no hard codes |
-| Typography | 9/10 | Full MD3 scale, displayMedium for timer |
-| Shape | 9/10 | `FlamboShapes` + expressive `full`/`largeIncreased` |
-| Elevation | 8/10 | Tonal `surfaceContainer*` |
-| Components | 9/10 | `Card`, `SearchBar`, `EFAB`, `Slider`, `Chip` via M3 |
-| Layout | 8/10 | `LargeTopAppBar`, 8dp, edge-to-edge; adaptive ready |
-| Navigation | 8/10 | `NavHost` + rail/bar-ready |
-| Motion | 8/10 | Emphasized easing, `AnimatedVisibility`/`AnimatedContent` |
-| Accessibility | 8/10 | 48dp, semantics, contrast pairs |
-| Theming | 9/10 | `FlamboTheme` with system/dark + dynamic toggle |
-
-## 🤝 Contributing
-
-PRs to `beta` auto-produce a preview APK comment. Merge `beta` → `main` to cut a release.
-
-## 📄 License
-
-Private — all rights reserved. Use the workflow & theming as a reference, but replace secrets/assets before distributing.
-
----
-
-*Built with Material 3 Expressive — Compose-first, tonal, rounded, and quietly alive.*
+Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) · Navigation Compose · Room 2.8.5 (KSP) · DataStore · Media3 ExoPlayer · Vosk 0.3.75 · AGP 9.3.2, JDK 21.

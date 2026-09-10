@@ -28,6 +28,7 @@ class RecordingService : Service() {
         const val ACTION_PAUSE = "flambo.action.PAUSE"
         const val ACTION_RESUME = "flambo.action.RESUME"
         const val ACTION_STOP = "flambo.action.STOP" // stop & save
+        const val EXTRA_FGS_TYPE = "flambo.extra.FGS_TYPE"
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -56,7 +57,16 @@ class RecordingService : Service() {
                 return START_NOT_STICKY
             }
         }
-        startForeground(NOTIF_ID, buildNotification(0L, false))
+        val fgsType = intent?.getIntExtra(
+            EXTRA_FGS_TYPE,
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        ) ?: android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        val notification = buildNotification(0L, false)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, notification, fgsType)
+        } else {
+            startForeground(NOTIF_ID, notification)
+        }
         startTicker()
         return START_STICKY
     }

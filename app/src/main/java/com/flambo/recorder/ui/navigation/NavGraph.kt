@@ -11,9 +11,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import com.flambo.recorder.domain.RecordingQuality
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,7 +91,8 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit(
 
 @Composable
 fun FlamboNavGraph(
-    onRerunOnboarding: () -> Unit = {}
+    onRerunOnboarding: () -> Unit = {},
+    onRequestSystemCapture: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -96,6 +100,8 @@ fun FlamboNavGraph(
     val scope = rememberCoroutineScope()
 
     val playback = remember { PlaybackController(context) }
+    val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
+    val audioSource by app.prefs.audioSourceFlow.collectAsState(initial = "mic")
 
     NavHost(
         navController = navController,
@@ -124,6 +130,8 @@ fun FlamboNavGraph(
                 viewModel = vm,
                 recorder = app.recorder,
                 playback = playback,
+                quality = quality,
+                audioSource = audioSource,
                 onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
                 onOpenSettings = { navController.navigate(Dest.Settings.route) }
             )
@@ -177,7 +185,8 @@ fun FlamboNavGraph(
                 scope = scope,
                 transcription = app.transcription,
                 onBack = { navController.popBackStack() },
-                onRerunIntro = onRerunOnboarding
+                onRerunIntro = onRerunOnboarding,
+                onRequestSystemCapture = onRequestSystemCapture
             )
         }
     }

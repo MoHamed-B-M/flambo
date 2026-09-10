@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
@@ -75,8 +76,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.R
+import android.os.Build
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.domain.RecordingQuality
+import com.flambo.recorder.record.AudioSource
+import com.flambo.recorder.record.MediaProjectionHolder
 import com.flambo.recorder.stt.TranscriptionManager
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.update.UpdateCheck
@@ -93,9 +97,11 @@ fun SettingsScreen(
     scope: CoroutineScope,
     transcription: TranscriptionManager,
     onBack: () -> Unit,
-    onRerunIntro: () -> Unit = {}
+    onRerunIntro: () -> Unit = {},
+    onRequestSystemCapture: () -> Unit = {}
 ) {
     val quality by prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
+    val audioSource by prefs.audioSourceFlow.collectAsState(initial = "mic")
     val dynamicColor by prefs.dynamicColorFlow.collectAsState(initial = true)
     val reminder by prefs.recordingReminderFlow.collectAsState(initial = true)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
@@ -115,6 +121,7 @@ fun SettingsScreen(
     }
 
     var showQualityDialog by remember { mutableStateOf(false) }
+    var showAudioSourceDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSttLanguageDialog by remember { mutableStateOf(false) }
     var showVoskModelsDialog by remember { mutableStateOf(false) }
@@ -143,165 +150,159 @@ fun SettingsScreen(
         ) {
             Text("Recording", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
 
-            // Quality as expressive tonal surface + leading icon + bouncy
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Quality") },
-                    supportingContent = { Text("${quality.label} • ${quality.description}") },
-                    leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    trailingContent = {
-                        TextButton(
-                            onClick = { showQualityDialog = true },
-                            shapes = ButtonDefaults.shapes()
-                        ) { Text("Change") }
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
-            }
-
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Recording reminder") },
-                    supportingContent = { Text("Show a gentle reminder before long recordings") },
-                    trailingContent = {
-                        Switch(
-                            checked = reminder,
-                            onCheckedChange = { scope.launch { prefs.setRecordingReminder(it) } },
-                            thumbContent = if (reminder) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                            } else null
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
+            // Recording group — connected segmented rows, no shadows
+            SegmentedList {
+                item {
+                    ListItem(
+                        headlineContent = { Text("Quality") },
+                        supportingContent = { Text("${quality.label} • ${quality.description}") },
+                        leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { showQualityDialog = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Recording reminder") },
+                        supportingContent = { Text("Show a gentle reminder before long recordings") },
+                        trailingContent = {
+                            Switch(
+                                checked = reminder,
+                                onCheckedChange = { scope.launch { prefs.setRecordingReminder(it) } },
+                                thumbContent = if (reminder) {
+                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                } else null
+                            )
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Audio source") },
+                        supportingContent = { Text(AudioSource.fromPref(audioSource).label) },
+                        leadingContent = {
+                            Icon(
+                                if (audioSource == "system") Icons.Filled.MusicNote else Icons.Filled.Mic,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { showAudioSourceDialog = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
             Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
 
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Dynamic color") },
-                    supportingContent = { Text("Use Material You colors from your wallpaper (Android 12+)") },
-                    leadingContent = { Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary) },
-                    trailingContent = {
-                        Switch(
-                            checked = dynamicColor,
-                            onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
-                            thumbContent = if (dynamicColor) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                            } else null
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
-            }
-
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Theme") },
-                    supportingContent = { Text(when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System default" }) },
-                    leadingContent = {
-                        Icon(
-                            when (darkTheme) {
-                                "light" -> Icons.Filled.LightMode
-                                "dark" -> Icons.Filled.DarkMode
-                                else -> Icons.Filled.SettingsBrightness
-                            },
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    trailingContent = {
-                        TextButton(
-                            onClick = { showThemeDialog = true },
-                            shapes = ButtonDefaults.shapes()
-                        ) { Text("Change") }
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
+            SegmentedList {
+                item {
+                    ListItem(
+                        headlineContent = { Text("Dynamic color") },
+                        supportingContent = { Text("Use Material You colors from your wallpaper (Android 12+)") },
+                        leadingContent = { Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary) },
+                        trailingContent = {
+                            Switch(
+                                checked = dynamicColor,
+                                onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
+                                thumbContent = if (dynamicColor) {
+                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                } else null
+                            )
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Theme") },
+                        supportingContent = { Text(when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System default" }) },
+                        leadingContent = {
+                            Icon(
+                                when (darkTheme) {
+                                    "light" -> Icons.Filled.LightMode
+                                    "dark" -> Icons.Filled.DarkMode
+                                    else -> Icons.Filled.SettingsBrightness
+                                },
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { showThemeDialog = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
             Text("Speech-to-text", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
 
-            // Offline transcription runs fully on-device after a recording.
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Offline transcription") },
-                    supportingContent = { Text("Vosk turns recordings into text — no cloud, no account") },
-                    leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
-            }
-
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Transcription language") },
-                    supportingContent = {
-                        Text(
-                            VoskModelManager.forTag(sttLanguage.ifBlank { "en" })?.label
-                                ?: if (sttLanguage.isBlank()) "Best installed model" else sttLanguage
-                        )
-                    },
-                    trailingContent = {
-                        TextButton(
-                            onClick = { showSttLanguageDialog = true },
-                            shapes = ButtonDefaults.shapes()
-                        ) { Text("Change") }
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
-            }
-
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val installedCount = remember(modelsTick) { transcription.vosk.models.installedCodes().size }
-                ListItem(
-                    headlineContent = { Text("Vosk offline models") },
-                    supportingContent = {
-                        Text(
-                            if (installedCount == 0) "None yet — download one to transcribe offline"
-                            else "$installedCount language${if (installedCount > 1) "s" else ""} ready offline"
-                        )
-                    },
-                    trailingContent = {
-                        TextButton(
-                            onClick = { showVoskModelsDialog = true },
-                            shapes = ButtonDefaults.shapes()
-                        ) { Text("Manage") }
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
+            SegmentedList {
+                item {
+                    // Offline transcription runs fully on-device after a recording.
+                    ListItem(
+                        headlineContent = { Text("Offline transcription") },
+                        supportingContent = { Text("Vosk turns recordings into text — no cloud, no account") },
+                        leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Transcription language") },
+                        supportingContent = {
+                            Text(
+                                VoskModelManager.forTag(sttLanguage.ifBlank { "en" })?.label
+                                    ?: if (sttLanguage.isBlank()) "Best installed model" else sttLanguage
+                            )
+                        },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { showSttLanguageDialog = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    val installedCount = remember(modelsTick) { transcription.vosk.models.installedCodes().size }
+                    ListItem(
+                        headlineContent = { Text("Vosk offline models") },
+                        supportingContent = {
+                            Text(
+                                if (installedCount == 0) "None yet — download one to transcribe offline"
+                                else "$installedCount language${if (installedCount > 1) "s" else ""} ready offline"
+                            )
+                        },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { showVoskModelsDialog = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Manage") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -594,6 +595,73 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = { showQualityDialog = false },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showAudioSourceDialog) {
+        val systemSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        AlertDialog(
+            onDismissRequest = { showAudioSourceDialog = false },
+            title = { Text("Audio source", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "System sound captures music, videos and anything else playing on this phone. Android will show a screen-recording prompt first — Flambo only records sound, never your screen.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    listOf(
+                        Triple("mic", "Microphone", "Your voice and the room around you"),
+                        Triple(
+                            "system",
+                            "System sound" + if (systemSupported) "" else " (needs Android 10+)",
+                            "Music, videos and app audio playing on this device"
+                        )
+                    ).forEachIndexed { index, (value, label, description) ->
+                        val enabled = value == "mic" || systemSupported
+                        ToggleButton(
+                            checked = audioSource == value,
+                            onCheckedChange = {
+                                if (value == "system") {
+                                    // Reuse the live grant when possible; otherwise ask the
+                                    // system, which flips the pref itself on approval.
+                                    if (MediaProjectionHolder.hasGrant()) {
+                                        scope.launch { prefs.setAudioSource(value) }
+                                    } else {
+                                        onRequestSystemCapture()
+                                    }
+                                } else {
+                                    scope.launch { prefs.setAudioSource(value) }
+                                }
+                                showAudioSourceDialog = false
+                            },
+                            enabled = enabled,
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                if (value == "mic") Icons.Filled.Mic else Icons.Filled.MusicNote,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
+                                Text(label, style = MaterialTheme.typography.titleMedium)
+                                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showAudioSourceDialog = false },
                     shapes = ButtonDefaults.shapes()
                 ) { Text("Close") }
             },

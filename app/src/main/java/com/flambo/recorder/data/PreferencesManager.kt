@@ -21,6 +21,7 @@ class PreferencesManager(private val context: Context) {
         val STT_LANGUAGE = stringPreferencesKey("stt_language") // Vosk model code, e.g. en
         val UPDATE_CHANNEL = stringPreferencesKey("update_channel") // beta, stable
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
+        val AUDIO_SOURCE = stringPreferencesKey("audio_source") // mic, system
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -71,5 +72,17 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setOnboardingDone(done: Boolean) {
         context.dataStore.edit { it[Keys.ONBOARDING_DONE] = done }
+    }
+
+    val audioSourceFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.AUDIO_SOURCE] ?: AUDIO_MIC }
+
+    suspend fun setAudioSource(source: String) {
+        context.dataStore.edit { it[Keys.AUDIO_SOURCE] = source }
+    }
+
+    companion object {
+        const val AUDIO_MIC = "mic"
+        const val AUDIO_SYSTEM = "system"
     }
 }

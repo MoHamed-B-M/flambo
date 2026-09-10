@@ -62,6 +62,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,10 +70,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
+import com.flambo.recorder.domain.RecordingQuality
 import com.flambo.recorder.domain.formatDuration
 import com.flambo.recorder.playback.PlaybackController
+import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.RecordingController
 import com.flambo.recorder.ui.components.MiniPlayer
+import kotlinx.coroutines.launch
 import com.flambo.recorder.ui.components.RecordingCard
 import com.flambo.recorder.ui.components.WaveformVisualizer
 import com.flambo.recorder.ui.theme.ShapeFull
@@ -84,6 +88,8 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     recorder: RecordingController,
     playback: PlaybackController,
+    quality: RecordingQuality = RecordingQuality.HIGH,
+    audioSource: String = "mic",
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -92,7 +98,23 @@ fun HomeScreen(
     val recorderState by recorder.state.collectAsState()
     val playbackState by playback.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    // Starts with the preferred quality + source; explains instead of
+    // silently doing nothing when system capture has no grant yet.
+    fun startRecording() {
+        val source = AudioSource.fromPref(audioSource)
+        if (!recorder.start(quality, source)) {
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    if (source == AudioSource.SYSTEM)
+                        "System sound needs permission — enable it in Settings"
+                    else "Couldn't start recording — try again"
+                )
+            }
+        }
+    }
 
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
@@ -151,7 +173,7 @@ fun HomeScreen(
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {
                 ExtendedFloatingActionButton(
-                    onClick = { recorder.start() },
+                    onClick = { startRecording() },
                     icon = { Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(22.dp)) },
                     text = { Text("Record") },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -201,6 +223,7 @@ fun HomeScreen(
                     amplitude = recorderState.amplitude,
                     peaks = recorderState.peaks,
                     isPaused = recorderState.isPaused,
+                    source = recorderState.source,
                     onPauseResume = { if (recorderState.isPaused) recorder.resume() else recorder.pause() },
                     onStop = { recorder.stop() },
                     onCancel = { recorder.cancel() }
@@ -256,7 +279,7 @@ fun HomeScreen(
             } else {
                 // Main list
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
-                    EmptyState(onRecord = { recorder.start() }, modifier = Modifier.fillMaxSize())
+                    EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
@@ -319,6 +342,7 @@ private fun ActiveRecordingPanel(
     amplitude: Float,
     peaks: List<Float>,
     isPaused: Boolean,
+    source: AudioSource = AudioSource.MIC,
     onPauseResume: () -> Unit,
     onStop: () -> Unit,
     onCancel: () -> Unit
@@ -352,7 +376,8 @@ private fun ActiveRecordingPanel(
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = if (isPaused) "Paused" else "Recording",
+                    text = (if (isPaused) "Paused" else "Recording") +
+                        if (source == AudioSource.SYSTEM) " • System sound" else "",
                     style = MaterialTheme.typography.labelLarge,
                     color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error
                 )

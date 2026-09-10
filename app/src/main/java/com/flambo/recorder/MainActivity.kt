@@ -1,13 +1,17 @@
 package com.flambo.recorder
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.record.MediaProjectionHolder
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,11 +40,30 @@ class MainActivity : ComponentActivity() {
 
     private var showRationale by mutableStateOf(false)
 
+    private lateinit var app: FlamboApp
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
         val micGranted = grants[Manifest.permission.RECORD_AUDIO] == true
         if (!micGranted) showRationale = true
+    }
+
+    // System-sound capture needs a one-time screen-capture consent,
+    // exactly like a screen recorder asks.
+    private val projectionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            MediaProjectionHolder.grant(result.resultCode, result.data!!)
+            lifecycleScope.launch { app.prefs.setAudioSource(PreferencesManager.AUDIO_SYSTEM) }
+        }
+    }
+
+    fun requestSystemCapture() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val mgr = getSystemService(MediaProjectionManager::class.java)
+        projectionLauncher.launch(mgr.createScreenCaptureIntent())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +72,7 @@ class MainActivity : ComponentActivity() {
         checkPermissions()
 
         // App class holds datastore prefs
-        val app = application as FlamboApp
+        app = application as FlamboApp
 
         setContent {
             val dynamicColor by app.prefs.dynamicColorFlow.collectAsState(initial = true)
@@ -73,7 +96,10 @@ class MainActivity : ComponentActivity() {
                                 lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
                                 rerunIntro = false
                             })
-                            else -> FlamboNavGraph(onRerunOnboarding = { rerunIntro = true })
+                            else -> FlamboNavGraph(
+                                onRerunOnboarding = { rerunIntro = true },
+                                onRequestSystemCapture = { requestSystemCapture() }
+                            )
                         }
                     }
 

@@ -9,14 +9,32 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+data class ApkAsset(val name: String, val url: String)
+
 data class ReleaseInfo(
     val tag: String,
     val name: String,
     val version: String, // e.g. 1.0.6 or 1.0.6-beta
     val buildNumber: Int, // parsed from "(#N)" in the preview title, 0 if absent
     val pageUrl: String,
-    val apkUrl: String?
-)
+    val apkAssets: List<ApkAsset>
+) {
+    // Releases carry one APK per ABI (arm64 / armv7) — pick this device's.
+    fun bestApk(): ApkAsset? {
+        if (apkAssets.isEmpty()) return null
+        val abis = Build.SUPPORTED_ABIS ?: emptyArray()
+        val want = when {
+            abis.any { it.contains("arm64", ignoreCase = true) } -> "arm64"
+            abis.any { it.contains("armeabi", ignoreCase = true) || it.contains("armv7", ignoreCase = true) } -> "armv7"
+            else -> null
+        }
+        if (want != null) apkAssets.firstOrNull { "-$want." in it.name }?.let { return it }
+        return apkAssets.first()
+    }
+
+    // Back-compat for callers that just need any APK link.
+    val apkUrl: String? get() = bestApk()?.url
+}
 
 data class UpdateCheck(
     val channel: String, // beta | stable
@@ -93,19 +111,19 @@ object UpdateChecker {
             ?: Regex("(\\d+\\.\\d+\\.\\d+(?:-beta|-dev)?)").find(name)?.groupValues?.get(1)
             ?: tag.removePrefix("v")
         val build = Regex("#(\\d+)").find(name)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-        var apk: String? = null
+        val apks = mutableListOf<ApkAsset>()
         val assets = json.optJSONArray("assets")
         if (assets != null) {
             for (i in 0 until assets.length()) {
                 val asset = assets.getJSONObject(i)
                 val assetName = asset.optString("name", "")
-                if (assetName.startsWith("Flambo-") && assetName.endsWith(".apk")) {
-                    apk = asset.optString("browser_download_url", null)
-                    break
+                val url = asset.optString("browser_download_url", "")
+                if (assetName.startsWith("Flambo-") && assetName.endsWith(".apk") && url.isNotBlank()) {
+                    apks += ApkAsset(assetName, url)
                 }
             }
         }
-        return ReleaseInfo(tag, name, version, build, json.optString("html_url", ""), apk)
+        return ReleaseInfo(tag, name, version, build, json.optString("html_url", ""), apks)
     }
 
     // Triplet compare; a stable release beats a beta/dev of the same triplet.

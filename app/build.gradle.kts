@@ -67,6 +67,17 @@ android {
         }
     }
 
+    // Per-ABI APKs: Vosk ships big native libs, so arm64 and armv7 go out
+    // as separate files instead of one bloated universal APK.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21

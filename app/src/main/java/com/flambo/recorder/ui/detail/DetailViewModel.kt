@@ -2,6 +2,8 @@ package com.flambo.recorder.ui.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.flambo.recorder.audio.AudioEnhancer
+import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.data.RecordingRepository
@@ -12,8 +14,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
 
 class DetailViewModel(
     private val repository: RecordingRepository,
@@ -89,4 +93,89 @@ class DetailViewModel(
     fun clearSavedTranscript() = viewModelScope.launch {
         repository.clearTranscript(recordingId)
     }
+
+    // ---- Clean audio (offline enhancement) ----
+
+    val enhanceStrength: StateFlow<String> =
+        prefs.enhanceStrengthFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "balanced")
+
+    private val _enhance = MutableStateFlow<EnhanceUi>(EnhanceUi.Idle)
+    val enhanceUi: StateFlow<EnhanceUi> = _enhance
+
+    private var enhanceJob: Job? = null
+    private var enhanceStartedAt = 0L
+
+    fun setEnhanceStrength(strength: String) =
+        viewModelScope.launch { prefs.setEnhanceStrength(strength) }
+
+    fun enhance() {
+        val rec = recording.value ?: return
+        if (enhanceJob?.isActive == true) return
+        _enhance.value = EnhanceUi.Working(0f)
+        enhanceJob = viewModelScope.launch {
+            val strength = EnhanceStrength.fromPref(prefs.enhanceStrengthFlow.first())
+            val keep = prefs.keepOriginalFlow.first()
+            val result = AudioEnhancer.enhance(File(rec.filePath), strength) {
+                _enhance.value = EnhanceUi.Working(it.coerceIn(0f, 1f))
+            }
+            result.fold(
+                onSuccess = { enhanced ->
+                    if (keep) {
+                        repository.saveEnhanced(recordingId, enhanced.file.absolutePath)
+                        _enhance.value = EnhanceUi.Done(enhanced.file.absolutePath, replaced = false)
+                    } else {
+                        replaceOriginal(rec, enhanced.file, enhanced.peaks)
+                        _enhance.value = EnhanceUi.Done(rec.filePath, replaced = true)
+                    }
+                },
+                onFailure = { _enhance.value = EnhanceUi.Error(it.message ?: "Couldn't clean this one.") }
+            )
+        }.also { enhanceStartedAt = System.currentTimeMillis() }
+    }
+
+    private suspend fun replaceOriginal(rec: Recording, cleaned: File, peaks: List<Float>) {
+        val original = File(rec.filePath)
+        return try {
+            original.delete()
+            if (!cleaned.renameTo(original)) {
+                // Same folder so this shouldn't happen — keep both rather than lose audio.
+                repository.saveEnhanced(recordingId, cleaned.absolutePath)
+                return
+            }
+            val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
+            repository.update(rec.copy(amplitudePeaks = peaksStr))
+        } catch (_: Exception) {
+            repository.saveEnhanced(recordingId, cleaned.absolutePath)
+        }
+    }
+
+    fun cancelEnhance() {
+        enhanceJob?.cancel()
+        // Only remove a file this run created, never a previously kept copy.
+        recording.value?.let { rec ->
+            val dir = File(rec.filePath).parentFile
+            val candidate = File(dir, File(rec.filePath).nameWithoutExtension + "_enhanced.wav")
+            if (candidate.exists() && candidate.lastModified() >= enhanceStartedAt) {
+                runCatching { candidate.delete() }
+            }
+        }
+        _enhance.value = EnhanceUi.Idle
+    }
+
+    fun dismissEnhance() {
+        enhanceJob?.cancel()
+        _enhance.value = EnhanceUi.Idle
+    }
+
+    fun deleteEnhanced() = viewModelScope.launch {
+        repository.clearEnhanced(recordingId)
+        if (_enhance.value is EnhanceUi.Done) _enhance.value = EnhanceUi.Idle
+    }
+}
+
+sealed interface EnhanceUi {
+    data object Idle : EnhanceUi
+    data class Working(val progress: Float) : EnhanceUi
+    data class Done(val path: String, val replaced: Boolean) : EnhanceUi
+    data class Error(val message: String) : EnhanceUi
 }

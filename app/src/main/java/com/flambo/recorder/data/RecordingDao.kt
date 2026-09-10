@@ -39,4 +39,7 @@ interface RecordingDao {
 
     @Query("UPDATE recordings SET transcriptText = :transcript WHERE id = :id")
     suspend fun updateTranscript(id: Long, transcript: String)
+
+    @Query("UPDATE recordings SET enhancedPath = :path WHERE id = :id")
+    suspend fun updateEnhancedPath(id: Long, path: String)
 }

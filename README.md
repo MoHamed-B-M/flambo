@@ -19,7 +19,7 @@
 - **Playback** with waveform scrubber, 0.5x–2x speed pills, 5 s / 10 s skips, and a floating mini-player
 - **Library** — inline rename, tags, favorites, full-text search, soft delete with Undo, auto-purging Trash
 - **Onboarding tour** on first launch, replayable anytime from Settings → About
-- **Self-updates** — Settings checks the beta rolling preview (by build number) or stable releases (by version)
+- **Self-updates** — Settings checks the beta rolling preview (by build number) or stable releases (by version), downloads and installs in-app with auto-cleanup; optional launch-time check pings you once per version via notification + snackbar
 - **Material 3 Expressive throughout** — dynamic Material You color, tonal surfaces instead of shadows, morphing shapes, bouncy spring motion, edge-to-edge layout
 
 ## Screenshots
@@ -86,7 +86,7 @@ app/src/main/java/com/flambo/recorder/
 ├── record/            # MediaRecorder + system-audio (AudioRecord) engines, foreground service
 ├── stt/               # Vosk offline transcription, model downloads, PCM decoding
 ├── playback/          # ExoPlayer controller with persistent mini-player state
-├── update/            # Beta/stable release checker against the GitHub API
+├── update/            # Release checker, in-app APK installer, update notifier
 └── data/              # Room database, repository, DataStore preferences
 ```
 
@@ -99,7 +99,7 @@ MVVM throughout: `ViewModel` + `StateFlow` UI state, repository pattern, thin pl
 | `RECORD_AUDIO` | Microphone recording (runtime prompt) |
 | System-capture consent | One-time system dialog for system-sound recording, like a screen recorder |
 | `FOREGROUND_SERVICE_*` | Keeps recording alive with the screen off (mic / playback / projection types, narrowed per take) |
-| `POST_NOTIFICATIONS` | Recording timer notification (Android 13+) |
+| `POST_NOTIFICATIONS` | Recording timer + update-ready notifications (Android 13+) |
 | `INTERNET` | Only for Vosk model downloads and the update checker — audio never leaves the device |
 
 > [!IMPORTANT]

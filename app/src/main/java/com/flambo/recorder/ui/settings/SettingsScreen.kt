@@ -105,6 +105,9 @@ fun SettingsScreen(
 ) {
     val quality by prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val audioSource by prefs.audioSourceFlow.collectAsState(initial = "mic")
+    val noiseReduction by prefs.noiseReductionFlow.collectAsState(initial = true)
+    val enhanceStrength by prefs.enhanceStrengthFlow.collectAsState(initial = "balanced")
+    val keepOriginal by prefs.keepOriginalFlow.collectAsState(initial = true)
     val dynamicColor by prefs.dynamicColorFlow.collectAsState(initial = true)
     val reminder by prefs.recordingReminderFlow.collectAsState(initial = true)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
@@ -129,6 +132,7 @@ fun SettingsScreen(
 
     var showQualityDialog by remember { mutableStateOf(false) }
     var showAudioSourceDialog by remember { mutableStateOf(false) }
+    var showEnhanceStrengthDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSttLanguageDialog by remember { mutableStateOf(false) }
     var showVoskModelsDialog by remember { mutableStateOf(false) }

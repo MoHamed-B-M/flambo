@@ -3,6 +3,8 @@ package com.flambo.recorder.record
 import android.content.Context
 import android.content.Intent
 import android.media.MediaRecorder
+import android.media.audiofx.AutomaticGainControl
+import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.data.RecordingRepository
@@ -44,6 +46,8 @@ class RecordingController(
 
     private var recorder: MediaRecorder? = null
     private val sysEngine by lazy { SystemAudioEngine(appContext) }
+    private var noiseSuppressor: NoiseSuppressor? = null
+    private var gainControl: AutomaticGainControl? = null
     private var startTimeMs: Long = 0L
     private var pauseAccumMs: Long = 0L
     private var pauseStartMs: Long = 0L
@@ -64,11 +68,12 @@ class RecordingController(
     // silently doing nothing.
     fun start(
         quality: RecordingQuality = RecordingQuality.HIGH,
-        source: AudioSource = AudioSource.MIC
+        source: AudioSource = AudioSource.MIC,
+        noiseReduction: Boolean = true
     ): Boolean {
         if (_state.value.isRecording) return false
 
-        if (source == AudioSource.SYSTEM) return startSystemCapture(quality)
+        if (source == AudioSource.SYSTEM) return startSystemCapture(quality, noiseReduction)
 
         val dir = repository.recordingsDir()
         val file = File(dir, "FLAMBO_${System.currentTimeMillis()}.m4a")
@@ -88,6 +93,7 @@ class RecordingController(
             return false
         }
         recorder = mr
+        if (noiseReduction) attachVoiceEffects(mr.audioSessionId)
         startTimeMs = System.currentTimeMillis()
         pauseAccumMs = 0L
         _state.value = RecorderState(
@@ -107,11 +113,12 @@ class RecordingController(
 
     // System-sound path: AudioPlaybackCapture needs Android 10+ and a grant.
     // The user's quality choice is stored as the label (WAV has no bitrate).
-    private fun startSystemCapture(quality: RecordingQuality): Boolean {
+    private fun startSystemCapture(quality: RecordingQuality, noiseReduction: Boolean): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val dir = repository.recordingsDir()
         val file = File(dir, "FLAMBO_SYS_${System.currentTimeMillis()}.wav")
         if (!sysEngine.start(file)) return false
+        if (noiseReduction) attachVoiceEffects(sysEngine.sessionId)
         _state.value = RecorderState(
             isRecording = true,
             isPaused = false,
@@ -163,10 +170,36 @@ class RecordingController(
         }
     }
 
+    // Built-in noise suppressor + gain control on the live session.
+    // Silently skipped where the device has no such effect.
+    private fun attachVoiceEffects(sessionId: Int) {
+        if (sessionId == 0) return
+        runCatching {
+            if (NoiseSuppressor.isAvailable()) {
+                noiseSuppressor?.release()
+                noiseSuppressor = NoiseSuppressor.create(sessionId)?.apply { enabled = true }
+            }
+        }
+        runCatching {
+            if (AutomaticGainControl.isAvailable()) {
+                gainControl?.release()
+                gainControl = AutomaticGainControl.create(sessionId)?.apply { enabled = true }
+            }
+        }
+    }
+
+    private fun releaseVoiceEffects() {
+        runCatching { noiseSuppressor?.release() }
+        noiseSuppressor = null
+        runCatching { gainControl?.release() }
+        gainControl = null
+    }
+
     fun stop(onSaved: ((Recording) -> Unit)? = null) {
         val s = _state.value
         if (!s.isRecording) return
         amplitudeJob?.cancel()
+        releaseVoiceEffects()
 
         if (s.source == AudioSource.SYSTEM) {
             val res = sysEngine.stop()
@@ -233,6 +266,7 @@ class RecordingController(
 
     fun cancel() {
         amplitudeJob?.cancel()
+        releaseVoiceEffects()
         if (_state.value.source == AudioSource.SYSTEM) {
             sysEngine.cancel()
             _state.value = RecorderState()

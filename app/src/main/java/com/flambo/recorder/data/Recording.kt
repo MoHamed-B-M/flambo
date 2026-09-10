@@ -18,7 +18,9 @@ data class Recording(
     val amplitudePeaks: String = "",
     val quality: String = "HIGH",
     // saved speech-to-text result (empty = not transcribed yet)
-    val transcriptText: String = ""
+    val transcriptText: String = "",
+    // cleaned copy from "Clean audio" (empty = none yet)
+    val enhancedPath: String = ""
 ) {
     val tagList: List<String>
         get() = if (tags.isBlank()) emptyList() else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }

@@ -14,7 +14,14 @@ private val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
-@Database(entities = [Recording::class], version = 2, exportSchema = false)
+// v2 -> v3 adds the cleaned-audio path for "Clean audio".
+private val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE recordings ADD COLUMN enhancedPath TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+@Database(entities = [Recording::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun recordingDao(): RecordingDao
 
@@ -27,7 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "flambo.db"
-                ).addMigrations(MIGRATION_1_2)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                  .fallbackToDestructiveMigration()
                  .build().also { INSTANCE = it }
             }

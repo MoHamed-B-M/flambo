@@ -23,8 +23,12 @@ class PreferencesManager(private val context: Context) {
         val UPDATE_CHANNEL = stringPreferencesKey("update_channel") // beta, stable
         val AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
         val PENDING_APK_DELETE = stringPreferencesKey("pending_apk_delete") // file awaiting post-install cleanup
+        val NOTIFIED_UPDATE_VERSION = stringPreferencesKey("notified_update_version") // last version we pinged about
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val AUDIO_SOURCE = stringPreferencesKey("audio_source") // mic, system
+        val NOISE_REDUCTION = booleanPreferencesKey("noise_reduction")
+        val ENHANCE_STRENGTH = stringPreferencesKey("enhance_strength") // light, balanced, strong
+        val KEEP_ORIGINAL = booleanPreferencesKey("keep_original")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -85,6 +89,17 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it.remove(Keys.PENDING_APK_DELETE) }
     }
 
+    suspend fun notifiedUpdateVersion(): String? =
+        context.dataStore.data.map { it[Keys.NOTIFIED_UPDATE_VERSION] }.first()
+
+    suspend fun setNotifiedUpdateVersion(key: String) {
+        context.dataStore.edit { it[Keys.NOTIFIED_UPDATE_VERSION] = key }
+    }
+
+    suspend fun clearNotifiedUpdateVersion() {
+        context.dataStore.edit { it.remove(Keys.NOTIFIED_UPDATE_VERSION) }
+    }
+
     suspend fun pendingApkDelete(): String? =
         context.dataStore.data.map { it[Keys.PENDING_APK_DELETE] }.first()
 
@@ -100,6 +115,27 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setAudioSource(source: String) {
         context.dataStore.edit { it[Keys.AUDIO_SOURCE] = source }
+    }
+
+    val noiseReductionFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.NOISE_REDUCTION] ?: true }
+
+    suspend fun setNoiseReduction(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.NOISE_REDUCTION] = enabled }
+    }
+
+    val enhanceStrengthFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.ENHANCE_STRENGTH] ?: "balanced" }
+
+    suspend fun setEnhanceStrength(strength: String) {
+        context.dataStore.edit { it[Keys.ENHANCE_STRENGTH] = strength }
+    }
+
+    val keepOriginalFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.KEEP_ORIGINAL] ?: true }
+
+    suspend fun setKeepOriginal(keep: Boolean) {
+        context.dataStore.edit { it[Keys.KEEP_ORIGINAL] = keep }
     }
 
     companion object {

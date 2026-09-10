@@ -102,6 +102,7 @@ fun FlamboNavGraph(
     val playback = remember { PlaybackController(context) }
     val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val audioSource by app.prefs.audioSourceFlow.collectAsState(initial = "mic")
+    val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
 
     NavHost(
         navController = navController,
@@ -130,8 +131,10 @@ fun FlamboNavGraph(
                 viewModel = vm,
                 recorder = app.recorder,
                 playback = playback,
+                prefs = app.prefs,
                 quality = quality,
                 audioSource = audioSource,
+                noiseReduction = noiseReduction,
                 onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
                 onOpenSettings = { navController.navigate(Dest.Settings.route) }
             )

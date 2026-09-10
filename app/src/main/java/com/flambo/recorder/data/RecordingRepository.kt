@@ -38,10 +38,22 @@ class RecordingRepository(
     suspend fun deletePermanently(id: Long) {
         val rec = getById(id)
         rec?.let {
-            // delete file best-effort
+            // delete files best-effort (original + cleaned copy, if any)
             try { File(it.filePath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
+            try { File(it.enhancedPath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
             dao.deletePermanently(id)
         }
+    }
+
+    suspend fun saveEnhanced(id: Long, path: String) {
+        dao.updateEnhancedPath(id, path)
+    }
+
+    suspend fun clearEnhanced(id: Long) {
+        getById(id)?.let {
+            try { File(it.enhancedPath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
+        }
+        dao.updateEnhancedPath(id, "")
     }
 
     suspend fun saveTranscript(id: Long, transcript: String) {

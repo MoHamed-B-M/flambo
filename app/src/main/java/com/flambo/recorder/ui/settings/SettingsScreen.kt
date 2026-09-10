@@ -77,6 +77,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.R
 import android.os.Build
+import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.domain.RecordingQuality
 import com.flambo.recorder.record.AudioSource
@@ -132,6 +133,7 @@ fun SettingsScreen(
 
     var showQualityDialog by remember { mutableStateOf(false) }
     var showAudioSourceDialog by remember { mutableStateOf(false) }
+    var showEnhanceStrengthDialog by remember { mutableStateOf(false) }
     var showEnhanceStrengthDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSttLanguageDialog by remember { mutableStateOf(false) }
@@ -209,6 +211,62 @@ fun SettingsScreen(
                                 onClick = { showAudioSourceDialog = true },
                                 shapes = ButtonDefaults.shapes()
                             ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+            Text("Sound", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 4.dp))
+
+            SegmentedList {
+                item {
+                    ListItem(
+                        headlineContent = { Text("Noise reduction") },
+                        supportingContent = { Text("Live hush + steady levels while recording") },
+                        trailingContent = {
+                            Switch(
+                                checked = noiseReduction,
+                                onCheckedChange = { scope.launch { prefs.setNoiseReduction(it) } },
+                                thumbContent = if (noiseReduction) {
+                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                } else null
+                            )
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Enhancement strength") },
+                        supportingContent = {
+                            Text(
+                                EnhanceStrength.fromPref(enhanceStrength).let { "${it.label} • ${it.description}" }
+                            )
+                        },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { showEnhanceStrengthDialog = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Keep original") },
+                        supportingContent = { Text("Save the cleaned copy next to the original") },
+                        trailingContent = {
+                            Switch(
+                                checked = keepOriginal,
+                                onCheckedChange = { scope.launch { prefs.setKeepOriginal(it) } },
+                                thumbContent = if (keepOriginal) {
+                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                } else null
+                            )
                         },
                         colors = segmentedListItemColors()
                     )
@@ -680,6 +738,45 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = { showQualityDialog = false },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showEnhanceStrengthDialog) {
+        AlertDialog(
+            onDismissRequest = { showEnhanceStrengthDialog = false },
+            title = { Text("Enhancement strength", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EnhanceStrength.entries.forEachIndexed { index, s ->
+                        val selected = s.name.equals(enhanceStrength, ignoreCase = true)
+                        ToggleButton(
+                            checked = selected,
+                            onCheckedChange = {
+                                scope.launch { prefs.setEnhanceStrength(s.name.lowercase()) }
+                                showEnhanceStrengthDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                EnhanceStrength.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
+                                Text(s.label, style = MaterialTheme.typography.titleMedium)
+                                Text(s.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showEnhanceStrengthDialog = false },
                     shapes = ButtonDefaults.shapes()
                 ) { Text("Close") }
             },

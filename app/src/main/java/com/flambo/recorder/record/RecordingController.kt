@@ -79,7 +79,13 @@ class RecordingController(
         val file = File(dir, "FLAMBO_${System.currentTimeMillis()}.m4a")
 
         val mr = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(appContext) else @Suppress("DEPRECATION") MediaRecorder()
-        mr.setAudioSource(MediaRecorder.AudioSource.MIC)
+        // MediaRecorder exposes no audio session, so built-in NS/AGC effects
+        // can't attach here — VOICE_RECOGNITION gets the device's own speech
+        // tuning instead when noise reduction is on.
+        mr.setAudioSource(
+            if (noiseReduction) MediaRecorder.AudioSource.VOICE_RECOGNITION
+            else MediaRecorder.AudioSource.MIC
+        )
         mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
         mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         mr.setAudioSamplingRate(quality.sampleRate)
@@ -93,7 +99,6 @@ class RecordingController(
             return false
         }
         recorder = mr
-        if (noiseReduction) attachVoiceEffects(mr.audioSessionId)
         startTimeMs = System.currentTimeMillis()
         pauseAccumMs = 0L
         _state.value = RecorderState(

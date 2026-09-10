@@ -90,7 +90,7 @@ object UpdateChecker {
         // Prefer the explicit `Version: \`x\`` line in our release notes,
         // then the title, then the tag itself.
         val version = Regex("Version:\\s*`([^`]+)`").find(body)?.groupValues?.get(1)
-            ?: Regex("(\\d+\\.\\d+\\.\\d+(?:-beta)?)").find(name)?.groupValues?.get(1)
+            ?: Regex("(\\d+\\.\\d+\\.\\d+(?:-beta|-dev)?)").find(name)?.groupValues?.get(1)
             ?: tag.removePrefix("v")
         val build = Regex("#(\\d+)").find(name)?.groupValues?.get(1)?.toIntOrNull() ?: 0
         var apk: String? = null
@@ -108,7 +108,7 @@ object UpdateChecker {
         return ReleaseInfo(tag, name, version, build, json.optString("html_url", ""), apk)
     }
 
-    // Triplet compare; a stable release beats a beta of the same triplet.
+    // Triplet compare; a stable release beats a beta/dev of the same triplet.
     fun compareVersions(a: String, b: String): Int {
         fun parts(v: String): List<Int> =
             (v.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 } + listOf(0, 0, 0)).take(3)
@@ -117,11 +117,12 @@ object UpdateChecker {
         for (i in 0..2) {
             if (pa[i] != pb[i]) return pa[i].compareTo(pb[i])
         }
-        val aBeta = a.contains("-beta")
-        val bBeta = b.contains("-beta")
+        fun pre(v: String) = v.contains("-beta") || v.contains("-dev")
+        val aPre = pre(a)
+        val bPre = pre(b)
         return when {
-            aBeta == bBeta -> 0
-            aBeta -> -1
+            aPre == bPre -> 0
+            aPre -> -1
             else -> 1
         }
     }

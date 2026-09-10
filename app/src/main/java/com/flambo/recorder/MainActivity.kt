@@ -25,9 +25,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.flambo.recorder.ui.navigation.FlamboNavGraph
+import com.flambo.recorder.ui.onboarding.OnboardingScreen
 import com.flambo.recorder.ui.theme.FlamboTheme
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -57,15 +60,21 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
 
-            var showFirstLaunchDialog by remember { mutableStateOf(false) }
-            // respectful recording reminder: show once on first launch if enabled. Simplified — show every cold start if reminder enabled.
-            // We gate by prefs: if reminder true we show once per app install (we don't persist seen flag for brevity — shows on first composition).
-            // For minimal intrusion we only show if there are zero recordings yet? Let's approximate.
+            val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
+            var rerunIntro by remember { mutableStateOf(false) }
+            val showOnboarding = onboardingDone == false || rerunIntro
 
             FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        FlamboNavGraph()
+                        when {
+                            onboardingDone == null -> Box(Modifier.fillMaxSize()) // prefs still loading
+                            showOnboarding -> OnboardingScreen(onFinish = {
+                                lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
+                                rerunIntro = false
+                            })
+                            else -> FlamboNavGraph(onRerunOnboarding = { rerunIntro = true })
+                        }
                     }
 
                     if (showRationale) {

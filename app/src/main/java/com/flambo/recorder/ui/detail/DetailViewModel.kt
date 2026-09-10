@@ -7,8 +7,6 @@ import com.flambo.recorder.data.Recording
 import com.flambo.recorder.data.RecordingRepository
 import com.flambo.recorder.stt.FileResult
 import com.flambo.recorder.stt.FileTranscription
-import com.flambo.recorder.stt.SpeechLanguages
-import com.flambo.recorder.stt.SttEngine
 import com.flambo.recorder.stt.TranscriptionManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +14,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 class DetailViewModel(
     private val repository: RecordingRepository,
@@ -48,10 +45,7 @@ class DetailViewModel(
 
     fun softDelete() = viewModelScope.launch { repository.softDelete(recordingId) }
 
-    // ---- Speech-to-text ----
-
-    val enginePref: StateFlow<String> =
-        prefs.sttEngineFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SttEngine.AUTO)
+    // ---- Offline speech-to-text (Vosk) ----
 
     val languagePref: StateFlow<String> =
         prefs.sttLanguageFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
@@ -59,21 +53,8 @@ class DetailViewModel(
     private val _transcription = MutableStateFlow<FileTranscription>(FileTranscription.Idle)
     val transcriptionUi: StateFlow<FileTranscription> = _transcription
 
-    private val _speechLanguages = MutableStateFlow<List<Locale>>(emptyList())
-    val speechLanguages: StateFlow<List<Locale>> = _speechLanguages
-
     private var transcribeJob: Job? = null
 
-    // Languages need a context for the details broadcast, so the screen
-    // passes its own and we cache the result.
-    fun loadSpeechLanguages(context: android.content.Context) {
-        if (_speechLanguages.value.isNotEmpty()) return
-        viewModelScope.launch {
-            _speechLanguages.value = SpeechLanguages.fetchSupported(context.applicationContext)
-        }
-    }
-
-    fun setEngine(engine: String) = viewModelScope.launch { prefs.setSttEngine(engine) }
     fun setLanguage(tag: String) = viewModelScope.launch { prefs.setSttLanguage(tag) }
 
     fun transcribe() {

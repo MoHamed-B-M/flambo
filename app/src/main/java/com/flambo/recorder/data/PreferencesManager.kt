@@ -18,9 +18,9 @@ class PreferencesManager(private val context: Context) {
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val RECORDING_REMINDER = booleanPreferencesKey("recording_reminder")
         val DARK_THEME = stringPreferencesKey("dark_theme") // system, light, dark
-        val STT_ENGINE = stringPreferencesKey("stt_engine") // auto, system, vosk
-        val STT_LANGUAGE = stringPreferencesKey("stt_language") // BCP-47 tag, e.g. en-US
+        val STT_LANGUAGE = stringPreferencesKey("stt_language") // Vosk model code, e.g. en
         val UPDATE_CHANNEL = stringPreferencesKey("update_channel") // beta, stable
+        val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -51,16 +51,9 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[Keys.DARK_THEME] = mode }
     }
 
-    val sttEngineFlow: Flow<String> =
-        context.dataStore.data.map { it[Keys.STT_ENGINE] ?: "auto" }
-
-    // Empty = follow system locale
+    // Empty = best installed model (English preferred)
     val sttLanguageFlow: Flow<String> =
         context.dataStore.data.map { it[Keys.STT_LANGUAGE] ?: "" }
-
-    suspend fun setSttEngine(engine: String) {
-        context.dataStore.edit { it[Keys.STT_ENGINE] = engine }
-    }
 
     suspend fun setSttLanguage(tag: String) {
         context.dataStore.edit { it[Keys.STT_LANGUAGE] = tag }
@@ -71,5 +64,12 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setUpdateChannel(channel: String) {
         context.dataStore.edit { it[Keys.UPDATE_CHANNEL] = channel }
+    }
+
+    val onboardingDoneFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.ONBOARDING_DONE] ?: false }
+
+    suspend fun setOnboardingDone(done: Boolean) {
+        context.dataStore.edit { it[Keys.ONBOARDING_DONE] = done }
     }
 }

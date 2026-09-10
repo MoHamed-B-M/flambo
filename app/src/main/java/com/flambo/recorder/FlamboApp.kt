@@ -18,5 +18,5 @@ class FlamboApp : Application() {
     }
     val prefs by lazy { PreferencesManager(this) }
     val recorder by lazy { RecordingController(this, repository) }
-    val transcription by lazy { TranscriptionManager(this, prefs, recorder) }
+    val transcription by lazy { TranscriptionManager(this, prefs) }
 }

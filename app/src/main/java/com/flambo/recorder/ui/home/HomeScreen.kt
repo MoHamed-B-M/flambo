@@ -25,12 +25,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
@@ -74,8 +72,6 @@ import com.flambo.recorder.data.Recording
 import com.flambo.recorder.domain.formatDuration
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.record.RecordingController
-import com.flambo.recorder.stt.TranscriptionManager
-import com.flambo.recorder.stt.TranscriptionState
 import com.flambo.recorder.ui.components.MiniPlayer
 import com.flambo.recorder.ui.components.RecordingCard
 import com.flambo.recorder.ui.components.WaveformVisualizer
@@ -88,7 +84,6 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     recorder: RecordingController,
     playback: PlaybackController,
-    transcription: TranscriptionManager,
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -96,7 +91,6 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val recorderState by recorder.state.collectAsState()
     val playbackState by playback.state.collectAsState()
-    val liveState by transcription.liveState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -226,38 +220,6 @@ fun HomeScreen(
                     },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            }
-
-            // Live dictation — system recognizer, mic must be free (not recording)
-            AnimatedVisibility(
-                visible = !recorderState.isRecording && !uiState.showTrash &&
-                    liveState !is TranscriptionState.Idle
-            ) {
-                LiveCaptionCard(
-                    state = liveState,
-                    onStop = { transcription.stopLive() },
-                    onDismiss = { transcription.cancelLive() },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-            }
-            AnimatedVisibility(
-                visible = !recorderState.isRecording && !uiState.showTrash &&
-                    liveState is TranscriptionState.Idle
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    androidx.compose.material3.AssistChip(
-                        onClick = { transcription.startLive() },
-                        label = { Text("Dictate") },
-                        leadingIcon = {
-                            Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                    )
-                }
             }
 
             // Trash toggle header
@@ -476,75 +438,6 @@ private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
             Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.size(8.dp))
             Text("Start recording")
-        }
-    }
-}
-
-@Composable
-private fun LiveCaptionCard(
-    state: TranscriptionState,
-    onStop: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val isError = state is TranscriptionState.Error
-    androidx.compose.material3.ElevatedCard(
-        shape = ShapeLargeIncreased,
-        colors = androidx.compose.material3.CardDefaults.elevatedCardColors(
-            containerColor = if (isError) MaterialTheme.colorScheme.errorContainer
-            else MaterialTheme.colorScheme.tertiaryContainer
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(
-                    Icons.Filled.RecordVoiceOver,
-                    contentDescription = null,
-                    tint = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    when (state) {
-                        is TranscriptionState.Listening -> "Listening… speak now"
-                        is TranscriptionState.Partial -> "Hearing you…"
-                        is TranscriptionState.Final -> "Got it"
-                        is TranscriptionState.Error -> "Couldn't listen"
-                        else -> "Dictation"
-                    },
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer,
-                    modifier = Modifier.weight(1f)
-                )
-                if (state is TranscriptionState.Listening || state is TranscriptionState.Partial) {
-                    TextButton(onClick = onStop) { Text("Stop") }
-                } else {
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Filled.Close, contentDescription = "Dismiss", modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-            when (state) {
-                is TranscriptionState.Partial -> Text(
-                    state.text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
-                )
-                is TranscriptionState.Final -> Text(
-                    state.text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-                is TranscriptionState.Error -> Text(
-                    state.message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                else -> Unit
-            }
         }
     }
 }

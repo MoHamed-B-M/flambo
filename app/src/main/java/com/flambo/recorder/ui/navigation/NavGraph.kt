@@ -87,7 +87,9 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit(
     )
 
 @Composable
-fun FlamboNavGraph() {
+fun FlamboNavGraph(
+    onRerunOnboarding: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val app = context.applicationContext as FlamboApp
@@ -122,7 +124,6 @@ fun FlamboNavGraph() {
                 viewModel = vm,
                 recorder = app.recorder,
                 playback = playback,
-                transcription = app.transcription,
                 onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
                 onOpenSettings = { navController.navigate(Dest.Settings.route) }
             )
@@ -175,7 +176,8 @@ fun FlamboNavGraph() {
                 prefs = app.prefs,
                 scope = scope,
                 transcription = app.transcription,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onRerunIntro = onRerunOnboarding
             )
         }
     }

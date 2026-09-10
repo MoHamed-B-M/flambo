@@ -63,7 +63,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,8 +80,6 @@ import com.flambo.recorder.domain.formatDuration
 import com.flambo.recorder.domain.formatRelativeTime
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.stt.FileTranscription
-import com.flambo.recorder.stt.SpeechLanguages
-import com.flambo.recorder.stt.SttEngine
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.ui.components.StaticWaveform
 import com.flambo.recorder.ui.theme.ShapeFull
@@ -90,7 +87,6 @@ import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
-import java.util.Locale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -105,9 +101,7 @@ fun DetailScreen(
     val editTitle by viewModel.editTitle.collectAsState()
     val playbackState by playback.state.collectAsState()
     val transcriptionUi by viewModel.transcriptionUi.collectAsState()
-    val enginePref by viewModel.enginePref.collectAsState()
     val languagePref by viewModel.languagePref.collectAsState()
-    val speechLanguages by viewModel.speechLanguages.collectAsState()
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
 
@@ -116,8 +110,6 @@ fun DetailScreen(
     var tagInput by remember { mutableStateOf("") }
     var showTranscribeSheet by remember { mutableStateOf(false) }
     var showTranscriptEditor by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) { viewModel.loadSpeechLanguages(context) }
 
     val rec = recording
     if (rec == null) {
@@ -420,10 +412,7 @@ fun DetailScreen(
 
     if (showTranscribeSheet) {
         TranscribeSheet(
-            engine = enginePref,
             languageTag = languagePref,
-            languages = speechLanguages,
-            onEngineChange = { viewModel.setEngine(it) },
             onLanguageChange = { viewModel.setLanguage(it) },
             onStart = {
                 showTranscribeSheet = false
@@ -628,10 +617,7 @@ private fun TranscriptCard(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TranscribeSheet(
-    engine: String,
     languageTag: String,
-    languages: List<Locale>,
-    onEngineChange: (String) -> Unit,
     onLanguageChange: (String) -> Unit,
     onStart: () -> Unit,
     onDismiss: () -> Unit
@@ -666,38 +652,10 @@ private fun TranscribeSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Text("Engine", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                listOf(SttEngine.AUTO to "Auto", SttEngine.VOSK to "Vosk offline", SttEngine.SYSTEM to "System live").forEachIndexed { index, (value, label) ->
-                    ToggleButton(
-                        checked = engine == value,
-                        onCheckedChange = { onEngineChange(value) },
-                        shapes = when (index) {
-                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                            2 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) { Text(label) }
-                }
-            }
-            if (engine == SttEngine.SYSTEM) {
-                Text(
-                    "Heads-up: the system recognizer only dictates live from the mic — it can't read saved files. Pick Auto or Vosk here.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
             Text("Language", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             ExposedDropdownMenuBox(expanded = langExpanded, onExpandedChange = { langExpanded = it }) {
                 OutlinedTextField(
-                    value = languages.firstOrNull { it.toLanguageTag() == languageTag }?.let { SpeechLanguages.displayName(it) }
-                        ?: modelEntry?.label
-                        ?: languageTag.ifBlank { "System default" },
+                    value = modelEntry?.label ?: languageTag.ifBlank { "Choose a language" },
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = langExpanded) },
@@ -705,11 +663,17 @@ private fun TranscribeSheet(
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = langExpanded, onDismissRequest = { langExpanded = false }) {
-                    languages.forEach { locale ->
+                    VoskModelManager.CATALOG.forEach { model ->
                         DropdownMenuItem(
-                            text = { Text(SpeechLanguages.displayName(locale)) },
+                            text = { Text(model.label) },
+                            supportingText = {
+                                Text(
+                                    if (app.transcription.vosk.models.isInstalled(model.code)) "Ready offline"
+                                    else "~${model.sizeMb} MB download"
+                                )
+                            },
                             onClick = {
-                                onLanguageChange(locale.toLanguageTag())
+                                onLanguageChange(model.code)
                                 langExpanded = false
                             }
                         )
@@ -760,7 +724,7 @@ private fun TranscribeSheet(
 
             FilledTonalButton(
                 onClick = onStart,
-                enabled = engine != SttEngine.SYSTEM && installed && downloading == null,
+                enabled = installed && downloading == null,
                 shape = ShapeFull,
                 modifier = Modifier.fillMaxWidth()
             ) {

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.SettingsBrightness
@@ -38,7 +39,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -77,8 +77,6 @@ import androidx.compose.ui.unit.dp
 import com.flambo.recorder.R
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.domain.RecordingQuality
-import com.flambo.recorder.stt.SpeechLanguages
-import com.flambo.recorder.stt.SttEngine
 import com.flambo.recorder.stt.TranscriptionManager
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.update.UpdateCheck
@@ -87,7 +85,6 @@ import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -95,13 +92,13 @@ fun SettingsScreen(
     prefs: PreferencesManager,
     scope: CoroutineScope,
     transcription: TranscriptionManager,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onRerunIntro: () -> Unit = {}
 ) {
     val quality by prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val dynamicColor by prefs.dynamicColorFlow.collectAsState(initial = true)
     val reminder by prefs.recordingReminderFlow.collectAsState(initial = true)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
-    val sttEngine by prefs.sttEngineFlow.collectAsState(initial = SttEngine.AUTO)
     val sttLanguage by prefs.sttLanguageFlow.collectAsState(initial = "")
     val modelProgress by transcription.modelProgress.collectAsState()
     val updateChannel by prefs.updateChannelFlow.collectAsState(initial = UpdateChecker.CHANNEL_BETA)
@@ -122,11 +119,6 @@ fun SettingsScreen(
     var showSttLanguageDialog by remember { mutableStateOf(false) }
     var showVoskModelsDialog by remember { mutableStateOf(false) }
     var modelsTick by remember { mutableStateOf(0) }
-
-    var speechLanguages by remember { mutableStateOf<List<Locale>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        speechLanguages = SpeechLanguages.fetchSupported(context.applicationContext)
-    }
 
     Scaffold(
         topBar = {
@@ -251,42 +243,18 @@ fun SettingsScreen(
 
             Text("Speech-to-text", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
 
-            // Preferred engine — expressive connected toggle group
+            // Offline transcription runs fully on-device after a recording.
             Surface(
                 shape = ShapeLargeIncreased,
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Engine", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "Auto picks offline Vosk for files, system mic for dictation.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        listOf(SttEngine.AUTO to "Auto", SttEngine.VOSK to "Vosk offline", SttEngine.SYSTEM to "System").forEachIndexed { index, (value, label) ->
-                            ToggleButton(
-                                checked = sttEngine == value,
-                                onCheckedChange = { scope.launch { prefs.setSttEngine(value) } },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    2 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) { Text(label) }
-                        }
-                    }
-                }
+                ListItem(
+                    headlineContent = { Text("Offline transcription") },
+                    supportingContent = { Text("Vosk turns recordings into text — no cloud, no account") },
+                    leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                )
             }
 
             Surface(
@@ -298,8 +266,8 @@ fun SettingsScreen(
                     headlineContent = { Text("Transcription language") },
                     supportingContent = {
                         Text(
-                            speechLanguages.firstOrNull { it.toLanguageTag() == sttLanguage }?.let { SpeechLanguages.displayName(it) }
-                                ?: if (sttLanguage.isBlank()) "System default" else sttLanguage
+                            VoskModelManager.forTag(sttLanguage.ifBlank { "en" })?.label
+                                ?: if (sttLanguage.isBlank()) "Best installed model" else sttLanguage
                         )
                     },
                     trailingContent = {
@@ -456,9 +424,33 @@ fun SettingsScreen(
 
             Text("About", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
 
-            // App card — fully expressive elevated card
-            ElevatedCard(
+            // Replay the first-launch tour
+            Surface(
                 shape = ShapeLargeIncreased,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ListItem(
+                    headlineContent = { Text("Replay introduction") },
+                    supportingContent = { Text("Take the quick tour again") },
+                    leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        TextButton(
+                            onClick = onRerunIntro,
+                            shapes = ButtonDefaults.shapes()
+                        ) { Text("Replay") }
+                    },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                )
+            }
+
+            // App card — flat tonal, follows dynamic color, no shadow
+            androidx.compose.material3.Card(
+                shape = ShapeLargeIncreased,
+                colors = androidx.compose.material3.CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ),
+                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -485,21 +477,29 @@ fun SettingsScreen(
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Flambo", style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                "Flambo",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                             AssistChip(onClick = {}, label = { Text("v1.0") })
                         }
                         Text(
                             "A calm, expressive voice recorder. Transcripts and recordings stay on your device.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
             }
 
-            // Developer card — avatar, links, issue CTA
-            ElevatedCard(
+            // Developer card — flat tonal, follows dynamic color, no shadow
+            androidx.compose.material3.Card(
                 shape = ShapeLargeIncreased,
+                colors = androidx.compose.material3.CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                ),
+                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -518,16 +518,20 @@ fun SettingsScreen(
                                 .border(2.dp, MaterialTheme.colorScheme.primaryContainer, CircleShape)
                         )
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Hamma", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Hamma",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
                             Text(
                                 "@MoHamed-B-M",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                             Text(
                                 "Indie Android dev • voice nerd",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -663,22 +667,22 @@ fun SettingsScreen(
                             },
                             shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("System default") }
+                        ) { Text("Best installed model") }
                     }
-                    items(speechLanguages, key = { it.toLanguageTag() }) { locale ->
-                        val tag = locale.toLanguageTag()
+                    items(VoskModelManager.CATALOG, key = { it.code }) { model ->
                         ToggleButton(
-                            checked = sttLanguage == tag,
+                            checked = sttLanguage == model.code,
                             onCheckedChange = {
-                                scope.launch { prefs.setSttLanguage(tag) }
+                                scope.launch { prefs.setSttLanguage(model.code) }
                                 showSttLanguageDialog = false
                             },
                             shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(SpeechLanguages.displayName(locale), modifier = Modifier.weight(1f))
+                            Text(model.label, modifier = Modifier.weight(1f))
                             Text(
-                                tag,
+                                if (transcription.vosk.models.isInstalled(model.code)) "ready"
+                                else "~${model.sizeMb} MB",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

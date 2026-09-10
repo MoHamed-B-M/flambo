@@ -93,7 +93,7 @@ jobs:
               VN="1.0.${{ github.run_number }}"
             fi
           else
-            VN="1.0.${{ github.run_number }}-beta"
+            VN="1.0.0-dev(#${{ github.run_number }})"
           fi
           echo "name=$VN" >> "$GITHUB_OUTPUT"
           echo "code=$((1 + ${{ github.run_number }}))" >> "$GITHUB_OUTPUT"
@@ -167,10 +167,14 @@ jobs:
           sha256sum "$APK" > "$APK.sha256"
           cat "$APK.sha256"
 
-          # Rename to friendly name: Flambo-x.x.x-beta.apk (beta) or Flambo-x.x.x.apk (main)
-          # VN already contains -beta suffix for beta builds
+          # Rename to friendly name: Flambo-1.0.0-dev-N.apk (beta, URL-safe file
+          # for the 1.0.0-dev(#N) display version) or Flambo-x.x.x.apk (main)
           VN="${{ steps.version.outputs.name }}"
-          OUT="Flambo-${VN}.apk"
+          if [[ "${{ github.ref }}" == "refs/heads/beta" ]]; then
+            OUT="Flambo-1.0.0-dev-${{ github.run_number }}.apk"
+          else
+            OUT="Flambo-${VN}.apk"
+          fi
           cp "$APK" "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"
           cat "$OUT.sha256"
@@ -265,11 +269,21 @@ jobs:
             gh run delete "$runId" || true
           done || true
 
+      - name: Clear old assets from rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # softprops only appends — wipe stale APKs so beta-latest keeps exactly one
+          for a in $(gh release view beta-latest --json assets --jq '.assets[].name' 2>/dev/null || true); do
+            echo "→ Removing old asset $a"
+            gh release delete-asset beta-latest "$a" --yes || true
+          done
+
       - name: Create / update rolling preview release (beta-latest)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: beta-latest
-          name: "Flambo Preview – ${{ needs.build.outputs.version_name }} (#${{ github.run_number }})"
+          name: "Flambo ${{ needs.build.outputs.version_name }}"
           prerelease: true
           generate_release_notes: true
           make_latest: false

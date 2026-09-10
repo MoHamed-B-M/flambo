@@ -47,6 +47,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -441,7 +442,7 @@ fun SettingsScreen(
                         )
                     }
                     when {
-                        checkingUpdate -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        checkingUpdate -> LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
                         updateResult?.error != null -> Text(
                             updateResult?.error ?: "",
                             style = MaterialTheme.typography.bodyMedium,
@@ -468,7 +469,7 @@ fun SettingsScreen(
                                         )
                                         val asset = result.release.bestApk()
                                         if (downloadProgress != null) {
-                                            LinearProgressIndicator(
+                                            LinearWavyProgressIndicator(
                                                 progress = { downloadProgress ?: 0f },
                                                 modifier = Modifier.fillMaxWidth()
                                             )
@@ -800,7 +801,9 @@ fun SettingsScreen(
                         Triple(
                             "system",
                             "System sound" + if (systemSupported) "" else " (needs Android 10+)",
-                            "Music, videos and app audio playing on this device"
+                            "Music, videos and app audio playing on this device" +
+                                if (MediaProjectionHolder.hasGrant()) " • Ready — permission granted"
+                                else " • Needs one-time system approval"
                         )
                     ).forEachIndexed { index, (value, label, description) ->
                         val enabled = value == "mic" || systemSupported

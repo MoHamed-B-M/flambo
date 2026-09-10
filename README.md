@@ -72,6 +72,27 @@ Debug keystore fallback means `assembleRelease` works locally with no secrets co
 
 Without them CI falls back to an ephemeral keystore (fine for previews, not for Play Store continuity).
 
+## Versioning
+
+This app follows a modified **Semantic Versioning**: `MAJOR.MINOR.PATCH+BUILD`
+
+| Number | Meaning | When to increase |
+|---|---|---|
+| MAJOR | Big update | Breaking changes, redesigns, major architecture |
+| MINOR | New feature | Adding features without breaking existing ones |
+| PATCH | Fix / small update | Bug fixes, tweaks, performance improvements |
+| BUILD | Build number | Every new build/compile (always increments) |
+
+Format examples:
+
+- `1.0.0+1` → first stable release, first build
+- `1.1.0+15` → added pause/resume recording (15th build overall)
+- `1.1.1+16` → fixed timer showing wrong value
+- `2.0.0+120` → complete UI redesign + new audio engine
+- `2.0.1+121` → rebuilt with updated libraries
+
+Beta builds use the same scheme with a dev tag: `1.0.0-dev(#N)`, where `N` is the CI run number (e.g. `1.0.0-dev(#28)`).
+
 ## Project structure
 
 ```

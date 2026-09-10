@@ -134,7 +134,6 @@ fun SettingsScreen(
     var showQualityDialog by remember { mutableStateOf(false) }
     var showAudioSourceDialog by remember { mutableStateOf(false) }
     var showEnhanceStrengthDialog by remember { mutableStateOf(false) }
-    var showEnhanceStrengthDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSttLanguageDialog by remember { mutableStateOf(false) }
     var showVoskModelsDialog by remember { mutableStateOf(false) }

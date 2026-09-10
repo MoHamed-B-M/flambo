@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.domain.formatDuration
 import com.flambo.recorder.domain.formatRelativeTime
+import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.stt.FileTranscription
 import com.flambo.recorder.stt.VoskModelManager
@@ -557,6 +558,135 @@ private fun TranscriptSection(
                     Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Transcribe this recording")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EnhanceSection(
+    savedEnhancedPath: String,
+    enhanceUi: EnhanceUi,
+    strengthLabel: String,
+    onEnhance: () -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
+    onPlayEnhanced: (String) -> Unit,
+    onDeleteEnhanced: () -> Unit
+) {
+    when (enhanceUi) {
+        is EnhanceUi.Working -> {
+            Surface(
+                shape = ShapeLargeIncreased,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text("Cleaning audio…", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onCancel) { Text("Cancel") }
+                    }
+                    LinearProgressIndicator(
+                        progress = { enhanceUi.progress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        "${(enhanceUi.progress * 100).toInt()}% — decoding, hush, level",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        is EnhanceUi.Done -> {
+            androidx.compose.material3.ElevatedCard(
+                shape = ShapeLargeIncreased,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text(
+                            if (enhanceUi.replaced) "Original replaced with the cleaned version"
+                            else "Sparkling clean",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = onDismiss) { Text("Dismiss") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        FilledTonalButton(
+                            onClick = { onPlayEnhanced(enhanceUi.path) },
+                            shape = ShapeFull,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Play")
+                        }
+                        if (!enhanceUi.replaced) {
+                            TextButton(onClick = onDeleteEnhanced) {
+                                Text("Delete copy", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        is EnhanceUi.Error -> {
+            Surface(
+                shape = ShapeLargeIncreased,
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Couldn't clean this one", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text(enhanceUi.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(onClick = onEnhance, shape = ShapeFull) { Text("Try again") }
+                        TextButton(onClick = onDismiss) { Text("Dismiss") }
+                    }
+                }
+            }
+        }
+        is EnhanceUi.Idle -> {
+            if (savedEnhancedPath.isNotBlank()) {
+                androidx.compose.material3.ElevatedCard(
+                    shape = ShapeLargeIncreased,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Text("Cleaned copy saved", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            FilledTonalButton(
+                                onClick = { onPlayEnhanced(savedEnhancedPath) },
+                                shape = ShapeFull,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Play")
+                            }
+                            TextButton(onClick = onDeleteEnhanced) {
+                                Text("Delete copy", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onEnhance,
+                    shape = ShapeFull,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Clean audio • $strengthLabel")
                 }
             }
         }

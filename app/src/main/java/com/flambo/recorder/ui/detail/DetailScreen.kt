@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -101,6 +102,8 @@ fun DetailScreen(
     val editTitle by viewModel.editTitle.collectAsState()
     val playbackState by playback.state.collectAsState()
     val transcriptionUi by viewModel.transcriptionUi.collectAsState()
+    val enhanceUi by viewModel.enhanceUi.collectAsState()
+    val enhanceStrength by viewModel.enhanceStrength.collectAsState()
     val languagePref by viewModel.languagePref.collectAsState()
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -350,6 +353,18 @@ fun DetailScreen(
                 onEdit = { text -> showTranscriptEditor = text },
                 onSave = { text -> viewModel.saveTranscript(text) },
                 onClearSaved = { viewModel.clearSavedTranscript() }
+            )
+
+            // Clean audio — offline enhancement with progress + result
+            EnhanceSection(
+                savedEnhancedPath = rec.enhancedPath,
+                enhanceUi = enhanceUi,
+                strengthLabel = EnhanceStrength.fromPref(enhanceStrength).label,
+                onEnhance = { viewModel.enhance() },
+                onCancel = { viewModel.cancelEnhance() },
+                onDismiss = { viewModel.dismissEnhance() },
+                onPlayEnhanced = { path -> playback.play(path) },
+                onDeleteEnhanced = { viewModel.deleteEnhanced() }
             )
 
             // Quick actions row

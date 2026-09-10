@@ -2,6 +2,7 @@ package com.flambo.recorder.audio
 
 import com.flambo.recorder.stt.PcmDecoder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -95,7 +96,7 @@ object AudioEnhancer {
             levels[fi] = 20 * log10((peak.coerceAtLeast(1)) / 32768.0)
             fi++
             if (fi % 64 == 0) {
-                kotlinx.coroutines.ensureActive()
+                currentCoroutineContext().ensureActive()
                 onProgress(fi.toFloat() / frameCount * 0.5f)
             }
         }
@@ -149,7 +150,7 @@ object AudioEnhancer {
             }
             fi++
             if (fi % 64 == 0) {
-                kotlinx.coroutines.ensureActive()
+                currentCoroutineContext().ensureActive()
                 onProgress(0.5f + fi.toFloat() / frameCount * 0.5f)
             }
         }
@@ -158,7 +159,7 @@ object AudioEnhancer {
         // takes don't get blasted), with a gentle ceiling above 0.92 instead
         // of hard clipping.
         if (globalPeak > 1e-4) {
-            val g = minOf(strength.normPeak / globalPeak, 4.0)
+            val g = minOf(strength.normPeak / globalPeak, 4.0).toFloat()
             var i = 0
             while (i < out.size) {
                 val v = out[i] * g

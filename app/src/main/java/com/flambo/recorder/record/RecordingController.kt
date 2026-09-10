@@ -35,13 +35,15 @@ class RecordingController(
         val amplitude: Float = 0f, // 0..1
         val peaks: List<Float> = emptyList(),
         val currentFile: File? = null,
-        val quality: RecordingQuality = RecordingQuality.HIGH
+        val quality: RecordingQuality = RecordingQuality.HIGH,
+        val source: AudioSource = AudioSource.MIC
     )
 
     private val _state = MutableStateFlow(RecorderState())
     val state: StateFlow<RecorderState> = _state.asStateFlow()
 
     private var recorder: MediaRecorder? = null
+    private val sysEngine by lazy { SystemAudioEngine(appContext) }
     private var startTimeMs: Long = 0L
     private var pauseAccumMs: Long = 0L
     private var pauseStartMs: Long = 0L
@@ -57,8 +59,16 @@ class RecordingController(
         instance = this
     }
 
-    fun start(quality: RecordingQuality = RecordingQuality.HIGH) {
-        if (_state.value.isRecording) return
+    // Returns false when the recording couldn't start (e.g. system capture
+    // without a MediaProjection grant) so the UI can explain instead of
+    // silently doing nothing.
+    fun start(
+        quality: RecordingQuality = RecordingQuality.HIGH,
+        source: AudioSource = AudioSource.MIC
+    ): Boolean {
+        if (_state.value.isRecording) return false
+
+        if (source == AudioSource.SYSTEM) return startSystemCapture(quality)
 
         val dir = repository.recordingsDir()
         val file = File(dir, "FLAMBO_${System.currentTimeMillis()}.m4a")
@@ -75,7 +85,7 @@ class RecordingController(
             mr.start()
         } catch (e: Exception) {
             try { mr.release() } catch (_: Exception) {}
-            return
+            return false
         }
         recorder = mr
         startTimeMs = System.currentTimeMillis()
@@ -87,15 +97,46 @@ class RecordingController(
             amplitude = 0f,
             peaks = emptyList(),
             currentFile = file,
-            quality = quality
+            quality = quality,
+            source = AudioSource.MIC
         )
         startForegroundService()
         startSampling()
+        return true
+    }
+
+    // System-sound path: AudioPlaybackCapture needs Android 10+ and a grant.
+    // The user's quality choice is stored as the label (WAV has no bitrate).
+    private fun startSystemCapture(quality: RecordingQuality): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        val dir = repository.recordingsDir()
+        val file = File(dir, "FLAMBO_SYS_${System.currentTimeMillis()}.wav")
+        if (!sysEngine.start(file)) return false
+        _state.value = RecorderState(
+            isRecording = true,
+            isPaused = false,
+            elapsedMs = 0L,
+            amplitude = 0f,
+            peaks = emptyList(),
+            currentFile = file,
+            quality = quality,
+            source = AudioSource.SYSTEM
+        )
+        startForegroundService(AudioSource.SYSTEM)
+        startSampling()
+        return true
     }
 
     fun pause() {
         val s = _state.value
         if (!s.isRecording || s.isPaused) return
+        if (s.source == AudioSource.SYSTEM) {
+            sysEngine.setPaused(true)
+            pauseStartMs = System.currentTimeMillis()
+            _state.value = s.copy(isPaused = true)
+            amplitudeJob?.cancel()
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             try { recorder?.pause() } catch (_: Exception) { return }
             pauseStartMs = System.currentTimeMillis()
@@ -107,6 +148,13 @@ class RecordingController(
     fun resume() {
         val s = _state.value
         if (!s.isRecording || !s.isPaused) return
+        if (s.source == AudioSource.SYSTEM) {
+            sysEngine.setPaused(false)
+            pauseAccumMs += System.currentTimeMillis() - pauseStartMs
+            _state.value = s.copy(isPaused = false)
+            startSampling()
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             try { recorder?.resume() } catch (_: Exception) { return }
             pauseAccumMs += System.currentTimeMillis() - pauseStartMs
@@ -119,14 +167,38 @@ class RecordingController(
         val s = _state.value
         if (!s.isRecording) return
         amplitudeJob?.cancel()
+
+        if (s.source == AudioSource.SYSTEM) {
+            val res = sysEngine.stop()
+            val file = res.file
+            val peaks = res.peaks
+            _state.value = RecorderState() // reset immediately for UI
+            stopForegroundService()
+            if (file != null && file.exists()) {
+                scope.launch(Dispatchers.IO) {
+                    val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
+                    val rec = Recording(
+                        title = generateTitle(),
+                        filePath = file.absolutePath,
+                        durationMs = res.durationMs,
+                        createdAt = System.currentTimeMillis(),
+                        amplitudePeaks = peaksStr,
+                        quality = s.quality.name
+                    )
+                    val id = repository.insert(rec)
+                    withContext(Dispatchers.Main) {
+                        onSaved?.invoke(rec.copy(id = id))
+                    }
+                }
+            }
+            return
+        }
+
         try { recorder?.stop() } catch (_: Exception) { /* may throw if too short */ }
         try { recorder?.release() } catch (_: Exception) {}
         recorder = null
 
         val elapsed = if (s.isPaused) {
-            // elapsed until pause start
-            (pauseStartMs - startTimeMs) - pauseAccumMs + (pauseStartMs - pauseStartMs) // simpler: use tracked elapsed
-            // Instead use last known elapsed
             s.elapsedMs
         } else {
             System.currentTimeMillis() - startTimeMs - pauseAccumMs
@@ -161,6 +233,12 @@ class RecordingController(
 
     fun cancel() {
         amplitudeJob?.cancel()
+        if (_state.value.source == AudioSource.SYSTEM) {
+            sysEngine.cancel()
+            _state.value = RecorderState()
+            stopForegroundService()
+            return
+        }
         try { recorder?.stop() } catch (_: Exception) {}
         try { recorder?.release() } catch (_: Exception) {}
         recorder = null
@@ -174,7 +252,11 @@ class RecordingController(
         amplitudeJob = scope.launch {
             val samples = mutableListOf<Float>()
             while (_state.value.isRecording && !_state.value.isPaused) {
-                val raw = try { recorder?.maxAmplitude ?: 0 } catch (_: Exception) { 0 }
+                val raw = if (_state.value.source == AudioSource.SYSTEM) {
+                    sysEngine.lastMax
+                } else {
+                    try { recorder?.maxAmplitude ?: 0 } catch (_: Exception) { 0 }
+                }
                 // normalize 0..1 using log scale for more natural waveform
                 val norm = if (raw <= 0) 0f else {
                     val db = 20 * log10(raw / 32768.0)
@@ -185,7 +267,9 @@ class RecordingController(
                 val jitter = if (norm < 0.05f) (0.02f + (Math.random().toFloat() * 0.03f)) else norm
                 samples += jitter
                 if (samples.size > 180) samples.removeAt(0)
-                val elapsed = System.currentTimeMillis() - startTimeMs - pauseAccumMs
+                // System engine counts only captured frames, so pauses stay exact.
+                val elapsed = if (_state.value.source == AudioSource.SYSTEM) sysEngine.elapsedMs
+                else System.currentTimeMillis() - startTimeMs - pauseAccumMs
                 _state.value = _state.value.copy(
                     amplitude = jitter,
                     peaks = samples.toList(),
@@ -196,8 +280,10 @@ class RecordingController(
         }
     }
 
-    private fun startForegroundService() {
-        val intent = Intent(appContext, RecordingService::class.java)
+    private fun startForegroundService(source: AudioSource = AudioSource.MIC) {
+        val intent = Intent(appContext, RecordingService::class.java).apply {
+            putExtra(RecordingService.EXTRA_FGS_TYPE, source.fgsType)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             appContext.startForegroundService(intent)
         } else {

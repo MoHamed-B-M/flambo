@@ -151,36 +151,41 @@ jobs:
           echo "Build finished, APKs:"
           find app/build -name "*.apk" -type f -exec ls -lh {} \;
 
-      - name: Find APK path
+      - name: Find APK paths (per-ABI splits)
         id: findapk
         run: |
-          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n1)
-          if [[ -z "$APK" ]]; then
-            echo "No APK found!"
+          if ! ls app/build/outputs/apk/release/*.apk >/dev/null 2>&1; then
+            echo "No APKs found!"
             find app/build -type f | head -n 100
             exit 1
           fi
-          echo "apk=$APK" >> "$GITHUB_OUTPUT"
-          echo "APK=$APK"
-
-          # Checksums for release notes
-          sha256sum "$APK" > "$APK.sha256"
-          cat "$APK.sha256"
-
-          # Rename to friendly name: Flambo-1.0.0-dev-N.apk (beta, URL-safe file
-          # for the 1.0.0-dev(#N) display version) or Flambo-x.x.x.apk (main)
+          # Friendly names keep only the Flambo-*.apk files in releases;
+          # raw app-*-release.apk files are never published.
+          # beta: Flambo-1.0.0-dev-N-arm64.apk (display version 1.0.0-dev(#N))
+          # main: Flambo-x.x.x-arm64.apk
           VN="${{ steps.version.outputs.name }}"
-          if [[ "${{ github.ref }}" == "refs/heads/beta" ]]; then
-            OUT="Flambo-1.0.0-dev-${{ github.run_number }}.apk"
-          else
-            OUT="Flambo-${VN}.apk"
-          fi
-          cp "$APK" "$OUT"
-          sha256sum "$OUT" > "$OUT.sha256"
-          cat "$OUT.sha256"
-          echo "friendly=$OUT" >> "$GITHUB_OUTPUT"
-          ls -lh "$OUT"*  # only Flambo-*.apk should be released (app-release.apk is hidden, not published)
-          echo "Original app-release.apk kept for local debug but NOT included in release assets"
+          FRIENDLY=""
+          FIRST=""
+          for APK in app/build/outputs/apk/release/*.apk; do
+            case "$APK" in
+              *arm64-v8a*) ABI="arm64" ;;
+              *armeabi-v7a*) ABI="armv7" ;;
+              *) ABI="universal" ;;
+            esac
+            if [[ "${{ github.ref }}" == "refs/heads/beta" ]]; then
+              OUT="Flambo-1.0.0-dev-${{ github.run_number }}-${ABI}.apk"
+            else
+              OUT="Flambo-${VN}-${ABI}.apk"
+            fi
+            cp "$APK" "$OUT"
+            sha256sum "$OUT" > "$OUT.sha256"
+            cat "$OUT.sha256"
+            FRIENDLY="$FRIENDLY $OUT"
+            if [[ -z "$FIRST" ]]; then FIRST="$APK"; fi
+          done
+          echo "apk=$FIRST" >> "$GITHUB_OUTPUT"
+          echo "friendly=$FRIENDLY" >> "$GITHUB_OUTPUT"
+          ls -lh Flambo-*.apk*
 
       - name: Upload preview artifact (beta) — auto-expires
         if: github.ref == 'refs/heads/beta' || (github.event_name == 'pull_request' && github.base_ref == 'beta')

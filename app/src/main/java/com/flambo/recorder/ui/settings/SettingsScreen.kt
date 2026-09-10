@@ -82,6 +82,7 @@ import com.flambo.recorder.domain.RecordingQuality
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
 import com.flambo.recorder.stt.TranscriptionManager
+import com.flambo.recorder.update.ApkInstaller
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.update.UpdateCheck
 import com.flambo.recorder.update.UpdateChecker
@@ -116,6 +117,10 @@ fun SettingsScreen(
 
     var checkingUpdate by remember { mutableStateOf(false) }
     var updateResult by remember { mutableStateOf<UpdateCheck?>(null) }
+    var downloadProgress by remember { mutableStateOf<Float?>(null) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
+    var needsUnknownSources by remember { mutableStateOf(false) }
+    val autoUpdateCheck by prefs.autoUpdateCheckFlow.collectAsState(initial = false)
     var installedLabel by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         val (version, code) = UpdateChecker.installed(context.applicationContext)
@@ -338,6 +343,9 @@ fun SettingsScreen(
                                 onCheckedChange = {
                                     scope.launch { prefs.setUpdateChannel(value) }
                                     updateResult = null
+                                    downloadProgress = null
+                                    downloadError = null
+                                    needsUnknownSources = false
                                 },
                                 shapes = when (index) {
                                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -353,6 +361,24 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Check on launch", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "Show a snackbar when an update is ready",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = autoUpdateCheck,
+                            onCheckedChange = { scope.launch { prefs.setAutoUpdateCheck(it) } }
+                        )
+                    }
                     when {
                         checkingUpdate -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         updateResult?.error != null -> Text(
@@ -379,18 +405,68 @@ fun SettingsScreen(
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                                         )
+                                        val asset = result.release.bestApk()
+                                        if (downloadProgress != null) {
+                                            LinearProgressIndicator(
+                                                progress = { downloadProgress ?: 0f },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            Text(
+                                                "Downloading ${asset?.name ?: "update"}… ${((downloadProgress ?: 0f) * 100).toInt()}%",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                                            )
+                                        }
+                                        if (downloadError != null) {
+                                            Text(
+                                                downloadError ?: "",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                        if (needsUnknownSources) {
+                                            Text(
+                                                "Allow “Install unknown apps” for Flambo, then tap again.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
                                         FilledTonalButton(
                                             onClick = {
-                                                val url = result.release.apkUrl?.ifBlank { null }
-                                                    ?: result.release.pageUrl
-                                                if (url.isNotBlank()) uriHandler.openUri(url)
+                                                if (asset == null) {
+                                                    downloadError = "No APK attached to this release yet."
+                                                    return@FilledTonalButton
+                                                }
+                                                if (!ApkInstaller.canInstall(context)) {
+                                                    needsUnknownSources = true
+                                                    context.startActivity(ApkInstaller.unknownSourcesIntent(context))
+                                                    return@FilledTonalButton
+                                                }
+                                                needsUnknownSources = false
+                                                downloadError = null
+                                                downloadProgress = 0f
+                                                scope.launch {
+                                                    val res = ApkInstaller.download(
+                                                        context.applicationContext,
+                                                        asset.url,
+                                                        asset.name
+                                                    ) { downloadProgress = it }
+                                                    downloadProgress = null
+                                                    res.onSuccess { file ->
+                                                        prefs.setPendingApkDelete(file.name)
+                                                        context.startActivity(ApkInstaller.installIntent(context, file))
+                                                    }.onFailure {
+                                                        downloadError = it.message ?: "Download failed."
+                                                    }
+                                                }
                                             },
+                                            enabled = downloadProgress == null,
                                             shapes = ButtonDefaults.shapes(),
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(Modifier.width(8.dp))
-                                            Text("Download update")
+                                            Text(if (downloadProgress != null) "Downloading…" else "Download & install")
                                         }
                                     }
                                 }
@@ -407,6 +483,9 @@ fun SettingsScreen(
                         onClick = {
                             checkingUpdate = true
                             updateResult = null
+                            downloadProgress = null
+                            downloadError = null
+                            needsUnknownSources = false
                             scope.launch {
                                 updateResult = UpdateChecker.check(context.applicationContext, updateChannel)
                                 checkingUpdate = false

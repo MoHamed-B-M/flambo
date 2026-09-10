@@ -85,6 +85,8 @@ import com.flambo.recorder.stt.TranscriptionManager
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.update.UpdateCheck
 import com.flambo.recorder.update.UpdateChecker
+import com.flambo.recorder.ui.components.SegmentedList
+import com.flambo.recorder.ui.components.segmentedListItemColors
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import kotlinx.coroutines.CoroutineScope

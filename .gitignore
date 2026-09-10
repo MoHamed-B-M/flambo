@@ -31,3 +31,8 @@ Thumbs.db
 Compose-Material-3-Expressive-Catalog/
 .opencode/
 
+
+# Local agent/skill tooling (not part of the app)
+.agents/
+skills-lock.json
+

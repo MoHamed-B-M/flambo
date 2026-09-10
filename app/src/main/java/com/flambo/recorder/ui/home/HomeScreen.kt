@@ -66,6 +66,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.update.UpdateChecker
+import com.flambo.recorder.update.UpdateNotifier
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
@@ -87,8 +92,10 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     recorder: RecordingController,
     playback: PlaybackController,
+    prefs: PreferencesManager,
     quality: RecordingQuality = RecordingQuality.HIGH,
     audioSource: String = "mic",
+    noiseReduction: Boolean = true,
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -98,13 +105,14 @@ fun HomeScreen(
     val playbackState by playback.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     // Starts with the preferred quality + source; explains instead of
     // silently doing nothing when system capture has no grant yet.
     fun startRecording() {
         val source = AudioSource.fromPref(audioSource)
-        if (!recorder.start(quality, source)) {
+        if (!recorder.start(quality, source, noiseReduction)) {
             scope.launch {
                 snackbarHostState.showSnackbar(
                     if (source == AudioSource.SYSTEM)
@@ -117,6 +125,27 @@ fun HomeScreen(
 
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
+
+    // Launch-time auto-check: ping once per version, then hush.
+    LaunchedEffect(Unit) {
+        if (!prefs.autoUpdateCheckFlow.first()) return@LaunchedEffect
+        val channel = prefs.updateChannelFlow.first()
+        val res = UpdateChecker.check(context, channel)
+        if (!res.available || res.release == null) {
+            prefs.clearNotifiedUpdateVersion()
+            return@LaunchedEffect
+        }
+        val key = "${res.channel}:${res.release.version}#${res.release.buildNumber}"
+        if (prefs.notifiedUpdateVersion() == key) return@LaunchedEffect
+        prefs.setNotifiedUpdateVersion(key)
+        UpdateNotifier.show(context, res.release)
+        val r = snackbarHostState.showSnackbar(
+            message = "New update ready: v${res.release.version}",
+            actionLabel = "View",
+            withDismissAction = true
+        )
+        if (r == SnackbarResult.ActionPerformed) onOpenSettings()
+    }
 
     // Undo snackbar
     LaunchedEffect(uiState.lastDeleted) {

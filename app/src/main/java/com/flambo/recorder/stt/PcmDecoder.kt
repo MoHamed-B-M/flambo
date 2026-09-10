@@ -8,12 +8,61 @@ import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-// Decodes any recorded file (AAC/M4A) into 16 kHz mono PCM, which is what
-// Vosk expects. Caps length so hour-long takes can't blow the heap.
+// Decodes recorded files (AAC/M4A/WAV) to PCM. decodeTo16kMono feeds Vosk;
+// decodeNative preserves rate + channels for enhancement.
 object PcmDecoder {
 
     const val TARGET_RATE = 16000
     private const val MAX_MINUTES = 30
+
+    data class PcmAudio(
+        val samples: ShortArray, // interleaved if stereo
+        val sampleRate: Int,
+        val channels: Int
+    ) {
+        val frames: Int get() = if (channels <= 0) 0 else samples.size / channels
+    }
+
+    suspend fun decodeNative(path: String, maxMinutes: Int = MAX_MINUTES): PcmAudio =
+        withContext(Dispatchers.IO) {
+            val extractor = MediaExtractor()
+            try {
+                extractor.setDataSource(path)
+                var track = -1
+                var format: MediaFormat? = null
+                for (i in 0 until extractor.trackCount) {
+                    val f = extractor.getTrackFormat(i)
+                    if ((f.getString(MediaFormat.KEY_MIME) ?: "").startsWith("audio/")) {
+                        track = i
+                        format = f
+                        break
+                    }
+                }
+                require(track >= 0 && format != null) { "No audio track found." }
+                extractor.selectTrack(track)
+
+                val srcRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE, 44100)
+                val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT, 1)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: "audio/mp4a-latm"
+
+                val codec = MediaCodec.createDecoderByType(mime)
+                try {
+                    codec.configure(format, null, null, 0)
+                    codec.start()
+                    val cap = (srcRate * 60L * maxMinutes * channels.coerceAtLeast(1))
+                        .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                    val raw = decodeAll(codec, extractor, cap)
+                    // Overshooting the cap means the file ran past maxMinutes.
+                    if (raw.size > cap) error("Audio is longer than $maxMinutes minutes.")
+                    PcmAudio(raw, srcRate, channels)
+                } finally {
+                    runCatching { codec.stop() }
+                    runCatching { codec.release() }
+                }
+            } finally {
+                runCatching { extractor.release() }
+            }
+        }
 
     suspend fun decodeTo16kMono(path: String): ShortArray = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
@@ -40,7 +89,7 @@ object PcmDecoder {
             try {
                 codec.configure(format, null, null, 0)
                 codec.start()
-                val raw = decodeAll(codec, extractor)
+                val raw = decodeAll(codec, extractor, TARGET_RATE * 60 * MAX_MINUTES * 3)
                 toMono16k(raw, channels, srcRate)
             } finally {
                 runCatching { codec.stop() }
@@ -54,10 +103,15 @@ object PcmDecoder {
     private fun MediaFormat.getInteger(key: String, fallback: Int): Int =
         if (containsKey(key)) getInteger(key) else fallback
 
-    private fun decodeAll(codec: MediaCodec, extractor: MediaExtractor): ShortArray {
+    private fun decodeAll(
+        codec: MediaCodec,
+        extractor: MediaExtractor,
+        capSamples: Int
+    ): ShortArray {
         val chunks = ArrayList<ShortArray>(64)
         var total = 0
-        val cap = TARGET_RATE * 60 * MAX_MINUTES * 3 // raw headroom before resample
+        // Cap total samples so long takes can't blow the heap.
+        val cap = capSamples
         val info = MediaCodec.BufferInfo()
         var inputDone = false
 

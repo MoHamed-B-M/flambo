@@ -56,6 +56,9 @@ class SystemAudioEngine(private val context: Context) {
 
     val elapsedMs: Long get() = countedFrames * 1000 / SAMPLE_RATE
 
+    // Audio session for built-in effects (AGC/NS). 0 = not recording.
+    val sessionId: Int get() = record?.audioSessionId ?: 0
+
     fun start(file: File): Boolean {
         if (record != null) return false
         val proj = MediaProjectionHolder.take(context) ?: return false

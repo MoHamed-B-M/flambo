@@ -666,10 +666,12 @@ private fun TranscribeSheet(
                     VoskModelManager.CATALOG.forEach { model ->
                         DropdownMenuItem(
                             text = { Text(model.label) },
-                            supportingText = {
+                            trailingIcon = {
                                 Text(
-                                    if (app.transcription.vosk.models.isInstalled(model.code)) "Ready offline"
-                                    else "~${model.sizeMb} MB download"
+                                    if (app.transcription.vosk.models.isInstalled(model.code)) "Ready"
+                                    else "~${model.sizeMb} MB",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             },
                             onClick = {

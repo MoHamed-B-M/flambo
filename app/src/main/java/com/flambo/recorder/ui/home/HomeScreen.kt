@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Mic
@@ -50,7 +49,6 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -104,7 +102,8 @@ fun HomeScreen(
         val deleted = uiState.lastDeleted ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
             message = "\"${deleted.title}\" moved to trash",
-            actionLabel = "Undo"
+            actionLabel = "Undo",
+            withDismissAction = true
         )
         if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete()
         else viewModel.dismissUndo()
@@ -164,26 +163,7 @@ fun HomeScreen(
             }
         },
         floatingActionButtonPosition = FabPosition.Center,
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    shape = ShapeFull,
-                    dismissAction = {
-                        IconButton(
-                            onClick = { data.dismiss() },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = "Dismiss",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                )
-            }
-        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
 

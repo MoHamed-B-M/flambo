@@ -11,7 +11,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
+import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,13 +52,26 @@ class MainActivity : ComponentActivity() {
     }
 
     // System-sound capture needs a one-time screen-capture consent,
-    // exactly like a screen recorder asks.
+    // exactly like a screen recorder asks. The grant lives only while the
+    // process lives, so anything that needs it must be able to re-ask.
+    private var pendingSystemRecord = false
+
     private val projectionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        val wantRecord = pendingSystemRecord
+        pendingSystemRecord = false
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             MediaProjectionHolder.grant(result.resultCode, result.data!!)
-            lifecycleScope.launch { app.prefs.setAudioSource(PreferencesManager.AUDIO_SYSTEM) }
+            lifecycleScope.launch {
+                app.prefs.setAudioSource(PreferencesManager.AUDIO_SYSTEM)
+                // Came from the record button: start right away, no second tap.
+                if (wantRecord) {
+                    val q = app.prefs.qualityFlow.first()
+                    val nr = app.prefs.noiseReductionFlow.first()
+                    app.recorder.start(q, AudioSource.SYSTEM, nr)
+                }
+            }
         }
     }
 
@@ -64,6 +79,26 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val mgr = getSystemService(MediaProjectionManager::class.java)
         projectionLauncher.launch(mgr.createScreenCaptureIntent())
+    }
+
+    // Home-screen path: reuse a live grant if there is one, otherwise ask
+    // the system and auto-start on approval.
+    fun requestSystemCaptureAndRecord() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        if (MediaProjectionHolder.hasGrant()) {
+            lifecycleScope.launch {
+                val q = app.prefs.qualityFlow.first()
+                val nr = app.prefs.noiseReductionFlow.first()
+                if (!app.recorder.start(q, AudioSource.SYSTEM, nr)) {
+                    // Stale token — fall through to a fresh consent.
+                    pendingSystemRecord = true
+                    requestSystemCapture()
+                }
+            }
+            return
+        }
+        pendingSystemRecord = true
+        requestSystemCapture()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,7 +133,8 @@ class MainActivity : ComponentActivity() {
                             })
                             else -> FlamboNavGraph(
                                 onRerunOnboarding = { rerunIntro = true },
-                                onRequestSystemCapture = { requestSystemCapture() }
+                                onRequestSystemCapture = { requestSystemCapture() },
+                                onEnableSystemSound = { requestSystemCaptureAndRecord() }
                             )
                         }
                     }

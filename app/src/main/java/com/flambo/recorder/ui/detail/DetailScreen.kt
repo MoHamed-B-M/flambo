@@ -109,6 +109,20 @@ fun DetailScreen(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
 
+    fun shareAudio(path: String, chooserTitle: String) {
+        try {
+            val file = File(path)
+            if (!file.exists()) return
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "audio/*"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, chooserTitle))
+        } catch (_: Exception) {}
+    }
+
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var tagInput by remember { mutableStateOf("") }
@@ -148,21 +162,7 @@ fun DetailScreen(
                             tint = if (rec.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = {
-                        // share
-                        try {
-                            val file = File(rec.filePath)
-                            if (file.exists()) {
-                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "audio/*"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Share recording"))
-                            }
-                        } catch (_: Exception) {}
-                    }) {
+                    IconButton(onClick = { shareAudio(rec.filePath, "Share recording") }) {
                         Icon(Icons.Filled.Share, contentDescription = "Share")
                     }
                     IconButton(onClick = { showDeleteConfirm = true }) {
@@ -365,6 +365,7 @@ fun DetailScreen(
                 onCancel = { viewModel.cancelEnhance() },
                 onDismiss = { viewModel.dismissEnhance() },
                 onPlayEnhanced = { path -> playback.play(path) },
+                onShareEnhanced = { path -> shareAudio(path, "Share cleaned recording") },
                 onDeleteEnhanced = { viewModel.deleteEnhanced() }
             )
 
@@ -573,6 +574,7 @@ private fun EnhanceSection(
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
     onPlayEnhanced: (String) -> Unit,
+    onShareEnhanced: (String) -> Unit,
     onDeleteEnhanced: () -> Unit
 ) {
     when (enhanceUi) {
@@ -626,6 +628,15 @@ private fun EnhanceSection(
                             Spacer(Modifier.width(8.dp))
                             Text("Play")
                         }
+                        OutlinedButton(
+                            onClick = { onShareEnhanced(enhanceUi.path) },
+                            shape = ShapeFull,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Share")
+                        }
                         if (!enhanceUi.replaced) {
                             TextButton(onClick = onDeleteEnhanced) {
                                 Text("Delete copy", color = MaterialTheme.colorScheme.error)
@@ -671,6 +682,15 @@ private fun EnhanceSection(
                                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("Play")
+                            }
+                            OutlinedButton(
+                                onClick = { onShareEnhanced(savedEnhancedPath) },
+                                shape = ShapeFull,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Share")
                             }
                             TextButton(onClick = onDeleteEnhanced) {
                                 Text("Delete copy", color = MaterialTheme.colorScheme.error)

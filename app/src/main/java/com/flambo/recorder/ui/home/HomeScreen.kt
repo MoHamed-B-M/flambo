@@ -98,6 +98,7 @@ fun HomeScreen(
     noiseReduction: Boolean = true,
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
+    onEnableSystemSound: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -114,11 +115,18 @@ fun HomeScreen(
         val source = AudioSource.fromPref(audioSource)
         if (!recorder.start(quality, source, noiseReduction)) {
             scope.launch {
-                snackbarHostState.showSnackbar(
-                    if (source == AudioSource.SYSTEM)
-                        "System sound needs permission — enable it in Settings"
-                    else "Couldn't start recording — try again"
-                )
+                if (source == AudioSource.SYSTEM) {
+                    // Grant may have died with the process — offer to re-ask
+                    // right here instead of a dead-end message.
+                    val r = snackbarHostState.showSnackbar(
+                        message = "System sound needs permission",
+                        actionLabel = "Enable",
+                        withDismissAction = true
+                    )
+                    if (r == SnackbarResult.ActionPerformed) onEnableSystemSound()
+                } else {
+                    snackbarHostState.showSnackbar("Couldn't start recording — try again")
+                }
             }
         }
     }

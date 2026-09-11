@@ -119,7 +119,6 @@ fun SettingsScreen(
     val keepOriginal by prefs.keepOriginalFlow.collectAsState(initial = true)
     val dynamicColor by prefs.dynamicColorFlow.collectAsState(initial = true)
     val themeSeed by prefs.themeSeedFlow.collectAsState(initial = "ember")
-    val themeSeed by prefs.themeSeedFlow.collectAsState(initial = "ember")
     val storageVolume by prefs.recordingsVolumeFlow.collectAsState(initial = "default")
     val reminder by prefs.recordingReminderFlow.collectAsState(initial = true)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
@@ -1041,7 +1040,6 @@ fun SettingsScreen(
                                 Text(label, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
-                    }
                     }
                     }
             },

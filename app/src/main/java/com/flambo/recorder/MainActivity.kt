@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private var showRationale by mutableStateOf(false)
+    private var micGrantedState by mutableStateOf(false)
+    private var notifGrantedState by mutableStateOf(false)
 
     private lateinit var app: FlamboApp
 
@@ -48,7 +50,59 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
         val micGranted = grants[Manifest.permission.RECORD_AUDIO] == true
+        micGrantedState = micGranted
+        if (Build.VERSION.SDK_INT >= 33) {
+            notifGrantedState = grants[Manifest.permission.POST_NOTIFICATIONS] == true
+        }
         if (!micGranted) showRationale = true
+    }
+
+    // Single-permission path for the record button / onboarding: on grant,
+    // continue straight into the pending recording instead of stranding
+    // the user. Docs require RECORD_AUDIO even for playback capture, and
+    // strict skins (ColorOS et al.) enforce it at AudioRecord creation.
+    private var pendingStartSource: AudioSource? = null
+
+    private val micLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        micGrantedState = granted
+        val src = pendingStartSource
+        pendingStartSource = null
+        if (!granted) {
+            showRationale = true
+            return@registerForActivityResult
+        }
+        lifecycleScope.launch {
+            if (src == AudioSource.SYSTEM) {
+                if (MediaProjectionHolder.hasGrant()) startSystemNow()
+                else {
+                    pendingSystemRecord = true
+                    requestSystemCapture()
+                }
+            } else if (src == AudioSource.MIC) {
+                val q = app.prefs.qualityFlow.first()
+                val nr = app.prefs.noiseReductionFlow.first()
+                app.recorder.start(q, AudioSource.MIC, nr)
+            }
+        }
+    }
+
+    fun requestMicAndRecord(source: AudioSource) {
+        pendingStartSource = source
+        micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    private val notifLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        notifGrantedState = granted
+    }
+
+    private suspend fun startSystemNow() {
+        val q = app.prefs.qualityFlow.first()
+        val nr = app.prefs.noiseReductionFlow.first()
+        app.recorder.start(q, AudioSource.SYSTEM, nr)
     }
 
     // System-sound capture needs a one-time screen-capture consent,
@@ -66,11 +120,7 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch {
                 app.prefs.setAudioSource(PreferencesManager.AUDIO_SYSTEM)
                 // Came from the record button: start right away, no second tap.
-                if (wantRecord) {
-                    val q = app.prefs.qualityFlow.first()
-                    val nr = app.prefs.noiseReductionFlow.first()
-                    app.recorder.start(q, AudioSource.SYSTEM, nr)
-                }
+                if (wantRecord) startSystemNow()
             }
         }
     }
@@ -104,10 +154,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        checkPermissions()
 
         // App class holds datastore prefs
         app = application as FlamboApp
+        refreshPermissionStates()
+
+        // Returning users get the classic upfront prompt; first-launch users
+        // meet permissions inside onboarding instead of a cold system dialog.
+        lifecycleScope.launch {
+            if (app.prefs.onboardingDoneFlow.first()) checkPermissions()
+        }
 
         setContent {
             val dynamicColor by app.prefs.dynamicColorFlow.collectAsState(initial = true)
@@ -127,14 +183,26 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when {
                             onboardingDone == null -> Box(Modifier.fillMaxSize()) // prefs still loading
-                            showOnboarding -> OnboardingScreen(onFinish = {
-                                lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
-                                rerunIntro = false
-                            })
+                            showOnboarding -> OnboardingScreen(
+                                onFinish = {
+                                    lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
+                                    rerunIntro = false
+                                },
+                                micGranted = micGrantedState,
+                                notifGranted = notifGrantedState,
+                                showNotificationsRow = Build.VERSION.SDK_INT >= 33,
+                                onGrantMic = { micLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                                onGrantNotifications = {
+                                    if (Build.VERSION.SDK_INT >= 33) {
+                                        notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }
+                            )
                             else -> FlamboNavGraph(
                                 onRerunOnboarding = { rerunIntro = true },
                                 onRequestSystemCapture = { requestSystemCapture() },
-                                onEnableSystemSound = { requestSystemCaptureAndRecord() }
+                                onEnableSystemSound = { requestSystemCaptureAndRecord() },
+                                onRequestMicPermission = { requestMicAndRecord(it) }
                             )
                         }
                     }
@@ -157,6 +225,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun refreshPermissionStates() {
+        micGrantedState = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        notifGrantedState = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
+            this, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun checkPermissions() {

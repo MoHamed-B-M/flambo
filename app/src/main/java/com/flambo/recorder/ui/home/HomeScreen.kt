@@ -99,6 +99,7 @@ fun HomeScreen(
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     onEnableSystemSound: () -> Unit = {},
+    onRequestMicPermission: (AudioSource) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -113,6 +114,21 @@ fun HomeScreen(
     // silently doing nothing when system capture has no grant yet.
     fun startRecording() {
         val source = AudioSource.fromPref(audioSource)
+        // Playback capture requires RECORD_AUDIO too (enforced at AudioRecord
+        // creation on strict skins) — ask first, then continue automatically.
+        if (!recorder.hasRecordAudioPermission()) {
+            scope.launch {
+                val r = snackbarHostState.showSnackbar(
+                    message = if (source == AudioSource.SYSTEM)
+                        "System sound needs microphone permission too"
+                    else "Microphone permission needed to record",
+                    actionLabel = "Allow",
+                    withDismissAction = true
+                )
+                if (r == SnackbarResult.ActionPerformed) onRequestMicPermission(source)
+            }
+            return
+        }
         if (!recorder.start(quality, source, noiseReduction)) {
             scope.launch {
                 if (source == AudioSource.SYSTEM) {

@@ -16,6 +16,8 @@
 - **Two sources** — microphone, or system sound (music, videos, app audio) via AudioPlaybackCapture on Android 10+
 - **Live notification** with running timer plus Pause/Resume and Save actions, so recording survives the screen turning off
 - **Offline transcription** — Vosk turns saved recordings into text on-device; downloadable language models, copy/share/edit, transcripts are searchable
+- **Noise reduction** — live AGC and noise suppression while recording (toggle in Settings)
+- **Clean audio** — one-tap offline enhancement (hush + leveling) with Light/Balanced/Strong strength, keep or replace the original
 - **Playback** with waveform scrubber, 0.5x–2x speed pills, 5 s / 10 s skips, and a floating mini-player
 - **Library** — inline rename, tags, favorites, full-text search, soft delete with Undo, auto-purging Trash
 - **Onboarding tour** on first launch, replayable anytime from Settings → About
@@ -23,9 +25,6 @@
 - **Material 3 Expressive throughout** — dynamic Material You color, tonal surfaces instead of shadows, morphing shapes, bouncy spring motion, edge-to-edge layout
 
 ## Screenshots
-
-> [!TIP]
-> Drop PNGs into `screenshots/` (e.g. `home.png`, `recording.png`, `playback.png`, `settings.png`) and they show up here automatically — same filenames, no README edits needed.
 
 | Home | Recording | Playback | Settings |
 |---|---|---|---|
@@ -37,7 +36,7 @@ Grab the APK matching your device from the [latest beta pre-release](https://git
 
 | File suffix | Architecture | Most devices |
 |---|---|---|
-| `*-arm64.apk` | arm64-v8a | ✅ phones from ~2017 on |
+| `*-arm64.apk` | arm64-v8a | Yes, most phones from ~2017 on |
 | `*-armv7.apk` | armeabi-v7a | Older 32-bit devices |
 
 > [!NOTE]
@@ -105,6 +104,7 @@ app/src/main/java/com/flambo/recorder/
 │   ├── components/    # Waveform, cards, segmented list, mini-player
 │   └── theme/         # M3 Expressive color / type / shape / motion tokens
 ├── record/            # MediaRecorder + system-audio (AudioRecord) engines, foreground service
+├── audio/             # Offline DSP enhancer (gate, normalize, WAV writer)
 ├── stt/               # Vosk offline transcription, model downloads, PCM decoding
 ├── playback/          # ExoPlayer controller with persistent mini-player state
 ├── update/            # Release checker, in-app APK installer, update notifier
@@ -117,7 +117,7 @@ MVVM throughout: `ViewModel` + `StateFlow` UI state, repository pattern, thin pl
 
 | Permission | Why |
 |---|---|
-| `RECORD_AUDIO` | Microphone recording (runtime prompt) |
+| `RECORD_AUDIO` | Microphone recording — also required by Android for system-sound capture (prompted at first launch and when needed) |
 | System-capture consent | One-time system dialog for system-sound recording, like a screen recorder |
 | `FOREGROUND_SERVICE_*` | Keeps recording alive with the screen off (mic / playback / projection types, narrowed per take) |
 | `POST_NOTIFICATIONS` | Recording timer + update-ready notifications (Android 13+) |

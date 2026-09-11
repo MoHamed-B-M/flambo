@@ -27,6 +27,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
@@ -76,12 +77,19 @@ private val bouncy = spring<Float>(
 @Composable
 fun OnboardingScreen(
     onFinish: () -> Unit,
+    micGranted: Boolean = true,
+    notifGranted: Boolean = true,
+    showNotificationsRow: Boolean = true,
+    onGrantMic: () -> Unit = {},
+    onGrantNotifications: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val pagerState = rememberPagerState(pageCount = { pages.size })
+    // Three story pages plus a final permissions page.
+    val totalPages = pages.size + 1
+    val pagerState = rememberPagerState(pageCount = { totalPages })
     val scope = rememberCoroutineScope()
     val page = pagerState.currentPage
-    val isLast = page == pages.lastIndex
+    val isLast = page == totalPages - 1
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -109,13 +117,22 @@ fun OnboardingScreen(
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) { index ->
-                val (content, container) = pages[index]
-                val (icon, title, body) = content
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                if (index >= pages.size) {
+                    PermissionPageContent(
+                        micGranted = micGranted,
+                        notifGranted = notifGranted,
+                        showNotificationsRow = showNotificationsRow,
+                        onGrantMic = onGrantMic,
+                        onGrantNotifications = onGrantNotifications
+                    )
+                } else {
+                    val (content, container) = pages[index]
+                    val (icon, title, body) = content
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                     // Hero morphs per page — bouncy scale-in on each swipe
                     AnimatedContent(
                         targetState = index,
@@ -162,6 +179,7 @@ fun OnboardingScreen(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
+                    }
                 }
             }
 
@@ -172,7 +190,7 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .padding(vertical = 20.dp)
             ) {
-                pages.indices.forEach { i ->
+                (0 until totalPages).forEach { i ->
                     val width by animateDpAsState(
                         targetValue = if (i == page) 32.dp else 8.dp,
                         animationSpec = spring(
@@ -224,6 +242,114 @@ fun OnboardingScreen(
                     ) {
                         Text("Next", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionPageContent(
+    micGranted: Boolean,
+    notifGranted: Boolean,
+    showNotificationsRow: Boolean,
+    onGrantMic: () -> Unit,
+    onGrantNotifications: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(168.dp)
+                .clip(ShapeExtraExtraLarge)
+                .background(MaterialTheme.colorScheme.tertiaryContainer)
+        ) {
+            Icon(
+                Icons.Filled.Mic,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(72.dp)
+            )
+        }
+        Spacer(Modifier.height(32.dp))
+        Text(
+            "Let Flambo hear",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Microphone access is required for every recording — including system sound, which Android only allows with it.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        Spacer(Modifier.height(20.dp))
+        PermissionRow(
+            icon = Icons.Filled.Mic,
+            title = "Microphone",
+            body = "Record your voice and the room",
+            granted = micGranted,
+            onGrant = onGrantMic
+        )
+        if (showNotificationsRow) {
+            Spacer(Modifier.height(12.dp))
+            PermissionRow(
+                icon = Icons.Filled.Notifications,
+                title = "Notifications",
+                body = "Recording timer and update alerts",
+                granted = notifGranted,
+                onGrant = onGrantNotifications
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    body: String,
+    granted: Boolean,
+    onGrant: () -> Unit
+) {
+    Surface(
+        shape = ShapeFull,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (granted) {
+                Text(
+                    "Allowed",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Button(
+                    onClick = onGrant,
+                    shapes = ButtonDefaults.shapes(),
+                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
+                ) {
+                    Text("Allow", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
                 }
             }
         }

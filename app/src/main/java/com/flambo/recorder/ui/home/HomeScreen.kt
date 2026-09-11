@@ -149,6 +149,16 @@ fun HomeScreen(
 
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
+    var whatsNewVersion by remember { mutableStateOf<String?>(null) }
+
+    // What's New: show once per installed version after an update.
+    // First-ever launch just stamps the version (onboarding covers it).
+    LaunchedEffect(Unit) {
+        val (version, code) = UpdateChecker.installed(context)
+        val lastSeen = prefs.lastSeenVersionCode()
+        if (lastSeen != 0L && code > lastSeen) whatsNewVersion = version
+        prefs.setLastSeenVersionCode(code)
+    }
 
     // Launch-time auto-check: ping once per version, then hush.
     LaunchedEffect(Unit) {
@@ -365,6 +375,10 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    whatsNewVersion?.let { version ->
+        WhatsNewSheet(version = version, onDismiss = { whatsNewVersion = null })
     }
 
     // Rename dialog

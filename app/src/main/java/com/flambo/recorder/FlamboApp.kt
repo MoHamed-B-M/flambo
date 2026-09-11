@@ -4,6 +4,7 @@ import android.app.Application
 import com.flambo.recorder.data.AppDatabase
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.RecordingRepository
+import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.record.RecordingController
 import com.flambo.recorder.stt.TranscriptionManager
 import com.flambo.recorder.update.ApkInstaller
@@ -15,10 +16,17 @@ import kotlinx.coroutines.launch
 class FlamboApp : Application() {
 
     val database by lazy { AppDatabase.get(this) }
+
+    // Storage volume chosen in Settings. Volatile + preloaded at startup so
+    // the sync recordingsDir() path never blocks on DataStore.
+    @Volatile var storageVolumeId: String = StorageVolumes.ID_DEFAULT
+
+    fun recordingsDir(): File = StorageVolumes.resolveDir(this, storageVolumeId)
+
     val repository by lazy {
         RecordingRepository(
             dao = database.recordingDao(),
-            filesDir = getExternalFilesDir(null) ?: filesDir
+            dirProvider = { recordingsDir() }
         )
     }
     val prefs by lazy { PreferencesManager(this) }
@@ -29,6 +37,9 @@ class FlamboApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        appScope.launch {
+            storageVolumeId = runCatching { prefs.recordingsVolume() }.getOrDefault(StorageVolumes.ID_DEFAULT)
+        }
         // The installer holds the APK open while it works, so last run's file
         // can only be deleted now that we're back.
         appScope.launch {

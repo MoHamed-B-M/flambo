@@ -1,11 +1,14 @@
 package com.flambo.recorder.record
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import android.os.Build
+import androidx.core.content.ContextCompat
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.data.RecordingRepository
 import com.flambo.recorder.domain.RecordingQuality
@@ -46,6 +49,14 @@ class RecordingController(
 
     private var recorder: MediaRecorder? = null
     private val sysEngine by lazy { SystemAudioEngine(appContext) }
+
+    // Docs require RECORD_AUDIO even for playback capture — without it
+    // AudioRecord creation fails (notably on strict OEM skins like ColorOS),
+    // so the UI gates system recording on this first.
+    fun hasRecordAudioPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            appContext, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
     private var noiseSuppressor: NoiseSuppressor? = null
     private var gainControl: AutomaticGainControl? = null
     private var startTimeMs: Long = 0L

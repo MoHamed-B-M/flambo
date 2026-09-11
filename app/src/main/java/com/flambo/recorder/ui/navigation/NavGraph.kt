@@ -28,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.playback.PlaybackController
+import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.ui.detail.DetailScreen
 import com.flambo.recorder.ui.detail.DetailViewModel
 import com.flambo.recorder.ui.home.HomeScreen
@@ -93,7 +94,8 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit(
 fun FlamboNavGraph(
     onRerunOnboarding: () -> Unit = {},
     onRequestSystemCapture: () -> Unit = {},
-    onEnableSystemSound: () -> Unit = {}
+    onEnableSystemSound: () -> Unit = {},
+    onRequestMicPermission: (AudioSource) -> Unit = {}
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -138,7 +140,8 @@ fun FlamboNavGraph(
                 noiseReduction = noiseReduction,
                 onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
                 onOpenSettings = { navController.navigate(Dest.Settings.route) },
-                onEnableSystemSound = onEnableSystemSound
+                onEnableSystemSound = onEnableSystemSound,
+                onRequestMicPermission = onRequestMicPermission
             )
         }
 

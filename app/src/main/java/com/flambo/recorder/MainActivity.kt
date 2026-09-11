@@ -167,6 +167,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val dynamicColor by app.prefs.dynamicColorFlow.collectAsState(initial = true)
+            val themeSeed by app.prefs.themeSeedFlow.collectAsState(initial = "ember")
             val darkThemePref by app.prefs.darkThemeFlow.collectAsState(initial = "system")
             val darkTheme = when (darkThemePref) {
                 "light" -> false
@@ -178,7 +179,7 @@ class MainActivity : ComponentActivity() {
             var rerunIntro by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunIntro
 
-            FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
+            FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when {

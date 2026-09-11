@@ -7,7 +7,6 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
@@ -16,18 +15,19 @@ import androidx.compose.ui.platform.LocalContext
 fun FlamboTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
+    seedId: String = "ember",
     expressive: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
+    val seed = themeSeedById(seedId)
 
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        expressive && !darkTheme -> expressiveLightColorScheme()
-        darkTheme -> FlamboDarkColors
-        else -> FlamboLightColors
+        darkTheme -> seed.dark
+        else -> seed.light
     }
 
     // Expressive mode uses MaterialExpressiveTheme with bouncy MotionScheme

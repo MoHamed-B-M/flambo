@@ -5,7 +5,7 @@ import java.io.File
 
 class RecordingRepository(
     private val dao: RecordingDao,
-    private val filesDir: File
+    private val dirProvider: () -> File
 ) {
     fun observeRecordings(): Flow<List<Recording>> = dao.observeAll()
     fun observeTrash(): Flow<List<Recording>> = dao.observeTrash()
@@ -79,5 +79,5 @@ class RecordingRepository(
         }
     }
 
-    fun recordingsDir(): File = filesDir.apply { if (!exists()) mkdirs() }
+    fun recordingsDir(): File = dirProvider().apply { if (!exists()) mkdirs() }
 }

@@ -5,7 +5,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
@@ -76,10 +79,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.R
 import android.os.Build
 import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.domain.RecordingQuality
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
@@ -92,6 +97,8 @@ import com.flambo.recorder.ui.components.SegmentedList
 import com.flambo.recorder.ui.components.segmentedListItemColors
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
+import com.flambo.recorder.ui.theme.ThemeSeeds
+import com.flambo.recorder.ui.theme.themeSeedById
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -111,6 +118,9 @@ fun SettingsScreen(
     val enhanceStrength by prefs.enhanceStrengthFlow.collectAsState(initial = "balanced")
     val keepOriginal by prefs.keepOriginalFlow.collectAsState(initial = true)
     val dynamicColor by prefs.dynamicColorFlow.collectAsState(initial = true)
+    val themeSeed by prefs.themeSeedFlow.collectAsState(initial = "ember")
+    val themeSeed by prefs.themeSeedFlow.collectAsState(initial = "ember")
+    val storageVolume by prefs.recordingsVolumeFlow.collectAsState(initial = "default")
     val reminder by prefs.recordingReminderFlow.collectAsState(initial = true)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
     val sttLanguage by prefs.sttLanguageFlow.collectAsState(initial = "")
@@ -134,6 +144,7 @@ fun SettingsScreen(
 
     var showQualityDialog by remember { mutableStateOf(false) }
     var showAudioSourceDialog by remember { mutableStateOf(false) }
+    var showStorageDialog by remember { mutableStateOf(false) }
     var showEnhanceStrengthDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSttLanguageDialog by remember { mutableStateOf(false) }
@@ -215,6 +226,28 @@ fun SettingsScreen(
                         colors = segmentedListItemColors()
                     )
                 }
+                item {
+                    val volumes = remember { StorageVolumes.list(context.applicationContext) }
+                    val current = volumes.firstOrNull { it.id == storageVolume } ?: volumes.firstOrNull()
+                    ListItem(
+                        headlineContent = { Text("Storage folder") },
+                        supportingContent = { Text(current?.label ?: "Phone storage") },
+                        leadingContent = {
+                            Icon(
+                                Icons.Filled.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { showStorageDialog = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -280,25 +313,12 @@ fun SettingsScreen(
             SegmentedList {
                 item {
                     ListItem(
-                        headlineContent = { Text("Dynamic color") },
-                        supportingContent = { Text("Use Material You colors from your wallpaper (Android 12+)") },
-                        leadingContent = { Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary) },
-                        trailingContent = {
-                            Switch(
-                                checked = dynamicColor,
-                                onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
-                                thumbContent = if (dynamicColor) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                                } else null
-                            )
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
                         headlineContent = { Text("Theme") },
-                        supportingContent = { Text(when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System default" }) },
+                        supportingContent = {
+                            val mode = when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System" }
+                            val color = if (dynamicColor) "Dynamic" else themeSeedById(themeSeed).label
+                            Text("$color • $mode")
+                        },
                         leadingContent = {
                             Icon(
                                 when (darkTheme) {
@@ -853,43 +873,177 @@ fun SettingsScreen(
         )
     }
 
+    if (showStorageDialog) {
+        val volumes = remember { StorageVolumes.list(context.applicationContext) }
+        AlertDialog(
+            onDismissRequest = { showStorageDialog = false },
+            title = { Text("Storage folder", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "New recordings go here. Existing ones stay where they are.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    volumes.forEachIndexed { index, volume ->
+                        ToggleButton(
+                            checked = storageVolume == volume.id,
+                            onCheckedChange = {
+                                scope.launch {
+                                    prefs.setRecordingsVolume(volume.id)
+                                    (context.applicationContext as FlamboApp).storageVolumeId = volume.id
+                                }
+                                showStorageDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                volumes.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Filled.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
+                                Text(volume.label, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    StorageVolumes.formatBytes(volume.freeBytes),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showStorageDialog = false },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
             title = { Text("Theme", style = MaterialTheme.typography.titleLarge) },
             text = {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val options = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
-                    options.forEachIndexed { index, (value, label) ->
-                        ToggleButton(
-                            checked = darkTheme == value,
-                            onCheckedChange = {
-                                scope.launch { prefs.setDarkTheme(value) }
-                                showThemeDialog = false
-                            },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                when (value) {
-                                    "light" -> Icons.Filled.LightMode
-                                    "dark" -> Icons.Filled.DarkMode
-                                    else -> Icons.Filled.SettingsBrightness
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Dynamic color", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "Match your wallpaper (Android 12+)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text(label, modifier = Modifier.padding(start = 8.dp))
+                        }
+                        Switch(
+                            checked = dynamicColor,
+                            onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
+                            thumbContent = if (dynamicColor) {
+                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                            } else null
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "Flambo colors",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (dynamicColor) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            ThemeSeeds.forEach { seed ->
+                                val selected = !dynamicColor && themeSeed == seed.id
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(seed.swatch)
+                                        .border(
+                                            2.dp,
+                                            if (selected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.outlineVariant,
+                                            CircleShape
+                                        )
+                                        .clickable(enabled = !dynamicColor) {
+                                            scope.launch { prefs.setThemeSeed(seed.id) }
+                                        }
+                                ) {
+                                    if (selected) {
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = "${seed.label} selected",
+                                            tint = MaterialTheme.colorScheme.surface,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (dynamicColor) {
+                            Text(
+                                "Turn dynamic color off to pick a Flambo color.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-                }
+                    Text(
+                        "Brightness",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val options = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
+                        options.forEachIndexed { index, (value, label) ->
+                            ToggleButton(
+                                checked = darkTheme == value,
+                                onCheckedChange = {
+                                    scope.launch { prefs.setDarkTheme(value) }
+                                    showThemeDialog = false
+                                },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    when (value) {
+                                        "light" -> Icons.Filled.LightMode
+                                        "dark" -> Icons.Filled.DarkMode
+                                        else -> Icons.Filled.SettingsBrightness
+                                    },
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(label, modifier = Modifier.padding(start = 8.dp))
+                            }
+                        }
+                    }
+                    }
+                    }
             },
             confirmButton = {
                 TextButton(

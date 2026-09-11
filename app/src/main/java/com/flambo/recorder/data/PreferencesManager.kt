@@ -3,6 +3,7 @@ package com.flambo.recorder.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.flambo.recorder.domain.RecordingQuality
@@ -29,6 +30,9 @@ class PreferencesManager(private val context: Context) {
         val NOISE_REDUCTION = booleanPreferencesKey("noise_reduction")
         val ENHANCE_STRENGTH = stringPreferencesKey("enhance_strength") // light, balanced, strong
         val KEEP_ORIGINAL = booleanPreferencesKey("keep_original")
+        val RECORDINGS_VOLUME = stringPreferencesKey("recordings_volume") // default, internal, external, sdcard-<i>
+        val THEME_SEED = stringPreferencesKey("theme_seed") // ember, ocean, grape, forest, rose
+        val LAST_SEEN_VERSION_CODE = longPreferencesKey("last_seen_version_code")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -136,6 +140,30 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setKeepOriginal(keep: Boolean) {
         context.dataStore.edit { it[Keys.KEEP_ORIGINAL] = keep }
+    }
+
+    val recordingsVolumeFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.RECORDINGS_VOLUME] ?: "default" }
+
+    suspend fun recordingsVolume(): String =
+        context.dataStore.data.map { it[Keys.RECORDINGS_VOLUME] ?: "default" }.first()
+
+    suspend fun setRecordingsVolume(id: String) {
+        context.dataStore.edit { it[Keys.RECORDINGS_VOLUME] = id }
+    }
+
+    val themeSeedFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.THEME_SEED] ?: "ember" }
+
+    suspend fun setThemeSeed(id: String) {
+        context.dataStore.edit { it[Keys.THEME_SEED] = id }
+    }
+
+    suspend fun lastSeenVersionCode(): Long =
+        context.dataStore.data.map { it[Keys.LAST_SEEN_VERSION_CODE] ?: 0L }.first()
+
+    suspend fun setLastSeenVersionCode(code: Long) {
+        context.dataStore.edit { it[Keys.LAST_SEEN_VERSION_CODE] = code }
     }
 
     companion object {

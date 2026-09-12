@@ -43,10 +43,12 @@ android {
         applicationId = "com.flambo.recorder"
         minSdk = 26
         targetSdk = 36
-        // Version code from CI run number for monotonic Play Store / GitHub release ordering
+        // Version code from CI run number for monotonic Play Store / GitHub release ordering.
+        // Stable releases pin both explicitly (MAJOR.MINOR.PATCH+BUILD, build starts at 1).
         val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         val baseCode = 1
-        versionCode = runNumber?.let { baseCode + it } ?: baseCode
+        versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull()
+            ?: runNumber?.let { baseCode + it } ?: baseCode
         versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

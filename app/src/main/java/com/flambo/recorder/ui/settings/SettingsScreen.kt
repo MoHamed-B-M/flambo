@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -82,13 +83,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.R
-import android.os.Build
 import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.domain.RecordingQuality
 import com.flambo.recorder.record.AudioSource
-import com.flambo.recorder.record.MediaProjectionHolder
 import com.flambo.recorder.stt.TranscriptionManager
 import com.flambo.recorder.update.ApkInstaller
 import com.flambo.recorder.stt.VoskModelManager
@@ -120,6 +119,7 @@ fun SettingsScreen(
     val keepOriginal by prefs.keepOriginalFlow.collectAsState(initial = true)
     val dynamicColor by prefs.dynamicColorFlow.collectAsState(initial = true)
     val themeSeed by prefs.themeSeedFlow.collectAsState(initial = "ember")
+    val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
     val storageVolume by prefs.recordingsVolumeFlow.collectAsState(initial = "default")
     val reminder by prefs.recordingReminderFlow.collectAsState(initial = true)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
@@ -608,6 +608,35 @@ fun SettingsScreen(
                 )
             }
 
+            Spacer(Modifier.height(4.dp))
+
+            Surface(
+                shape = ShapeLargeIncreased,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ListItem(
+                    headlineContent = { Text("Show tips") },
+                    supportingContent = { Text("Short how-tos on the home screen") },
+                    leadingContent = { Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        Switch(
+                            checked = tipsEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    prefs.setTipsEnabled(it)
+                                    if (it) prefs.setTipIndex(0)
+                                }
+                            },
+                            thumbContent = if (tipsEnabled) {
+                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                            } else null
+                        )
+                    },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                )
+            }
+
             // App card — flat tonal, follows dynamic color, no shadow
             androidx.compose.material3.Card(
                 shape = ShapeLargeIncreased,
@@ -805,7 +834,6 @@ fun SettingsScreen(
     }
 
     if (showAudioSourceDialog) {
-        val systemSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         AlertDialog(
             onDismissRequest = { showAudioSourceDialog = false },
             title = { Text("Audio source", style = MaterialTheme.typography.titleLarge) },
@@ -820,27 +848,17 @@ fun SettingsScreen(
                         Triple("mic", "Microphone", "Your voice and the room around you"),
                         Triple(
                             "system",
-                            "System sound" + if (systemSupported) "" else " (needs Android 10+)",
-                            "Music, videos and app audio playing on this device" +
-                                if (MediaProjectionHolder.hasGrant()) " • Ready — permission granted"
-                                else " • Needs one-time system approval"
+                            "System sound • Under development",
+                            "Parked for now — projection capture still has bugs on some phones"
                         )
                     ).forEachIndexed { index, (value, label, description) ->
-                        val enabled = value == "mic" || systemSupported
+                        // System capture is disabled until its bugs are fixed;
+                        // the engine behind it stays intact for the comeback.
+                        val enabled = value == "mic"
                         ToggleButton(
                             checked = audioSource == value,
                             onCheckedChange = {
-                                if (value == "system") {
-                                    // Reuse the live grant when possible; otherwise ask the
-                                    // system, which flips the pref itself on approval.
-                                    if (MediaProjectionHolder.hasGrant()) {
-                                        scope.launch { prefs.setAudioSource(value) }
-                                    } else {
-                                        onRequestSystemCapture()
-                                    }
-                                } else {
-                                    scope.launch { prefs.setAudioSource(value) }
-                                }
+                                scope.launch { prefs.setAudioSource(value) }
                                 showAudioSourceDialog = false
                             },
                             enabled = enabled,

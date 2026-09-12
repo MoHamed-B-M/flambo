@@ -3,6 +3,7 @@ package com.flambo.recorder.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -33,6 +34,8 @@ class PreferencesManager(private val context: Context) {
         val RECORDINGS_VOLUME = stringPreferencesKey("recordings_volume") // default, internal, external, sdcard-<i>
         val THEME_SEED = stringPreferencesKey("theme_seed") // ember, ocean, grape, forest, rose
         val LAST_SEEN_VERSION_CODE = longPreferencesKey("last_seen_version_code")
+        val TIP_INDEX = intPreferencesKey("tip_index")
+        val TIPS_ENABLED = booleanPreferencesKey("tips_enabled")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -164,6 +167,20 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setLastSeenVersionCode(code: Long) {
         context.dataStore.edit { it[Keys.LAST_SEEN_VERSION_CODE] = code }
+    }
+
+    val tipIndexFlow: Flow<Int> =
+        context.dataStore.data.map { it[Keys.TIP_INDEX] ?: 0 }
+
+    suspend fun setTipIndex(index: Int) {
+        context.dataStore.edit { it[Keys.TIP_INDEX] = index }
+    }
+
+    val tipsEnabledFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.TIPS_ENABLED] ?: true }
+
+    suspend fun setTipsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.TIPS_ENABLED] = enabled }
     }
 
     companion object {

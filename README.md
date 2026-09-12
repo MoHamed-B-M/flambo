@@ -7,6 +7,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.3.10-7F52FF" alt="Kotlin 2.3.10" />
     <img src="https://img.shields.io/badge/minSdk-26-lightgrey" alt="minSdk 26" />
     <img src="https://img.shields.io/badge/targetSdk-36-green" alt="targetSdk 36" />
+    <a href="https://github.com/MoHamed-B-M/flambo/releases"><img src="https://img.shields.io/github/downloads/MoHamed-B-M/flambo/total" alt="Downloads" /></a>
   </p>
 </div>
 

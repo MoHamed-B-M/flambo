@@ -32,7 +32,7 @@ env:
   # Single source of truth for versions. Bump BASE_VERSION on every stable;
   # beta follows it automatically. Beta codes sit above any stable build so
   # installing a beta over stable always counts as an update for Android.
-  BASE_VERSION: "1.0.1"
+  BASE_VERSION: "1.0.2"
   STABLE_BUILD: "1"
   BETA_CODE_OFFSET: "100000"
 
@@ -49,6 +49,7 @@ jobs:
       version_code: ${{ steps.version.outputs.code }}
       display_version: ${{ steps.version.outputs.display }}
       release_tag: ${{ steps.version.outputs.tag }}
+      title_suffix: ${{ steps.version.outputs.suffix }}
 
     steps:
       - name: Checkout
@@ -102,6 +103,8 @@ jobs:
             CODE="$STABLE_BUILD"
             TAG="v${VN}+${CODE}"
             DISPLAY="${VN}+${CODE}"
+            # Only the very first stable gets the First Release title.
+            if [[ "$DISPLAY" == "1.0.1+1" ]]; then SUFFIX=" — First Release"; else SUFFIX=""; fi
           else
             VN="${BASE_VERSION}-dev(#${{ github.run_number }})"
             CODE="$(($BETA_CODE_OFFSET + ${{ github.run_number }}))"
@@ -112,6 +115,7 @@ jobs:
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "display=$DISPLAY" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "suffix=${SUFFIX:-}" >> "$GITHUB_OUTPUT"
           echo "FLAMBO_VERSION_NAME=$VN" >> "$GITHUB_ENV"
           echo "FLAMBO_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
           echo "Version: $VN+$CODE (tag $TAG)"
@@ -399,11 +403,15 @@ jobs:
         id: notes
         run: |
           cat > release_notes.md <<'EOF'
-          # Flambo ${{ needs.build.outputs.display_version }} — First Release
+          # Flambo ${{ needs.build.outputs.display_version }}${{ needs.build.outputs.title_suffix }}
 
           A calm yet expressive voice recorder — crafted with Material 3 Expressive.
-          This is the first stable release. Thank you for being here at the start.
-
+          EOF
+          if [[ -n "${{ needs.build.outputs.title_suffix }}" ]]; then
+            echo "This is the first stable release. Thank you for being here at the start." >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+          cat >> release_notes.md <<'EOF'
           > [!WARNING]
           > Coming from a beta build? **Uninstall the beta first.** Beta builds carry
           > higher version codes, and Android refuses to install over them with a
@@ -421,6 +429,7 @@ jobs:
           | **SHA-256** | `${{ steps.meta.outputs.sha }}` |
 
           ## ✨ What's in ${{ needs.build.outputs.version_name }}
+          - What's New sheet now shows the real GitHub release notes (offline fallback included)
           - One-tap recording with live waveform, pause/resume and a persistent notification (timer, Pause/Resume, Save)
           - Microphone + system-sound capture (system capture is parked as under-development while projection bugs are fixed)
           - Real-time noise reduction and one-tap Clean audio enhancement (Light/Balanced/Strong, keep or replace)
@@ -471,7 +480,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build.outputs.release_tag }}
-          name: "Flambo ${{ needs.build.outputs.display_version }} — First Release"
+          name: "Flambo ${{ needs.build.outputs.display_version }}${{ needs.build.outputs.title_suffix }}"
           body_path: ${{ steps.notes.outputs.notes_path }}
           generate_release_notes: true
           make_latest: true

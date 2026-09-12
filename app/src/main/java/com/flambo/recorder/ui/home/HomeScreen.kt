@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Search
@@ -162,6 +163,7 @@ fun HomeScreen(
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
     var whatsNewVersion by remember { mutableStateOf<String?>(null) }
+    var installedVersion by remember { mutableStateOf<String?>(null) }
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
     val tipIndex by prefs.tipIndexFlow.collectAsState(initial = 0)
 
@@ -169,6 +171,7 @@ fun HomeScreen(
     // First-ever launch just stamps the version (onboarding covers it).
     LaunchedEffect(Unit) {
         val (version, code) = UpdateChecker.installed(context)
+        installedVersion = version
         val lastSeen = prefs.lastSeenVersionCode()
         if (lastSeen != 0L && code > lastSeen) whatsNewVersion = version
         prefs.setLastSeenVersionCode(code)
@@ -228,6 +231,9 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { installedVersion?.let { whatsNewVersion = it } }) {
+                        Icon(Icons.Filled.Info, contentDescription = "What's new")
+                    }
                     IconButton(onClick = { viewModel.toggleTrash(!uiState.showTrash) }) {
                         Icon(Icons.Filled.Delete, contentDescription = "Trash")
                     }

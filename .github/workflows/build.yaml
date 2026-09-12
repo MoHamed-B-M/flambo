@@ -29,6 +29,12 @@ env:
   GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dkotlin.daemon.jvm.options=-Xmx3g
   JAVA_OPTS: -Xmx4g
   KOTLIN_DAEMON_JVM_OPTIONS: -Xmx3g
+  # Single source of truth for versions. Bump BASE_VERSION on every stable;
+  # beta follows it automatically. Beta codes sit above any stable build so
+  # installing a beta over stable always counts as an update for Android.
+  BASE_VERSION: "1.0.1"
+  STABLE_BUILD: "1"
+  BETA_CODE_OFFSET: "100000"
 
 jobs:
   build:
@@ -83,23 +89,28 @@ jobs:
         id: version
         run: |
           # Version name: tag if pushing a tag, pinned stable on main, dev preview on beta.
-          # Stable follows MAJOR.MINOR.PATCH+BUILD with build starting at 1.
+          # Stable follows MAJOR.MINOR.PATCH+BUILD with build starting at STABLE_BUILD.
+          # Beta tracks BASE_VERSION (e.g. 1.0.1-dev(#N)) so it always follows
+          # the current stable line, with codes above any stable build.
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             VN="${GITHUB_REF#refs/tags/v}"
             CODE="$((1 + ${{ github.run_number }}))"
             TAG="${{ github.ref_name }}"
+            DISPLAY="${VN}+${CODE}"
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VN="1.0.1"
-            CODE="1"
-            TAG="v1.0.1+1"
+            VN="$BASE_VERSION"
+            CODE="$STABLE_BUILD"
+            TAG="v${VN}+${CODE}"
+            DISPLAY="${VN}+${CODE}"
           else
-            VN="1.0.0-dev(#${{ github.run_number }})"
-            CODE="$((1 + ${{ github.run_number }}))"
+            VN="${BASE_VERSION}-dev(#${{ github.run_number }})"
+            CODE="$(($BETA_CODE_OFFSET + ${{ github.run_number }}))"
             TAG=""
+            DISPLAY="$VN"
           fi
           echo "name=$VN" >> "$GITHUB_OUTPUT"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          echo "display=${VN}+${CODE}" >> "$GITHUB_OUTPUT"
+          echo "display=$DISPLAY" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "FLAMBO_VERSION_NAME=$VN" >> "$GITHUB_ENV"
           echo "FLAMBO_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
@@ -166,9 +177,9 @@ jobs:
           fi
           # Friendly names keep only the Flambo-*.apk files in releases;
           # raw app-*-release.apk files are never published.
-          # beta: Flambo-1.0.0-dev-N-arm64.apk (display version 1.0.0-dev(#N))
-          # main: Flambo-x.x.x-arm64.apk
+          # File-safe form of the version name, e.g. 1.0.1-dev(#42) -> 1.0.1-dev-42.
           VN="${{ steps.version.outputs.name }}"
+          SAFE=$(echo "$VN" | tr -d '(#)' | tr ' ' '-')
           FRIENDLY=""
           FIRST=""
           for APK in app/build/outputs/apk/release/*.apk; do
@@ -177,11 +188,7 @@ jobs:
               *armeabi-v7a*) ABI="armv7" ;;
               *) ABI="universal" ;;
             esac
-            if [[ "${{ github.ref }}" == "refs/heads/beta" ]]; then
-              OUT="Flambo-1.0.0-dev-${{ github.run_number }}-${ABI}.apk"
-            else
-              OUT="Flambo-${VN}-${ABI}.apk"
-            fi
+            OUT="Flambo-${SAFE}-${ABI}.apk"
             cp "$APK" "$OUT"
             sha256sum "$OUT" > "$OUT.sha256"
             cat "$OUT.sha256"
@@ -413,7 +420,7 @@ jobs:
           | **APK size** | `${{ steps.meta.outputs.size }}` (per ABI) |
           | **SHA-256** | `${{ steps.meta.outputs.sha }}` |
 
-          ## ✨ What's in 1.0.1
+          ## ✨ What's in ${{ needs.build.outputs.version_name }}
           - One-tap recording with live waveform, pause/resume and a persistent notification (timer, Pause/Resume, Save)
           - Microphone + system-sound capture (system capture is parked as under-development while projection bugs are fixed)
           - Real-time noise reduction and one-tap Clean audio enhancement (Light/Balanced/Strong, keep or replace)

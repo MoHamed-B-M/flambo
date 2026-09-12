@@ -41,6 +41,8 @@ jobs:
       apk_path: ${{ steps.findapk.outputs.apk }}
       version_name: ${{ steps.version.outputs.name }}
       version_code: ${{ steps.version.outputs.code }}
+      display_version: ${{ steps.version.outputs.display }}
+      release_tag: ${{ steps.version.outputs.tag }}
 
     steps:
       - name: Checkout
@@ -80,25 +82,28 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          # Version name: tag if pushing a tag, else 1.0.<run_number> for preview, or 1.0.0 for main
+          # Version name: tag if pushing a tag, pinned stable on main, dev preview on beta.
+          # Stable follows MAJOR.MINOR.PATCH+BUILD with build starting at 1.
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             VN="${GITHUB_REF#refs/tags/v}"
+            CODE="$((1 + ${{ github.run_number }}))"
+            TAG="${{ github.ref_name }}"
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # derive from gradle versionName + run number patch
-            BASE=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "1.0.0")
-            # if BASE already contains run number logic, just use it; else suffix
-            VN="$BASE"
-            # optionally append build metadata for uniqueness if versionName is static
-            if [[ "$VN" == "1.0.0" ]]; then
-              VN="1.0.${{ github.run_number }}"
-            fi
+            VN="1.0.1"
+            CODE="1"
+            TAG="v1.0.1+1"
           else
             VN="1.0.0-dev(#${{ github.run_number }})"
+            CODE="$((1 + ${{ github.run_number }}))"
+            TAG=""
           fi
           echo "name=$VN" >> "$GITHUB_OUTPUT"
-          echo "code=$((1 + ${{ github.run_number }}))" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "display=${VN}+${CODE}" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "FLAMBO_VERSION_NAME=$VN" >> "$GITHUB_ENV"
-          echo "Version: $VN (code $((1 + ${{ github.run_number }})))"
+          echo "FLAMBO_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "Version: $VN+$CODE (tag $TAG)"
 
       - name: Prepare signing keystore
         env:
@@ -381,35 +386,43 @@ jobs:
 
           SIZE=$(du -h "$APK" | cut -f1)
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
       - name: Generate full release notes
         id: notes
         run: |
           cat > release_notes.md <<'EOF'
-          # Flambo ${{ needs.build.outputs.version_name }}
+          # Flambo ${{ needs.build.outputs.display_version }} — First Release
 
           A calm yet expressive voice recorder — crafted with Material 3 Expressive.
+          This is the first stable release. Thank you for being here at the start.
+
+          > [!WARNING]
+          > Coming from a beta build? **Uninstall the beta first.** Beta builds carry
+          > higher version codes, and Android refuses to install over them with a
+          > lower one. Your recordings live in app-private storage — back up anything
+          > you want to keep via Share before uninstalling.
 
           ## 📦 Build info
           | Field | Value |
           |-------|-------|
-          | **Version** | `${{ needs.build.outputs.version_name }}` |
+          | **Version** | `${{ needs.build.outputs.display_version }}` |
           | **Version code** | `${{ needs.build.outputs.version_code }}` |
+          | **Release date** | `${{ steps.meta.outputs.date }}` |
           | **Branch** | `main` @ `${{ github.sha }}` |
-          | **Build** | `#${{ github.run_number }}` · `${{ github.workflow }} ` |
-          | **APK size** | `${{ steps.meta.outputs.size }}` |
+          | **APK size** | `${{ steps.meta.outputs.size }}` (per ABI) |
           | **SHA-256** | `${{ steps.meta.outputs.sha }}` |
 
-          ## ✨ Highlights
-          - One-tap recording with animated waveform & countdown
-          - Pause / resume with continuous timeline
-          - Smart waveform visualizer (Material motion)
-          - Inline rename, tags, favorites
-          - Playback: scrubber, 5 s / 10 s skip, 0.5×–2× speed, mini-player
-          - Soft delete + undo, trash with auto-purge (7 days)
-          - Share / export via system share sheet
-          - Quality presets: Voice · High · Lossless-ish
-          - Dynamic color (Material You) + full light/dark + Expressive shapes
+          ## ✨ What's in 1.0.1
+          - One-tap recording with live waveform, pause/resume and a persistent notification (timer, Pause/Resume, Save)
+          - Microphone + system-sound capture (system capture is parked as under-development while projection bugs are fixed)
+          - Real-time noise reduction and one-tap Clean audio enhancement (Light/Balanced/Strong, keep or replace)
+          - Fully offline transcription (Vosk) with downloadable language models, copy/share/edit, searchable transcripts
+          - Playback: waveform scrubber, speed pills, skip buttons, floating mini-player
+          - Library: inline rename, tags, favorites, search, soft delete + undo, auto-purging Trash
+          - Expressive onboarding tour, rotating home-screen tips, What's New sheet after updates
+          - Settings: quality presets, storage folder picker (internal/phone/SD card), theme seeds + dynamic color
+          - Self-updates: beta/stable channels, in-app download + install with auto-cleanup, launch-time check with notification
 
           ## 📝 Changelog
           EOF
@@ -450,8 +463,8 @@ jobs:
       - name: Create versioned GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.build.outputs.version_name }}
-          name: "Flambo v${{ needs.build.outputs.version_name }}"
+          tag_name: ${{ needs.build.outputs.release_tag }}
+          name: "Flambo ${{ needs.build.outputs.display_version }} — First Release"
           body_path: ${{ steps.notes.outputs.notes_path }}
           generate_release_notes: true
           make_latest: true
@@ -466,5 +479,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Leave beta-latest as prerelease; no deletion — just ensure main releases are `latest`
-          echo "Main release v${{ needs.build.outputs.version_name }} is now latest."
-          gh release view v${{ needs.build.outputs.version_name }} --json tagName,name,isLatest | cat || true
+          echo "Main release ${{ needs.build.outputs.release_tag }} is now latest."
+          gh release view ${{ needs.build.outputs.release_tag }} --json tagName,name,isLatest | cat || true

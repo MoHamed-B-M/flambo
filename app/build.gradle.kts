@@ -49,7 +49,7 @@ android {
         val baseCode = 1
         versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull()
             ?: runNumber?.let { baseCode + it } ?: baseCode
-        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.0.0"
+        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.0.1-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

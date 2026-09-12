@@ -32,7 +32,7 @@
 
 ## Get the app
 
-Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.0.0-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
+Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.0.1-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
 
 | File suffix | Architecture | Most devices |
 |---|---|---|
@@ -57,7 +57,7 @@ Debug keystore fallback means `assembleRelease` works locally with no secrets co
 
 [`build.yaml`](.github/workflows/build.yaml) builds every push to `beta` and `main`:
 
-- **`beta`** → signed dev build `1.0.0-dev(#N)` (arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
+- **`beta`** → signed dev build `1.0.1-dev(#N)` (arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
 - **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
 
 ### Required secrets
@@ -90,7 +90,9 @@ Format examples:
 - `2.0.0+120` → complete UI redesign + new audio engine
 - `2.0.1+121` → rebuilt with updated libraries
 
-Beta builds use the same scheme with a dev tag: `1.0.0-dev(#N)`, where `N` is the CI run number (e.g. `1.0.0-dev(#28)`).
+Beta builds follow the stable line with a dev tag: `1.0.1-dev(#N)`, where `N` is the CI run number (e.g. `1.0.1-dev(#42)`). When stable moves to `1.0.2`, beta becomes `1.0.2-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
+
+Beta version codes sit `100000` above the run number, so installing a beta over a stable release always counts as an update for Android (which requires the code to increase).
 
 ## Project structure
 

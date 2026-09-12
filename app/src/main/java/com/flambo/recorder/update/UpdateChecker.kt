@@ -101,6 +101,11 @@ object UpdateChecker {
 
     private const val API = "https://api.github.com/repos/MoHamed-B-M/flambo/releases"
 
+    // Mirrors BETA_CODE_OFFSET in build.yaml: beta codes sit above any
+    // stable build so installing a beta over stable always counts as an
+    // update. Keep the two in sync if the workflow value ever changes.
+    const val BETA_CODE_OFFSET = 100000L
+
     fun installed(context: Context): Pair<String, Long> {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
         val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -114,8 +119,13 @@ object UpdateChecker {
     suspend fun check(context: Context, channel: String): UpdateCheck =
         withContext(Dispatchers.IO) {
             val (installedVersion, installedCode) = installed(context)
-            // versionCode is 1 + CI run number, so this recovers the build number.
-            val installedBuild = (installedCode - 1).coerceAtLeast(0)
+            // Recover the CI run number for beta-vs-beta comparison: beta
+            // codes are BETA_CODE_OFFSET + run, stable codes are the build itself.
+            val installedBuild = if (installedCode >= BETA_CODE_OFFSET) {
+                installedCode - BETA_CODE_OFFSET
+            } else {
+                (installedCode - 1).coerceAtLeast(0)
+            }
             try {
                 val endpoint = if (channel == CHANNEL_BETA) "$API/tags/beta-latest" else "$API/latest"
                 val release = fetchRelease(endpoint)

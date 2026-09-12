@@ -61,6 +61,8 @@ Debug keystore fallback means `assembleRelease` works locally with no secrets co
 - **`beta`** → signed dev build `1.0.1-dev(#N)` (arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
 - **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
 
+Pushes touching only `README.md` or `screenshots/` skip CI entirely (no code changed, nothing to build).
+
 ### Required secrets
 
 | Secret | Purpose |

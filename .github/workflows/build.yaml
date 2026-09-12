@@ -3,8 +3,15 @@ name: Build Flambo
 on:
   push:
     branches: [main, beta]
+    # Docs-only pushes (README, screenshots) skip CI entirely — no APKs to build.
+    paths-ignore:
+      - 'README.md'
+      - 'screenshots/**'
   pull_request:
     branches: [main, beta]
+    paths-ignore:
+      - 'README.md'
+      - 'screenshots/**'
   workflow_dispatch:
     inputs:
       build_type:

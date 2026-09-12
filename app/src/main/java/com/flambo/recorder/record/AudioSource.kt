@@ -19,6 +19,11 @@ enum class AudioSource(val prefValue: String, val label: String) {
         else ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
 
     companion object {
+        // System capture is parked until its projection bugs are fixed
+        // (dropped grants, silent takes on some skins). The engine stays
+        // intact behind this flag so it can come back without a rewrite.
+        const val SYSTEM_ENABLED = false
+
         fun fromPref(value: String): AudioSource =
             entries.firstOrNull { it.prefValue == value } ?: MIC
     }

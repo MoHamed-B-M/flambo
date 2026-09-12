@@ -79,7 +79,9 @@ import com.flambo.recorder.domain.formatDuration
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.RecordingController
+import com.flambo.recorder.ui.components.AppTips
 import com.flambo.recorder.ui.components.MiniPlayer
+import com.flambo.recorder.ui.components.TipCard
 import kotlinx.coroutines.launch
 import com.flambo.recorder.ui.components.RecordingCard
 import com.flambo.recorder.ui.components.WaveformVisualizer
@@ -114,6 +116,16 @@ fun HomeScreen(
     // silently doing nothing when system capture has no grant yet.
     fun startRecording() {
         val source = AudioSource.fromPref(audioSource)
+        // System capture is parked until its projection bugs are fixed.
+        if (source == AudioSource.SYSTEM && !AudioSource.SYSTEM_ENABLED) {
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    "System sound is under development and temporarily disabled",
+                    withDismissAction = true
+                )
+            }
+            return
+        }
         // Playback capture requires RECORD_AUDIO too (enforced at AudioRecord
         // creation on strict skins) — ask first, then continue automatically.
         if (!recorder.hasRecordAudioPermission()) {
@@ -150,6 +162,8 @@ fun HomeScreen(
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
     var whatsNewVersion by remember { mutableStateOf<String?>(null) }
+    val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
+    val tipIndex by prefs.tipIndexFlow.collectAsState(initial = 0)
 
     // What's New: show once per installed version after an update.
     // First-ever launch just stamps the version (onboarding covers it).
@@ -282,6 +296,18 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
+
+            // Rotating how-to tip — hidden while recording and when switched off
+            if (tipsEnabled && !recorderState.isRecording) {
+                val tip = AppTips[tipIndex.mod(AppTips.size)]
+                TipCard(
+                    tip = tip,
+                    position = "${tipIndex.mod(AppTips.size) + 1} of ${AppTips.size}",
+                    onNext = { scope.launch { prefs.setTipIndex(tipIndex + 1) } },
+                    onHide = { scope.launch { prefs.setTipsEnabled(false) } },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
 
             // Active recording panel — morphing container
             AnimatedVisibility(

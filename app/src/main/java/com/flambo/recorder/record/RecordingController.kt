@@ -130,6 +130,7 @@ class RecordingController(
     // System-sound path: AudioPlaybackCapture needs Android 10+ and a grant.
     // The user's quality choice is stored as the label (WAV has no bitrate).
     private fun startSystemCapture(quality: RecordingQuality, noiseReduction: Boolean): Boolean {
+        if (!AudioSource.SYSTEM_ENABLED) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val dir = repository.recordingsDir()
         val file = File(dir, "FLAMBO_SYS_${System.currentTimeMillis()}.wav")

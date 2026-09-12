@@ -28,7 +28,7 @@
 
 | Home | Recording | Playback | Settings |
 |---|---|---|---|
-| ![Home](screenshots/home.png) | ![Recording](screenshots/recording.png) | ![Playback](screenshots/playback.png) | ![Settings](screenshots/settings.png) |
+| ![Home](screenshots/home.jpg) | ![Recording](screenshots/recording.jpg) | ![Playback](screenshots/playback.jpg) | ![Settings](screenshots/settings.jpg) |
 
 ## Get the app
 

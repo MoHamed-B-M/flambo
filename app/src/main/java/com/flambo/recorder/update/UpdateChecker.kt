@@ -36,6 +36,52 @@ data class ReleaseInfo(
     val apkUrl: String? get() = bestApk()?.url
 }
 
+data class WhatsNewItem(val title: String, val body: String)
+
+// Pulls the "## What's in …" bullet list from the latest stable release
+// notes, so the in-app What's New sheet always matches GitHub.
+// Returns null when offline or unparsable — callers fall back to bundled text.
+object ReleaseNotes {
+
+    suspend fun fetchWhatsNew(): List<WhatsNewItem>? = withContext(Dispatchers.IO) {
+        try {
+            val conn = (URL("$API/latest").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 12_000
+                readTimeout = 12_000
+                setRequestProperty("Accept", "application/vnd.github+json")
+            }
+            conn.connect()
+            if (conn.responseCode !in 200..299) return@withContext null
+            parseWhatsNew(JSONObject(conn.inputStream.bufferedReader().readText()).optString("body", ""))
+                .takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun parseWhatsNew(body: String): List<WhatsNewItem> {
+        val items = mutableListOf<WhatsNewItem>()
+        var inSection = false
+        for (raw in body.lines()) {
+            val line = raw.trim()
+            if (line.startsWith("## ")) {
+                inSection = "what's in" in line.lowercase()
+                continue
+            }
+            if (!inSection || !line.startsWith("- ")) continue
+            val text = line.removePrefix("- ").trim()
+            // "Playback: waveform scrubber…" → title + body; plain sentences
+            // stay body-only so nothing reads awkwardly.
+            val split = Regex("^([^:]{2,32}):\\s+(.+)$").find(text)
+            if (split != null) items += WhatsNewItem(split.groupValues[1], split.groupValues[2])
+            else items += WhatsNewItem("", text)
+        }
+        return items
+    }
+
+    private const val API = "https://api.github.com/repos/MoHamed-B-M/flambo/releases"
+}
+
 data class UpdateCheck(
     val channel: String, // beta | stable
     val installedVersion: String,

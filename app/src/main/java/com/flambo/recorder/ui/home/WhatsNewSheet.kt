@@ -26,22 +26,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
+import com.flambo.recorder.update.WhatsNewItem
 
-// Shown once per installed version after an update. Highlights are the
-// recent headline features — intentionally version-agnostic so the card
-// never claims something this build doesn't have.
-private val highlights = listOf(
-    "System-sound capture straight from your apps" to "Music, videos and anything playing — no mic needed.",
-    "Clean audio" to "One-tap hush and leveling, fully offline.",
-    "Offline transcription" to "Downloadable language models, searchable transcripts.",
-    "In-app updates" to "Per-ABI downloads that install themselves and clean up.",
-    "Theme seeds" to "Five Flambo colors plus wallpaper dynamic color."
+// Offline fallback when GitHub is unreachable — intentionally generic so
+// the card never claims something this build doesn't have.
+private val fallbackHighlights = listOf(
+    WhatsNewItem("Record", "One-tap recording with live waveform, pause and resume."),
+    WhatsNewItem("Enhance", "Clean audio hush and leveling, fully offline."),
+    WhatsNewItem("Transcribe", "Downloadable language models, searchable transcripts."),
+    WhatsNewItem("Personalize", "Theme seeds, dynamic color, storage folder choice.")
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun WhatsNewSheet(
     version: String,
+    highlights: List<WhatsNewItem>?,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -78,7 +78,7 @@ fun WhatsNewSheet(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            highlights.forEach { (title, body) ->
+            (highlights?.takeIf { it.isNotEmpty() } ?: fallbackHighlights).forEach { item ->
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
@@ -91,9 +91,11 @@ fun WhatsNewSheet(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(title, style = MaterialTheme.typography.titleSmall)
+                        if (item.title.isNotBlank()) {
+                            Text(item.title, style = MaterialTheme.typography.titleSmall)
+                        }
                         Text(
-                            body,
+                            item.body,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

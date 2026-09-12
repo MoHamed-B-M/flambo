@@ -69,8 +69,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.update.ReleaseNotes
 import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateNotifier
+import com.flambo.recorder.update.WhatsNewItem
 import kotlinx.coroutines.flow.first
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -167,13 +169,19 @@ fun HomeScreen(
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
     val tipIndex by prefs.tipIndexFlow.collectAsState(initial = 0)
 
+    var whatsNewItems by remember { mutableStateOf<List<WhatsNewItem>?>(null) }
+
     // What's New: show once per installed version after an update.
     // First-ever launch just stamps the version (onboarding covers it).
+    // Notes come from the GitHub release; bundled text covers offline.
     LaunchedEffect(Unit) {
         val (version, code) = UpdateChecker.installed(context)
         installedVersion = version
         val lastSeen = prefs.lastSeenVersionCode()
-        if (lastSeen != 0L && code > lastSeen) whatsNewVersion = version
+        if (lastSeen != 0L && code > lastSeen) {
+            whatsNewVersion = version
+            whatsNewItems = ReleaseNotes.fetchWhatsNew()
+        }
         prefs.setLastSeenVersionCode(code)
     }
 
@@ -231,7 +239,14 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { installedVersion?.let { whatsNewVersion = it } }) {
+                    IconButton(onClick = {
+                        installedVersion?.let {
+                            whatsNewVersion = it
+                            if (whatsNewItems == null) {
+                                scope.launch { whatsNewItems = ReleaseNotes.fetchWhatsNew() }
+                            }
+                        }
+                    }) {
                         Icon(Icons.Filled.Info, contentDescription = "What's new")
                     }
                     IconButton(onClick = { viewModel.toggleTrash(!uiState.showTrash) }) {
@@ -410,7 +425,11 @@ fun HomeScreen(
     }
 
     whatsNewVersion?.let { version ->
-        WhatsNewSheet(version = version, onDismiss = { whatsNewVersion = null })
+        WhatsNewSheet(
+            version = version,
+            highlights = whatsNewItems,
+            onDismiss = { whatsNewVersion = null }
+        )
     }
 
     // Rename dialog

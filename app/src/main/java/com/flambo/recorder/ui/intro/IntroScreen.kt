@@ -1,7 +1,10 @@
 package com.flambo.recorder.ui.intro
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,46 +27,56 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.R
-import com.flambo.recorder.data.SoundPlayer
 import kotlinx.coroutines.delay
 
 @Composable
 fun IntroScreen(
     onFinished: () -> Unit,
-    durationMs: Int = 3000
+    durationMs: Int = 1800,
+    interDelayMs: Int = 420
 ) {
-    val context = LocalContext.current
     var started by remember { mutableStateOf(false) }
 
-    // Zoom: 0.6 -> 1.0 over 3s, expressive overshoot style
+    // Fast bouncy zoom: 0.45 -> 1f with medium-bouncy spring (snappy, expressive)
     val scale by animateFloatAsState(
-        targetValue = if (started) 1f else 0.6f,
-        animationSpec = tween(durationMillis = durationMs, easing = FastOutSlowInEasing),
+        targetValue = if (started) 1f else 0.45f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "intro-scale"
     )
-    // Fade: 0 -> 1
+    // Smooth fade: 0 -> 1, slightly faster than the spring settle
     val alpha by animateFloatAsState(
         targetValue = if (started) 1f else 0f,
-        animationSpec = tween(durationMillis = durationMs, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 620, easing = FastOutSlowInEasing),
         label = "intro-alpha"
     )
-    // Slight fade-in for title after icon
+    // Title follows icon with a tiny stagger for polish
     val titleAlpha by animateFloatAsState(
         targetValue = if (started) 1f else 0f,
-        animationSpec = tween(durationMillis = 1800, delayMillis = 400, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 520, delayMillis = 180, easing = LinearOutSlowInEasing),
         label = "intro-title-alpha"
+    )
+    val titleScale by animateFloatAsState(
+        targetValue = if (started) 1f else 0.92f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "intro-title-scale"
     )
 
     LaunchedEffect(Unit) {
-        // Start animation + sound together
+        // Animation starts a frame before any other screen appears — no overlap.
         started = true
-        SoundPlayer.playIntro(context)
         delay(durationMs.toLong())
+        // Breathing gap so intro and onboarding feel like two distinct moments
+        delay(interDelayMs.toLong())
         onFinished()
     }
 
@@ -100,7 +113,9 @@ fun IntroScreen(
                 style = MaterialTheme.typography.displayMedium,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.alpha(titleAlpha)
+                modifier = Modifier
+                    .alpha(titleAlpha)
+                    .scale(titleScale)
             )
             Spacer(Modifier.height(8.dp))
             Text(

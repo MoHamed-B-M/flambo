@@ -3,9 +3,6 @@ package com.flambo.recorder.update
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import com.flambo.recorder.data.SoundPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -141,10 +138,6 @@ object UpdateChecker {
                     cmp > 0 || (cmp == 0 && release.buildNumber > installedBuild)
                 } else {
                     compareVersions(release.version, installedVersion) > 0
-                }
-                if (available) {
-                    // Play pop on the main thread — MediaPlayer needs a Looper.
-                    Handler(Looper.getMainLooper()).post { runCatching { SoundPlayer.playPop(context) } }
                 }
                 UpdateCheck(channel, installedVersion, installedBuild, release, available)
             } catch (_: Exception) {

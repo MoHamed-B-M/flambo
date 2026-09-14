@@ -451,7 +451,11 @@ jobs:
           | **SHA-256** | `${{ steps.meta.outputs.sha }}` |
 
           ## ✨ What's in ${{ needs.build.outputs.version_name }}
-          - What's New sheet now shows the real GitHub release notes (offline fallback included)
+          - **Launcher shortcuts & Key Mapper**: Start / Pause recording from long-press on app icon or hardware key bindings (e.g. volume buttons while screen is off)
+          - **Onboarding blocks until mic granted**: first-launch tour won't dismiss until microphone permission is allowed
+          - **Settings buttons redesigned**: all 'Change' buttons now use filled tonal style with animated shapes
+          - **Universal APK**: alongside per-ABI splits, a universal APK installs on any device
+          - What's New sheet shows real GitHub release notes (offline fallback included)
           - One-tap recording with live waveform, pause/resume and a persistent notification (timer, Pause/Resume, Save)
           - Microphone + system-sound capture (system capture is parked as under-development while projection bugs are fixed)
           - Real-time noise reduction and one-tap Clean audio enhancement (Light/Balanced/Strong, keep or replace)

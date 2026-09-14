@@ -28,9 +28,12 @@ import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.update.WhatsNewItem
 
-// Offline fallback when GitHub is unreachable — intentionally generic so
-// the card never claims something this build doesn't have.
+// Offline fallback when GitHub is unreachable — mirrors the latest release notes.
 private val fallbackHighlights = listOf(
+    WhatsNewItem("Shortcuts", "Start / Pause recording from your launcher icon or hardware keys via Key Mapper."),
+    WhatsNewItem("Onboarding", "First-launch tour now blocks until microphone permission is granted."),
+    WhatsNewItem("Settings buttons", "All 'Change' buttons redesigned with filled tonal style and animated shapes."),
+    WhatsNewItem("Universal APK", "New universal APK alongside per-ABI splits — installs on any device."),
     WhatsNewItem("Record", "One-tap recording with live waveform, pause and resume."),
     WhatsNewItem("Enhance", "Clean audio hush and leveling, fully offline."),
     WhatsNewItem("Transcribe", "Downloadable language models, searchable transcripts."),

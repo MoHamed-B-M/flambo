@@ -676,7 +676,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 ListItem(
-                    headlineContent = { Text("Replay introduction") },
+                    headlineContent = { Text("Replay onboarding") },
                     supportingContent = { Text("Take the quick tour again") },
                     leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {

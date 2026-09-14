@@ -92,6 +92,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit(
 
 @Composable
 fun FlamboNavGraph(
+    micGranted: Boolean = true,
     onRerunOnboarding: () -> Unit = {},
     onRequestSystemCapture: () -> Unit = {},
     onEnableSystemSound: () -> Unit = {},
@@ -138,6 +139,7 @@ fun FlamboNavGraph(
                 quality = quality,
                 audioSource = audioSource,
                 noiseReduction = noiseReduction,
+                micGranted = micGranted,
                 onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
                 onOpenSettings = { navController.navigate(Dest.Settings.route) },
                 onEnableSystemSound = onEnableSystemSound,

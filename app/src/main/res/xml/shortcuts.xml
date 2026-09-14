@@ -1,0 +1,16 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Long-press launcher icon → toggle voice recording. Also the entry
+         point Key Mapper / macro apps can fire via explicit intent. -->
+    <shortcut
+        android:shortcutId="toggle_recording"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_toggle_short"
+        android:shortcutLongLabel="@string/shortcut_toggle_long"
+        android:shortcutDisabledMessage="@string/shortcut_toggle_disabled">
+        <intent
+            android:action="com.flambo.recorder.ACTION_TOGGLE_RECORDING"
+            android:targetPackage="com.flambo.recorder"
+            android:targetClass="com.flambo.recorder.MainActivity" />
+    </shortcut>
+</shortcuts>

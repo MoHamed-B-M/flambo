@@ -71,15 +71,20 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # No setup-android action: ubuntu-latest runners already ship the SDK,
+      # and android-actions/setup-android@v3 is unmaintained — its own startup
+      # runs cmdline-tools/16.0 sdkmanager against the long-removed "tools"
+      # package and fails before our steps even run. Discover sdkmanager
+      # dynamically instead.
       - name: Accept SDK licenses & install platforms
         run: |
-          ls -la $ANDROID_SDK_ROOT/cmdline-tools/ || true
-          find $ANDROID_SDK_ROOT/cmdline-tools -name "sdkmanager" -type f || true
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/*/bin/sdkmanager --licenses || true
-          $ANDROID_SDK_ROOT/cmdline-tools/*/bin/sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0" "platforms;android-36" "build-tools;36.0.0" "platforms;android-34" "build-tools;34.0.0"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT ANDROID_HOME=$ANDROID_HOME"
+          ls -la "$ANDROID_SDK_ROOT/cmdline-tools/" || true
+          SDKMANAGER=$(find "$ANDROID_SDK_ROOT/cmdline-tools" -name sdkmanager -type f | head -n1)
+          echo "sdkmanager=$SDKMANAGER"
+          if [[ -z "$SDKMANAGER" ]]; then echo "No sdkmanager found!"; exit 1; fi
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-37" "build-tools;37.0.0" "platforms;android-36" "build-tools;36.0.0" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Cache Gradle wrapper & dependencies
         uses: actions/cache@v4

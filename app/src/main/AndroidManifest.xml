@@ -34,10 +34,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Fired by the launcher shortcut and by automation apps
+            <!-- Fired by launcher shortcuts and by automation apps
                  (e.g. Key Mapper hardware-key bindings). -->
             <intent-filter>
-                <action android:name="com.flambo.recorder.ACTION_TOGGLE_RECORDING" />
+                <action android:name="com.flambo.recorder.ACTION_START_RECORDING" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.flambo.recorder.ACTION_PAUSE_RECORDING" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <meta-data

@@ -15,7 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
-import com.flambo.recorder.record.ToggleShortcut
+import com.flambo.recorder.record.RecordingShortcut
 import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -166,12 +166,14 @@ class MainActivity : ComponentActivity() {
         // button with a snackbar to grant mic access when they tap it.
         // First-launch users meet permissions inside the onboarding tour.
 
-        // Keep the dynamic shortcut label in sync no matter where the
+        // Keep the dynamic shortcut labels in sync no matter where the
         // recording was toggled (in-app UI, launcher shortcut, Key Mapper).
         lifecycleScope.launch {
-            app.recorder.state.collect { ToggleShortcut.refresh(this@MainActivity, it.isRecording) }
+            app.recorder.state.collect {
+                RecordingShortcut.refresh(this@MainActivity, it.isRecording, it.isPaused)
+            }
         }
-        handleToggleIntent(intent)
+        handleShortcutIntent(intent)
 
         setContent {
             val dynamicColor by app.prefs.dynamicColorFlow.collectAsState(initial = true)
@@ -208,7 +210,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             else -> FlamboNavGraph(
-                                micGranted = micGrantedState,
                                 onRerunOnboarding = { rerunIntro = true },
                                 onRequestSystemCapture = { requestSystemCapture() },
                                 onEnableSystemSound = { requestSystemCaptureAndRecord() },
@@ -240,30 +241,37 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleToggleIntent(intent)
+        handleShortcutIntent(intent)
     }
 
-    // Launcher shortcut + Key Mapper entry: toggle recording without
-    // requiring the user to find the record button. Stop is immediate;
-    // start reuses the same permission / projection paths as the UI.
-    private fun handleToggleIntent(intent: Intent?) {
-        if (intent?.action != ToggleShortcut.ACTION_TOGGLE_RECORDING) return
-        // Consume so rotation / process recreation doesn't re-toggle.
+    // Launcher shortcut + Key Mapper entry point.
+    // Two intents: START starts a new recording, PAUSE toggles pause/resume.
+    // Both work from screen-off via Key Mapper hardware-key bindings.
+    private fun handleShortcutIntent(intent: Intent?) {
+        val action = intent?.action ?: return
+        if (action != RecordingShortcut.ACTION_START_RECORDING &&
+            action != RecordingShortcut.ACTION_PAUSE_RECORDING) return
+        // Consume so rotation / process recreation doesn't re-fire.
         intent.action = null
         setIntent(intent)
-        ToggleShortcut.reportUsed(this)
-        // Screen-off key binding: start/stop in the background and stay out
-        // of the way instead of pulling the UI over the lock screen.
+        RecordingShortcut.reportUsed(this,
+            if (action == RecordingShortcut.ACTION_START_RECORDING) RecordingShortcut.ID_START
+            else RecordingShortcut.ID_PAUSE
+        )
         val interactive = isScreenInteractive()
-        lifecycleScope.launch { toggleRecordingFromExternal() }
+        when (action) {
+            RecordingShortcut.ACTION_START_RECORDING -> lifecycleScope.launch { startFromExternal() }
+            RecordingShortcut.ACTION_PAUSE_RECORDING -> lifecycleScope.launch { pauseFromExternal() }
+        }
         if (!interactive) moveTaskToBack(true)
     }
 
-    private suspend fun toggleRecordingFromExternal() {
+    // Start recording from shortcut/Key Mapper. If already recording, stop & save.
+    private suspend fun startFromExternal() {
         val recorder = app.recorder
         if (recorder.state.value.isRecording) {
             recorder.stop()
-            ToggleShortcut.refresh(this, false)
+            RecordingShortcut.refresh(this, false, false)
             return
         }
         val micGranted = ContextCompat.checkSelfPermission(
@@ -273,24 +281,29 @@ class MainActivity : ComponentActivity() {
         val q = app.prefs.qualityFlow.first()
         val nr = app.prefs.noiseReductionFlow.first()
         var source = AudioSource.fromPref(app.prefs.audioSourceFlow.first())
-        // System capture is parked until its projection bugs are fixed —
-        // fall back to mic so a hardware key always does something useful.
+        // System capture is parked — fall back to mic so a hardware key
+        // always does something useful.
         if (source == AudioSource.SYSTEM && !AudioSource.SYSTEM_ENABLED) {
             source = AudioSource.MIC
         }
         if (!micGranted) {
-            // Auto-starts on grant via micLauncher, same as the UI path.
             requestMicAndRecord(source)
             return
         }
         if (source == AudioSource.SYSTEM) {
-            // Reuses the live grant if there is one, otherwise fires the
-            // system consent dialog and auto-starts on approval.
             requestSystemCaptureAndRecord()
             return
         }
         recorder.start(q, AudioSource.MIC, nr)
-        ToggleShortcut.refresh(this, true)
+        RecordingShortcut.refresh(this, true, false)
+    }
+
+    // Pause / resume from shortcut/Key Mapper.
+    private suspend fun pauseFromExternal() {
+        val recorder = app.recorder
+        val s = recorder.state.value
+        if (!s.isRecording) return
+        if (s.isPaused) recorder.resume() else recorder.pause()
     }
 
     private fun isScreenInteractive(): Boolean = try {

@@ -35,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.flambo.recorder.ui.intro.IntroScreen
 import com.flambo.recorder.ui.navigation.FlamboNavGraph
 import com.flambo.recorder.ui.onboarding.OnboardingScreen
 import com.flambo.recorder.ui.theme.FlamboTheme
@@ -163,11 +162,9 @@ class MainActivity : ComponentActivity() {
         app = application as FlamboApp
         refreshPermissionStates()
 
-        // Returning users get the classic upfront prompt; first-launch users
-        // meet permissions inside onboarding instead of a cold system dialog.
-        lifecycleScope.launch {
-            if (app.prefs.onboardingDoneFlow.first()) checkPermissions()
-        }
+        // No upfront permission prompt — returning users see a disabled record
+        // button with a snackbar to grant mic access when they tap it.
+        // First-launch users meet permissions inside the onboarding tour.
 
         // Keep the dynamic shortcut label in sync no matter where the
         // recording was toggled (in-app UI, launcher shortcut, Key Mapper).
@@ -189,13 +186,11 @@ class MainActivity : ComponentActivity() {
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
             var rerunIntro by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunIntro
-            var showSplash by remember { mutableStateOf(true) }
 
             FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when {
-                            showSplash -> IntroScreen(onFinished = { showSplash = false })
                             onboardingDone == null -> Box(Modifier.fillMaxSize()) // prefs still loading
                             showOnboarding -> OnboardingScreen(
                                 onFinish = {
@@ -213,6 +208,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             else -> FlamboNavGraph(
+                                micGranted = micGrantedState,
                                 onRerunOnboarding = { rerunIntro = true },
                                 onRequestSystemCapture = { requestSystemCapture() },
                                 onEnableSystemSound = { requestSystemCaptureAndRecord() },

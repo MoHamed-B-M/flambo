@@ -66,6 +66,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import com.flambo.recorder.data.PreferencesManager
@@ -101,6 +102,7 @@ fun HomeScreen(
     quality: RecordingQuality = RecordingQuality.HIGH,
     audioSource: String = "mic",
     noiseReduction: Boolean = true,
+    micGranted: Boolean = true,
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     onEnableSystemSound: () -> Unit = {},
@@ -269,16 +271,23 @@ fun HomeScreen(
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {
-                // Expressive record button — shape morphs on press, bouncy scale on appear
+                // Expressive record button — shape morphs on press, bouncy scale on appear.
+                // Visually dimmed when mic permission is not yet granted; tapping
+                // shows a snackbar with "Allow" to request the permission.
                 Button(
                     onClick = { startRecording() },
+                    enabled = true,
                     shapes = ButtonDefaults.shapes(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = if (micGranted) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = if (micGranted) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight),
-                    modifier = Modifier.heightIn(min = ButtonDefaults.LargeContainerHeight)
+                    modifier = Modifier
+                        .heightIn(min = ButtonDefaults.LargeContainerHeight)
+                        .graphicsLayer { alpha = if (micGranted) 1f else 0.55f }
                 ) {
                     Icon(
                         Icons.Filled.Mic,
@@ -286,7 +295,10 @@ fun HomeScreen(
                         modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
                     )
                     Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
-                    Text("Record", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+                    Text(
+                        if (micGranted) "Record" else "Allow mic to record",
+                        style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight)
+                    )
                 }
             }
         },

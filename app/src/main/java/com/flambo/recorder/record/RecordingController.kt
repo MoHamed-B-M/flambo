@@ -9,8 +9,10 @@ import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.data.RecordingRepository
+import com.flambo.recorder.data.SafFolderHelper
 import com.flambo.recorder.domain.RecordingQuality
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -227,8 +229,9 @@ class RecordingController(
             if (file != null && file.exists()) {
                 scope.launch(Dispatchers.IO) {
                     val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
+                    val title = generateTitle()
                     val rec = Recording(
-                        title = generateTitle(),
+                        title = title,
                         filePath = file.absolutePath,
                         durationMs = res.durationMs,
                         createdAt = System.currentTimeMillis(),
@@ -236,6 +239,8 @@ class RecordingController(
                         quality = s.quality.name
                     )
                     val id = repository.insert(rec)
+                    // Also copy to custom SAF folder if chosen
+                    copyToCustomFolderIfNeeded(file)
                     withContext(Dispatchers.Main) {
                         onSaved?.invoke(rec.copy(id = id))
                     }
@@ -263,8 +268,9 @@ class RecordingController(
         if (file != null && file.exists() && file.length() > 0) {
             scope.launch(Dispatchers.IO) {
                 val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
+                val title = generateTitle()
                 val rec = Recording(
-                    title = generateTitle(),
+                    title = title,
                     filePath = file.absolutePath,
                     durationMs = elapsed,
                     createdAt = System.currentTimeMillis(),
@@ -272,6 +278,7 @@ class RecordingController(
                     quality = s.quality.name
                 )
                 val id = repository.insert(rec)
+                copyToCustomFolderIfNeeded(file)
                 withContext(Dispatchers.Main) {
                     onSaved?.invoke(rec.copy(id = id))
                 }
@@ -348,8 +355,40 @@ class RecordingController(
         } catch (_: Exception) {}
     }
 
-    private fun generateTitle(): String {
-        val count = (System.currentTimeMillis() % 1000).toInt()
-        return "Recording ${count.toString().padStart(3, '0')}"
+    private suspend fun generateTitle(): String {
+        return try {
+            val app = appContext as? FlamboApp
+            val prefs = app?.prefs
+            if (prefs != null) {
+                val prefix = prefs.recordingPrefix().ifBlank { "Recording" }
+                val n = prefs.nextRecordingNumberAndIncrement()
+                "$prefix $n"
+            } else {
+                val count = (System.currentTimeMillis() % 1000).toInt()
+                "Recording ${count.toString().padStart(3, '0')}"
+            }
+        } catch (_: Exception) {
+            val count = (System.currentTimeMillis() % 1000).toInt()
+            "Recording ${count.toString().padStart(3, '0')}"
+        }
+    }
+
+    private suspend fun copyToCustomFolderIfNeeded(file: File) {
+        try {
+            val app = appContext as? FlamboApp ?: return
+            // Prefer live DataStore value, fall back to cached volatile
+            val uri = try { app.prefs.customFolderUri() } catch (_: Exception) { app.customFolderUri }
+            if (uri.isBlank()) return
+            if (!SafFolderHelper.isTreeUriValid(appContext, uri)) return
+            val mime = when (file.extension.lowercase()) {
+                "wav" -> "audio/wav"
+                "m4a" -> "audio/mp4"
+                else -> "audio/*"
+            }
+            val docUri = SafFolderHelper.createFile(appContext, uri, file.name, mime) ?: return
+            appContext.contentResolver.openOutputStream(docUri)?.use { out ->
+                file.inputStream().use { inp -> inp.copyTo(out) }
+            }
+        } catch (_: Exception) { }
     }
 }

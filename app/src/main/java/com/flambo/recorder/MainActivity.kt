@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.flambo.recorder.ui.intro.IntroScreen
 import com.flambo.recorder.ui.navigation.FlamboNavGraph
 import com.flambo.recorder.ui.onboarding.OnboardingScreen
 import com.flambo.recorder.ui.theme.FlamboTheme
@@ -178,11 +179,13 @@ class MainActivity : ComponentActivity() {
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
             var rerunIntro by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunIntro
+            var showSplash by remember { mutableStateOf(true) }
 
             FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when {
+                            showSplash -> IntroScreen(onFinished = { showSplash = false })
                             onboardingDone == null -> Box(Modifier.fillMaxSize()) // prefs still loading
                             showOnboarding -> OnboardingScreen(
                                 onFinish = {

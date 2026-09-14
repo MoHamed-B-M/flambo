@@ -40,7 +40,8 @@
 
 ## Get the app
 
-<a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Get_on_Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
+<a href="https://orionstore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Orion_Store-FF6D00?style=for-the-badge&logo=android&logoColor=white" alt="Orion Store" /></a>
+<a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
 
 Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.0.1-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
 

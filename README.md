@@ -40,11 +40,14 @@
 
 ## Get the app
 
+<a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Get_on_Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
+
 Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.0.1-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
 
 | File suffix | Architecture | Most devices |
 |---|---|---|
-| `*-arm64.apk` | arm64-v8a | Yes, most phones from ~2017 on |
+| `*-universal.apk` | All ABIs | **Recommended** — works on any Android device |
+| `*-arm64.apk` | arm64-v8a | Most phones from ~2017 on |
 | `*-armv7.apk` | armeabi-v7a | Older 32-bit devices |
 
 > [!NOTE]

@@ -211,8 +211,8 @@ fun SettingsScreen(
                             FilledTonalButton(
                                 onClick = { showQualityDialog = true },
                                 shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -249,8 +249,8 @@ fun SettingsScreen(
                             FilledTonalButton(
                                 onClick = { showAudioSourceDialog = true },
                                 shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -273,8 +273,8 @@ fun SettingsScreen(
                             FilledTonalButton(
                                 onClick = { showStorageDialog = true },
                                 shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -295,8 +295,8 @@ fun SettingsScreen(
                             FilledTonalButton(
                                 onClick = { namingDraft = recordingPrefix; showNamingDialog = true },
                                 shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -372,8 +372,8 @@ fun SettingsScreen(
                             FilledTonalButton(
                                 onClick = { showEnhanceStrengthDialog = true },
                                 shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -425,8 +425,8 @@ fun SettingsScreen(
                             FilledTonalButton(
                                 onClick = { showThemeDialog = true },
                                 shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -461,8 +461,8 @@ fun SettingsScreen(
                             FilledTonalButton(
                                 onClick = { showSttLanguageDialog = true },
                                 shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()

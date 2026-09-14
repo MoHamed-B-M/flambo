@@ -21,6 +21,8 @@ class FlamboApp : Application() {
     // Storage volume chosen in Settings. Volatile + preloaded at startup so
     // the sync recordingsDir() path never blocks on DataStore.
     @Volatile var storageVolumeId: String = StorageVolumes.ID_DEFAULT
+    @Volatile var recordingPrefix: String = "Recording"
+    @Volatile var customFolderUri: String = ""
 
     fun recordingsDir(): File = StorageVolumes.resolveDir(this, storageVolumeId)
 
@@ -40,6 +42,8 @@ class FlamboApp : Application() {
         super.onCreate()
         appScope.launch {
             storageVolumeId = runCatching { prefs.recordingsVolume() }.getOrDefault(StorageVolumes.ID_DEFAULT)
+            recordingPrefix = runCatching { prefs.recordingPrefix() }.getOrDefault("Recording")
+            customFolderUri = runCatching { prefs.customFolderUri() }.getOrDefault("")
         }
         // The installer holds the APK open while it works, so last run's file
         // can only be deleted now that we're back.

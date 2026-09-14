@@ -76,6 +76,12 @@ jobs:
       # runs cmdline-tools/16.0 sdkmanager against the long-removed "tools"
       # package and fails before our steps even run. Discover sdkmanager
       # dynamically instead.
+      # Note: compileSdk 37 is required by material3 alpha26 / compose alpha01
+      # (AAR metadata check), but platforms;android-37 is NOT on the stable
+      # sdkmanager channel — so stable packages install strictly, while the
+      # 37 platform comes from the canary channel or the preinstalled runner
+      # image (best-effort, never fails the job here; the Gradle build will
+      # say clearly if the platform is truly absent).
       - name: Accept SDK licenses & install platforms
         run: |
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT ANDROID_HOME=$ANDROID_HOME"
@@ -85,6 +91,8 @@ jobs:
           if [[ -z "$SDKMANAGER" ]]; then echo "No sdkmanager found!"; exit 1; fi
           yes | "$SDKMANAGER" --licenses || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "platforms;android-34" "build-tools;34.0.0"
+          "$SDKMANAGER" --channel=3 "platforms;android-37" "build-tools;37.0.0" || echo "android-37 not on canary channel — falling back to preinstalled platform (if any)"
+          ls "$ANDROID_SDK_ROOT/platforms/" || true
 
       - name: Cache Gradle wrapper & dependencies
         uses: actions/cache@v4

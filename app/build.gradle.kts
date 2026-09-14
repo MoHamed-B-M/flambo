@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.flambo.recorder"
-    compileSdk = 36
+    compileSdk = 37
 
     signingConfigs {
         create("release") {

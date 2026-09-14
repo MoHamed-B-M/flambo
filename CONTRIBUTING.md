@@ -17,7 +17,7 @@ git checkout beta          # active development lives here
 
 Per-ABI APKs land in `app/build/outputs/apk/release/` (`arm64` + `armv7`, no universal). A debug-keystore fallback means the command works with **no secrets** configured.
 
-Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compileSdk 37 / targetSdk 36 / minSdk 26`.
+Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compileSdk 36 / targetSdk 36 / minSdk 26`.
 
 ---
 

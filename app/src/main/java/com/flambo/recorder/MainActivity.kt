@@ -2,10 +2,12 @@ package com.flambo.recorder
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
+import com.flambo.recorder.record.ToggleShortcut
 import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -166,6 +169,13 @@ class MainActivity : ComponentActivity() {
             if (app.prefs.onboardingDoneFlow.first()) checkPermissions()
         }
 
+        // Keep the dynamic shortcut label in sync no matter where the
+        // recording was toggled (in-app UI, launcher shortcut, Key Mapper).
+        lifecycleScope.launch {
+            app.recorder.state.collect { ToggleShortcut.refresh(this@MainActivity, it.isRecording) }
+        }
+        handleToggleIntent(intent)
+
         setContent {
             val dynamicColor by app.prefs.dynamicColorFlow.collectAsState(initial = true)
             val themeSeed by app.prefs.themeSeedFlow.collectAsState(initial = "ember")
@@ -229,6 +239,68 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleToggleIntent(intent)
+    }
+
+    // Launcher shortcut + Key Mapper entry: toggle recording without
+    // requiring the user to find the record button. Stop is immediate;
+    // start reuses the same permission / projection paths as the UI.
+    private fun handleToggleIntent(intent: Intent?) {
+        if (intent?.action != ToggleShortcut.ACTION_TOGGLE_RECORDING) return
+        // Consume so rotation / process recreation doesn't re-toggle.
+        intent.action = null
+        setIntent(intent)
+        ToggleShortcut.reportUsed(this)
+        // Screen-off key binding: start/stop in the background and stay out
+        // of the way instead of pulling the UI over the lock screen.
+        val interactive = isScreenInteractive()
+        lifecycleScope.launch { toggleRecordingFromExternal() }
+        if (!interactive) moveTaskToBack(true)
+    }
+
+    private suspend fun toggleRecordingFromExternal() {
+        val recorder = app.recorder
+        if (recorder.state.value.isRecording) {
+            recorder.stop()
+            ToggleShortcut.refresh(this, false)
+            return
+        }
+        val micGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        micGrantedState = micGranted
+        val q = app.prefs.qualityFlow.first()
+        val nr = app.prefs.noiseReductionFlow.first()
+        var source = AudioSource.fromPref(app.prefs.audioSourceFlow.first())
+        // System capture is parked until its projection bugs are fixed —
+        // fall back to mic so a hardware key always does something useful.
+        if (source == AudioSource.SYSTEM && !AudioSource.SYSTEM_ENABLED) {
+            source = AudioSource.MIC
+        }
+        if (!micGranted) {
+            // Auto-starts on grant via micLauncher, same as the UI path.
+            requestMicAndRecord(source)
+            return
+        }
+        if (source == AudioSource.SYSTEM) {
+            // Reuses the live grant if there is one, otherwise fires the
+            // system consent dialog and auto-starts on approval.
+            requestSystemCaptureAndRecord()
+            return
+        }
+        recorder.start(q, AudioSource.MIC, nr)
+        ToggleShortcut.refresh(this, true)
+    }
+
+    private fun isScreenInteractive(): Boolean = try {
+        (getSystemService(POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
+    } catch (_: Exception) {
+        true
     }
 
     private fun refreshPermissionStates() {

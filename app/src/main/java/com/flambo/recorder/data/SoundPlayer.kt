@@ -39,7 +39,7 @@ object SoundPlayer {
                     true
                 }
                 start()
-            } ?: run { onDone?.invoke() }
+            } ?: run { onDone?.invoke(); null }
         } catch (_: Exception) {
             onDone?.invoke()
         }

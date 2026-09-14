@@ -208,9 +208,11 @@ fun SettingsScreen(
                         supportingContent = { Text("${quality.label} • ${quality.description}") },
                         leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showQualityDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -244,9 +246,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showAudioSourceDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -266,9 +270,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showStorageDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -286,9 +292,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { namingDraft = recordingPrefix; showNamingDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -361,9 +369,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showEnhanceStrengthDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -412,9 +422,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showThemeDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -446,9 +458,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showSttLanguageDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.SmallContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.SmallContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()

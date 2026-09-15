@@ -169,3 +169,13 @@ Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) �
 <p align="center">
   <sub>🍎 Fun: play <a href="https://github.com/GuillaumeMCK/BadApple-On-Github-Activity-Graph">Bad Apple on any GitHub activity graph</a> — save their bookmarklet, open a contribution graph, click it.</sub>
 </p>
+
+## ⭐ Star History
+
+<a href="https://www.star-history.com/?repos=mohamed-b-m%2Fflambo&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
+ </picture>
+</a>

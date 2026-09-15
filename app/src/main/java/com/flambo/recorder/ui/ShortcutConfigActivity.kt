@@ -9,20 +9,20 @@ import com.flambo.recorder.record.RecordingReceiver
 /**
  * Lets automation apps (Key Mapper, Tasker) pick Flambo from their
  * "launch app shortcut" menu instead of hand-typing intent strings.
- * Returns a shortcut that broadcasts ACTION_TOGGLE to RecordingReceiver.
- * No UI — answers and finishes immediately.
+ * Returns a shortcut that opens the transparent ShortcutHandlerActivity
+ * (runners execute shortcuts via startActivity, which a receiver target
+ * cannot survive). No UI — answers and finishes immediately.
  */
 class ShortcutConfigActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (intent?.action == Intent.ACTION_CREATE_SHORTCUT) {
-            // Package-scoped implicit broadcast: explicit enough for
-            // background delivery, with no hard-coded class for hosts
-            // (Key Mapper, Tasker) to choke on when re-firing it.
-            val shortcut = Intent(RecordingReceiver.ACTION_TOGGLE).apply {
-                setPackage(packageName)
-                addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+            // Activity target: mapper shortcut runners execute shortcuts via
+            // startActivity(), which a receiver target cannot survive.
+            val shortcut = Intent(this, ShortcutHandlerActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
             val result = Intent()
                 .putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcut)

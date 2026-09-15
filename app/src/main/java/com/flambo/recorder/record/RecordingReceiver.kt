@@ -1,14 +1,10 @@
 package com.flambo.recorder.record
 
-import android.Manifest
 import android.app.ForegroundServiceStartNotAllowedException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
 import com.flambo.recorder.FlamboApp
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -44,11 +40,8 @@ class RecordingReceiver : BroadcastReceiver() {
             try {
                 when (action) {
                     ACTION_STOP -> app.recorder.stop()
-                    ACTION_START -> if (!app.recorder.state.value.isRecording) startNow(app)
-                    ACTION_TOGGLE -> {
-                        if (app.recorder.state.value.isRecording) app.recorder.stop()
-                        else startNow(app)
-                    }
+                    ACTION_START -> app.recorder.startHeadless()
+                    ACTION_TOGGLE -> app.recorder.toggleHeadless()
                 }
                 val s = app.recorder.state.value
                 RecordingShortcut.refresh(app, s.isRecording, s.isPaused)
@@ -62,18 +55,5 @@ class RecordingReceiver : BroadcastReceiver() {
                 pending.finish()
             }
         }
-    }
-
-    private suspend fun startNow(app: FlamboApp) {
-        if (ContextCompat.checkSelfPermission(
-                app, Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) return
-        val q = app.prefs.qualityFlow.first()
-        val nr = app.prefs.noiseReductionFlow.first()
-        var source = AudioSource.fromPref(app.prefs.audioSourceFlow.first())
-        // System capture needs its consent UI — fall back to mic headlessly.
-        if (source == AudioSource.SYSTEM) source = AudioSource.MIC
-        runCatching { app.recorder.start(q, source, nr) }
     }
 }

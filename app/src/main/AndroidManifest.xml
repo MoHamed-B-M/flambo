@@ -64,6 +64,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Transparent trampoline for the shortcut above: mapper runners
+             execute shortcuts via startActivity(), which a receiver target
+             cannot survive — this toggles headlessly and finishes. -->
+        <activity
+            android:name=".ui.ShortcutHandlerActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <service
             android:name=".record.RecordingService"
             android:exported="false"

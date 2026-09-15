@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -166,6 +167,36 @@ class RecordingController(
         }
         startSampling()
         return true
+    }
+
+    /**
+     * Headless start for automation entry points (broadcast receiver,
+     * shortcut trampoline activity). Needs RECORD_AUDIO already granted —
+     * there is no UI to prompt from — and always uses mic (system capture
+     * needs its consent dialog, so it falls back). Returns false when
+     * nothing happened.
+     */
+    suspend fun startHeadless(): Boolean {
+        if (_state.value.isRecording) return false
+        if (!hasRecordAudioPermission()) return false
+        val app = appContext as? FlamboApp ?: return false
+        val q = app.prefs.qualityFlow.first()
+        val nr = app.prefs.noiseReductionFlow.first()
+        var source = AudioSource.fromPref(app.prefs.audioSourceFlow.first())
+        if (source == AudioSource.SYSTEM) source = AudioSource.MIC
+        return start(q, source, nr)
+    }
+
+    /**
+     * Headless toggle for automation entry points: stops (saving) when
+     * recording, otherwise [startHeadless].
+     */
+    suspend fun toggleHeadless(): Boolean {
+        if (_state.value.isRecording) {
+            stop()
+            return true
+        }
+        return startHeadless()
     }
 
     fun pause() {

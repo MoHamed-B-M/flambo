@@ -1,5 +1,6 @@
 package com.flambo.recorder.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -23,10 +24,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
@@ -69,6 +76,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.update.ReleaseNotes
 import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateNotifier
@@ -87,6 +95,7 @@ import com.flambo.recorder.ui.components.MiniPlayer
 import com.flambo.recorder.ui.components.TipCard
 import kotlinx.coroutines.launch
 import com.flambo.recorder.ui.components.RecordingCard
+import com.flambo.recorder.ui.components.RecordingGridTile
 import com.flambo.recorder.ui.components.WaveformVisualizer
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
@@ -101,6 +110,7 @@ fun HomeScreen(
     quality: RecordingQuality = RecordingQuality.HIGH,
     audioSource: String = "mic",
     noiseReduction: Boolean = true,
+    homeLayout: String = "list",
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     onEnableSystemSound: () -> Unit = {},
@@ -165,6 +175,15 @@ fun HomeScreen(
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
     var showEmptyTrashConfirm by remember { mutableStateOf(false) }
+    // Multi-select (long-press): bulk delete / move / group.
+    var selection by remember { mutableStateOf(setOf<Long>()) }
+    val selectionMode = selection.isNotEmpty()
+    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
+    var showGroupDialog by remember { mutableStateOf(false) }
+    var groupText by remember { mutableStateOf("") }
+
+    BackHandler(enabled = selectionMode) { selection = emptySet() }
     var whatsNewVersion by remember { mutableStateOf<String?>(null) }
     var installedVersion by remember { mutableStateOf<String?>(null) }
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
@@ -230,31 +249,60 @@ fun HomeScreen(
         topBar = {
             LargeTopAppBar(
                 title = {
-                    Column {
-                        Text("Flambo", style = MaterialTheme.typography.displaySmall)
-                        Text(
-                            "${uiState.recordings.size} recordings • tap to play, hold to record",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (selectionMode) {
+                        Column {
+                            Text("${selection.size} selected", style = MaterialTheme.typography.displaySmall)
+                            Text(
+                                "tap cards to toggle",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Column {
+                            Text("Flambo", style = MaterialTheme.typography.displaySmall)
+                            Text(
+                                "${uiState.recordings.size} recordings • tap to play, hold to record",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        installedVersion?.let {
-                            whatsNewVersion = it
-                            if (whatsNewItems == null) {
-                                scope.launch { whatsNewItems = ReleaseNotes.fetchWhatsNew() }
-                            }
+                    if (selectionMode) {
+                        IconButton(onClick = { groupText = ""; showGroupDialog = true }) {
+                            Icon(Icons.Filled.Group, contentDescription = "Group")
                         }
-                    }) {
-                        Icon(Icons.Filled.Info, contentDescription = "What's new")
-                    }
-                    IconButton(onClick = { viewModel.toggleTrash(!uiState.showTrash) }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Trash")
-                    }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        IconButton(onClick = { showMoveDialog = true }) {
+                            Icon(Icons.Filled.DriveFileMove, contentDescription = "Move")
+                        }
+                        IconButton(onClick = { showBulkDeleteConfirm = true }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                        }
+                        IconButton(onClick = { selection = emptySet() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Clear selection")
+                        }
+                    } else {
+                        IconButton(onClick = {
+                            installedVersion?.let {
+                                whatsNewVersion = it
+                                if (whatsNewItems == null) {
+                                    scope.launch { whatsNewItems = ReleaseNotes.fetchWhatsNew() }
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Filled.Info, contentDescription = "What's new")
+                        }
+                        IconButton(onClick = {
+                            selection = emptySet()
+                            viewModel.toggleTrash(!uiState.showTrash)
+                        }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Trash")
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -266,7 +314,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !recorderState.isRecording,
+                visible = !recorderState.isRecording && !selectionMode,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {
@@ -407,9 +455,34 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // Main list
+                // Main list — list or grid, long-press to multi-select
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
                     EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())
+                } else if (homeLayout == "grid") {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(uiState.recordings, key = { it.id }) { rec ->
+                            RecordingGridTile(
+                                recording = rec,
+                                isPlaying = playback.isPlayingPath(rec.filePath),
+                                selected = rec.id in selection,
+                                onClick = {
+                                    if (selectionMode) {
+                                        selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                    } else {
+                                        onOpenDetail(rec.id)
+                                    }
+                                },
+                                onLongClick = { selection = selection + rec.id },
+                                onPlay = { playback.play(rec.filePath) }
+                            )
+                        }
+                    }
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
@@ -420,14 +493,22 @@ fun HomeScreen(
                             RecordingCard(
                                 recording = rec,
                                 isPlaying = playback.isPlayingPath(rec.filePath),
-                                onClick = { onOpenDetail(rec.id) },
+                                onClick = {
+                                    if (selectionMode) {
+                                        selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                    } else {
+                                        onOpenDetail(rec.id)
+                                    }
+                                },
                                 onPlay = { playback.play(rec.filePath) },
                                 onFavorite = { viewModel.toggleFavorite(rec.id) },
                                 onDelete = { viewModel.softDelete(rec) },
                                 onRename = {
                                     showRenameDialog = rec
                                     renameText = rec.title
-                                }
+                                },
+                                selected = rec.id in selection,
+                                onLongClick = { selection = selection + rec.id }
                             )
                         }
                     }
@@ -462,6 +543,122 @@ fun HomeScreen(
                 }) { Text("Delete all", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { showEmptyTrashConfirm = false }) { Text("Cancel") } },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    // Bulk-delete confirm
+    if (showBulkDeleteConfirm) {
+        val count = selection.size
+        AlertDialog(
+            onDismissRequest = { showBulkDeleteConfirm = false },
+            title = { Text("Move to trash?") },
+            text = {
+                Text("Move $count recording${if (count == 1) "" else "s"} to trash?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.softDeleteAll(selection)
+                    selection = emptySet()
+                    showBulkDeleteConfirm = false
+                }) { Text("Move to trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("Cancel") } },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    // Bulk move — pick a storage volume, files relocate there
+    if (showMoveDialog) {
+        val volumes = remember { StorageVolumes.list(context.applicationContext) }
+        AlertDialog(
+            onDismissRequest = { showMoveDialog = false },
+            title = { Text("Move ${selection.size} to…", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    volumes.forEach { volume ->
+                        FilledTonalButton(
+                            onClick = {
+                                val ids = selection
+                                val label = volume.label
+                                showMoveDialog = false
+                                selection = emptySet()
+                                viewModel.moveRecordings(ids, volume.dir) { n ->
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (n == ids.size) "Moved $n to $label"
+                                            else "Moved $n of ${ids.size} to $label",
+                                            withDismissAction = true
+                                        )
+                                    }
+                                }
+                            },
+                            shapes = ButtonDefaults.shapes(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "${volume.label} • ${StorageVolumes.formatBytes(volume.freeBytes)}",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showMoveDialog = false },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Cancel") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    // Bulk group — one shared tag for everything selected
+    if (showGroupDialog) {
+        AlertDialog(
+            onDismissRequest = { showGroupDialog = false },
+            title = { Text("Group ${selection.size}", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Adds one shared tag so they stay together in search.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    androidx.compose.material3.OutlinedTextField(
+                        value = groupText,
+                        onValueChange = { groupText = it },
+                        label = { Text("Group name") },
+                        placeholder = { Text("e.g. Interview, Ideas") },
+                        singleLine = true,
+                        shape = ShapeLargeIncreased,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val ids = selection
+                        val tag = groupText
+                        showGroupDialog = false
+                        selection = emptySet()
+                        viewModel.tagRecordings(ids, tag) { n ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "Grouped $n as “$tag”",
+                                    withDismissAction = true
+                                )
+                            }
+                        }
+                    },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGroupDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Cancel") }
+            },
             shape = ShapeLargeIncreased
         )
     }

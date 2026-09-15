@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.ViewList
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -100,6 +102,8 @@ import com.flambo.recorder.update.ApkInstaller
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.update.UpdateCheck
 import com.flambo.recorder.update.UpdateChecker
+import com.flambo.recorder.update.UpdateDownloadState
+import java.io.File
 import com.flambo.recorder.ui.components.SegmentedList
 import com.flambo.recorder.ui.components.segmentedListItemColors
 import com.flambo.recorder.ui.theme.ShapeFull
@@ -115,6 +119,7 @@ fun SettingsScreen(
     prefs: PreferencesManager,
     scope: CoroutineScope,
     transcription: TranscriptionManager,
+    updateDownload: UpdateDownloadState = UpdateDownloadState(),
     onBack: () -> Unit,
     onRerunOnboarding: () -> Unit = {},
     onRequestSystemCapture: () -> Unit = {}
@@ -135,13 +140,13 @@ fun SettingsScreen(
     val updateChannel by prefs.updateChannelFlow.collectAsState(initial = UpdateChecker.CHANNEL_BETA)
     val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
     val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
+    val homeLayout by prefs.homeLayoutFlow.collectAsState(initial = "list")
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 
     var checkingUpdate by remember { mutableStateOf(false) }
     var updateResult by remember { mutableStateOf<UpdateCheck?>(null) }
-    var downloadProgress by remember { mutableStateOf<Float?>(null) }
     var downloadError by remember { mutableStateOf<String?>(null) }
     var needsUnknownSources by remember { mutableStateOf(false) }
     val autoUpdateCheck by prefs.autoUpdateCheckFlow.collectAsState(initial = false)
@@ -149,6 +154,21 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         val (version, code) = UpdateChecker.installed(context.applicationContext)
         installedLabel = "v$version • build ${(code - 1).coerceAtLeast(0)}"
+    }
+    // A finished download survives closing Settings (holder lives in the
+    // nav graph) and even process death (file name in DataStore) — reopening
+    // shows Install instead of starting over.
+    LaunchedEffect(Unit) {
+        if (updateDownload.downloadedFile == null && updateDownload.progress == null) {
+            val pending = runCatching { prefs.pendingApkDelete() }.getOrNull()
+            if (!pending.isNullOrBlank()) {
+                val f = File(ApkInstaller.updatesDir(context.applicationContext), pending)
+                if (f.exists()) {
+                    updateDownload.downloadedFile = f
+                    updateDownload.downloadedAssetName = f.name
+                }
+            }
+        }
     }
 
     var showQualityDialog by remember { mutableStateOf(false) }
@@ -158,6 +178,7 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSttLanguageDialog by remember { mutableStateOf(false) }
     var showVoskModelsDialog by remember { mutableStateOf(false) }
+    var showLayoutDialog by remember { mutableStateOf(false) }
     var modelsTick by remember { mutableStateOf(0) }
     var showNamingDialog by remember { mutableStateOf(false) }
     var namingDraft by remember { mutableStateOf(recordingPrefix) }
@@ -432,6 +453,28 @@ fun SettingsScreen(
                         colors = segmentedListItemColors()
                     )
                 }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Library layout") },
+                        supportingContent = { Text(if (homeLayout == "grid") "Grid • compact tap-to-open cards" else "List • full rows with actions") },
+                        leadingContent = {
+                            Icon(
+                                if (homeLayout == "grid") Icons.Filled.GridView else Icons.Filled.ViewList,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingContent = {
+                            FilledTonalButton(
+                                onClick = { showLayoutDialog = true },
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -520,7 +563,9 @@ fun SettingsScreen(
                                 onCheckedChange = {
                                     scope.launch { prefs.setUpdateChannel(value) }
                                     updateResult = null
-                                    downloadProgress = null
+                                    updateDownload.downloadedFile?.let { runCatching { it.delete() } }
+                                    updateDownload.clear()
+                                    scope.launch { prefs.clearPendingApkDelete() }
                                     downloadError = null
                                     needsUnknownSources = false
                                 },
@@ -583,13 +628,16 @@ fun SettingsScreen(
                                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                                         )
                                         val asset = result.release.bestApk()
-                                        if (downloadProgress != null) {
+                                        val downloading = updateDownload.progress != null
+                                        // Saved file only counts for this exact release.
+                                        val savedFile = updateDownload.fileFor(asset?.name)
+                                        if (downloading) {
                                             LinearWavyProgressIndicator(
-                                                progress = { downloadProgress ?: 0f },
+                                                progress = { updateDownload.progress ?: 0f },
                                                 modifier = Modifier.fillMaxWidth()
                                             )
                                             Text(
-                                                "Downloading ${asset?.name ?: "update"}… ${((downloadProgress ?: 0f) * 100).toInt()}%",
+                                                "Downloading ${asset?.name ?: "update"}… ${((updateDownload.progress ?: 0f) * 100).toInt()}%",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                                             )
@@ -608,42 +656,84 @@ fun SettingsScreen(
                                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                                             )
                                         }
-                                        FilledTonalButton(
-                                            onClick = {
-                                                if (asset == null) {
-                                                    downloadError = "No APK attached to this release yet."
-                                                    return@FilledTonalButton
-                                                }
-                                                if (!ApkInstaller.canInstall(context)) {
-                                                    needsUnknownSources = true
-                                                    context.startActivity(ApkInstaller.unknownSourcesIntent(context))
-                                                    return@FilledTonalButton
-                                                }
-                                                needsUnknownSources = false
-                                                downloadError = null
-                                                downloadProgress = 0f
-                                                scope.launch {
-                                                    val res = ApkInstaller.download(
-                                                        context.applicationContext,
-                                                        asset.url,
-                                                        asset.name
-                                                    ) { downloadProgress = it }
-                                                    downloadProgress = null
-                                                    res.onSuccess { file ->
-                                                        prefs.setPendingApkDelete(file.name)
-                                                        context.startActivity(ApkInstaller.installIntent(context, file))
-                                                    }.onFailure {
-                                                        downloadError = it.message ?: "Download failed."
+                                        if (savedFile != null && !downloading) {
+                                            Text(
+                                                "Downloaded ${savedFile.name} — kept until you install.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                                            )
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    if (!ApkInstaller.canInstall(context)) {
+                                                        needsUnknownSources = true
+                                                        context.startActivity(ApkInstaller.unknownSourcesIntent(context))
+                                                        return@FilledTonalButton
                                                     }
-                                                }
-                                            },
-                                            enabled = downloadProgress == null,
-                                            shapes = ButtonDefaults.shapes(),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(if (downloadProgress != null) "Downloading…" else "Download & install")
+                                                    needsUnknownSources = false
+                                                    context.startActivity(ApkInstaller.installIntent(context, savedFile))
+                                                    // File stays put for the installer; FlamboApp
+                                                    // auto-deletes it on the next launch.
+                                                },
+                                                shapes = ButtonDefaults.shapes(),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("Install update")
+                                            }
+                                            TextButton(
+                                                onClick = {
+                                                    runCatching { savedFile.delete() }
+                                                    updateDownload.downloadedFile = null
+                                                    updateDownload.downloadedAssetName = null
+                                                    scope.launch { prefs.clearPendingApkDelete() }
+                                                },
+                                                shapes = ButtonDefaults.shapes()
+                                            ) { Text("Delete file") }
+                                        } else {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    if (asset == null) {
+                                                        downloadError = "No APK attached to this release yet."
+                                                        return@FilledTonalButton
+                                                    }
+                                                    if (!ApkInstaller.canInstall(context)) {
+                                                        needsUnknownSources = true
+                                                        context.startActivity(ApkInstaller.unknownSourcesIntent(context))
+                                                        return@FilledTonalButton
+                                                    }
+                                                    needsUnknownSources = false
+                                                    downloadError = null
+                                                    // Drop any stale file from another version first.
+                                                    updateDownload.downloadedFile?.takeIf { it.name != asset.name }?.let {
+                                                        runCatching { it.delete() }
+                                                    }
+                                                    updateDownload.progress = 0f
+                                                    updateDownload.job = scope.launch {
+                                                        val res = ApkInstaller.download(
+                                                            context.applicationContext,
+                                                            asset.url,
+                                                            asset.name
+                                                        ) { updateDownload.progress = it }
+                                                        updateDownload.progress = null
+                                                        updateDownload.job = null
+                                                        res.onSuccess { file ->
+                                                            updateDownload.downloadedFile = file
+                                                            updateDownload.downloadedAssetName = file.name
+                                                            prefs.setPendingApkDelete(file.name)
+                                                        }.onFailure {
+                                                            downloadError = it.message ?: "Download failed."
+                                                        }
+                                                    }
+                                                },
+                                                enabled = !downloading,
+                                                shapes = ButtonDefaults.shapes(),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(if (downloading) "Downloading…" else "Download update")
+                                            }
                                         }
                                     }
                                 }
@@ -660,7 +750,9 @@ fun SettingsScreen(
                         onClick = {
                             checkingUpdate = true
                             updateResult = null
-                            downloadProgress = null
+                            updateDownload.job?.cancel()
+                            updateDownload.job = null
+                            updateDownload.progress = null
                             downloadError = null
                             needsUnknownSources = false
                             scope.launch {
@@ -668,7 +760,7 @@ fun SettingsScreen(
                                 checkingUpdate = false
                             }
                         },
-                        enabled = !checkingUpdate,
+                        enabled = !checkingUpdate && updateDownload.progress == null,
                         shapes = ButtonDefaults.shapes(),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -1290,6 +1382,51 @@ fun SettingsScreen(
                     onClick = { showVoskModelsDialog = false },
                     shapes = ButtonDefaults.shapes()
                 ) { Text("Done") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showLayoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLayoutDialog = false },
+            title = { Text("Library layout", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        Triple("list", "List", "Full rows with play, favorite and actions"),
+                        Triple("grid", "Grid", "Compact tap-to-open cards, two columns")
+                    ).forEachIndexed { index, (value, label, description) ->
+                        ToggleButton(
+                            checked = homeLayout == value,
+                            onCheckedChange = {
+                                scope.launch { prefs.setHomeLayout(value) }
+                                showLayoutDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                if (value == "grid") Icons.Filled.GridView else Icons.Filled.ViewList,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
+                                Text(label, style = MaterialTheme.typography.titleMedium)
+                                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showLayoutDialog = false },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Close") }
             },
             shape = ShapeLargeIncreased
         )

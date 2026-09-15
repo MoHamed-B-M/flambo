@@ -269,7 +269,7 @@ fun HomeScreen(
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {
-                // Expressive record button — shape morphs on press, bouncy scale on appear
+                // Expressive record button — shape morphs on press, bouncy scale on appear.
                 Button(
                     onClick = { startRecording() },
                     shapes = ButtonDefaults.shapes(),

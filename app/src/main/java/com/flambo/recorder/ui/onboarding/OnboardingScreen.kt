@@ -227,12 +227,16 @@ fun OnboardingScreen(
                 if (isLast) {
                     Button(
                         onClick = onFinish,
+                        enabled = micGranted,
                         shapes = ButtonDefaults.shapes(),
                         contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight)
                     ) {
                         Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Start recording", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+                        Text(
+                            if (micGranted) "Start recording" else "Allow mic to continue",
+                            style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight)
+                        )
                     }
                 } else {
                     Button(

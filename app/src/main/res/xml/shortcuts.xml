@@ -1,0 +1,28 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Start recording — long-press launcher icon or Key Mapper binding. -->
+    <shortcut
+        android:shortcutId="start_recording"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_start_short"
+        android:shortcutLongLabel="@string/shortcut_start_long"
+        android:shortcutDisabledMessage="@string/shortcut_toggle_disabled">
+        <intent
+            android:action="com.flambo.recorder.ACTION_START_RECORDING"
+            android:targetPackage="com.flambo.recorder"
+            android:targetClass="com.flambo.recorder.MainActivity" />
+    </shortcut>
+    <!-- Pause / Resume — toggles pause state while recording. -->
+    <shortcut
+        android:shortcutId="pause_recording"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_pause_short"
+        android:shortcutLongLabel="@string/shortcut_pause_long"
+        android:shortcutDisabledMessage="@string/shortcut_toggle_disabled">
+        <intent
+            android:action="com.flambo.recorder.ACTION_PAUSE_RECORDING"
+            android:targetPackage="com.flambo.recorder"
+            android:targetClass="com.flambo.recorder.MainActivity" />
+    </shortcut>
+</shortcuts>

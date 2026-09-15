@@ -36,6 +36,9 @@ class PreferencesManager(private val context: Context) {
         val LAST_SEEN_VERSION_CODE = longPreferencesKey("last_seen_version_code")
         val TIP_INDEX = intPreferencesKey("tip_index")
         val TIPS_ENABLED = booleanPreferencesKey("tips_enabled")
+        val RECORDING_PREFIX = stringPreferencesKey("recording_prefix") // e.g. "Recording", "Sound", "Voice"
+        val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri") // SAF tree URI, empty = use StorageVolumes
+        val RECORDING_NEXT_NUMBER = intPreferencesKey("recording_next_number") // next integer for "Sound 1" style
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -181,6 +184,49 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setTipsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.TIPS_ENABLED] = enabled }
+    }
+
+    val recordingPrefixFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.RECORDING_PREFIX] ?: "Recording" }
+
+    suspend fun setRecordingPrefix(prefix: String) {
+        context.dataStore.edit { it[Keys.RECORDING_PREFIX] = prefix.trim().ifBlank { "Recording" } }
+    }
+
+    suspend fun recordingPrefix(): String =
+        context.dataStore.data.map { it[Keys.RECORDING_PREFIX] ?: "Recording" }.first()
+
+    val customFolderUriFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.CUSTOM_FOLDER_URI] ?: "" }
+
+    suspend fun customFolderUri(): String =
+        context.dataStore.data.map { it[Keys.CUSTOM_FOLDER_URI] ?: "" }.first()
+
+    suspend fun setCustomFolderUri(uri: String) {
+        context.dataStore.edit { it[Keys.CUSTOM_FOLDER_URI] = uri }
+    }
+
+    suspend fun clearCustomFolderUri() {
+        context.dataStore.edit { it.remove(Keys.CUSTOM_FOLDER_URI) }
+    }
+
+    val recordingNextNumberFlow: Flow<Int> =
+        context.dataStore.data.map { it[Keys.RECORDING_NEXT_NUMBER] ?: 1 }
+
+    suspend fun recordingNextNumber(): Int =
+        context.dataStore.data.map { it[Keys.RECORDING_NEXT_NUMBER] ?: 1 }.first()
+
+    suspend fun setRecordingNextNumber(n: Int) {
+        context.dataStore.edit { it[Keys.RECORDING_NEXT_NUMBER] = n.coerceAtLeast(1) }
+    }
+
+    suspend fun nextRecordingNumberAndIncrement(): Int {
+        var next = 1
+        context.dataStore.edit { prefs ->
+            next = prefs[Keys.RECORDING_NEXT_NUMBER] ?: 1
+            prefs[Keys.RECORDING_NEXT_NUMBER] = next + 1
+        }
+        return next
     }
 
     companion object {

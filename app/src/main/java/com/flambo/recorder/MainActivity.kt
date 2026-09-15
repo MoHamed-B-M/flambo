@@ -2,10 +2,12 @@ package com.flambo.recorder
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
+import com.flambo.recorder.record.RecordingShortcut
 import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -159,11 +162,18 @@ class MainActivity : ComponentActivity() {
         app = application as FlamboApp
         refreshPermissionStates()
 
-        // Returning users get the classic upfront prompt; first-launch users
-        // meet permissions inside onboarding instead of a cold system dialog.
+        // No upfront permission prompt — returning users see a disabled record
+        // button with a snackbar to grant mic access when they tap it.
+        // First-launch users meet permissions inside the onboarding tour.
+
+        // Keep the dynamic shortcut labels in sync no matter where the
+        // recording was toggled (in-app UI, launcher shortcut, Key Mapper).
         lifecycleScope.launch {
-            if (app.prefs.onboardingDoneFlow.first()) checkPermissions()
+            app.recorder.state.collect {
+                RecordingShortcut.refresh(this@MainActivity, it.isRecording, it.isPaused)
+            }
         }
+        handleShortcutIntent(intent)
 
         setContent {
             val dynamicColor by app.prefs.dynamicColorFlow.collectAsState(initial = true)
@@ -176,8 +186,8 @@ class MainActivity : ComponentActivity() {
             }
 
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
-            var rerunIntro by remember { mutableStateOf(false) }
-            val showOnboarding = onboardingDone == false || rerunIntro
+            var rerunOnboarding by remember { mutableStateOf(false) }
+            val showOnboarding = onboardingDone == false || rerunOnboarding
 
             FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
@@ -187,7 +197,7 @@ class MainActivity : ComponentActivity() {
                             showOnboarding -> OnboardingScreen(
                                 onFinish = {
                                     lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
-                                    rerunIntro = false
+                                    rerunOnboarding = false
                                 },
                                 micGranted = micGrantedState,
                                 notifGranted = notifGrantedState,
@@ -200,7 +210,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             else -> FlamboNavGraph(
-                                onRerunOnboarding = { rerunIntro = true },
+                                onRerunOnboarding = { rerunOnboarding = true },
                                 onRequestSystemCapture = { requestSystemCapture() },
                                 onEnableSystemSound = { requestSystemCaptureAndRecord() },
                                 onRequestMicPermission = { requestMicAndRecord(it) }
@@ -226,6 +236,80 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShortcutIntent(intent)
+    }
+
+    // Launcher shortcut + Key Mapper entry point.
+    // Two intents: START starts a new recording, PAUSE toggles pause/resume.
+    // Both work from screen-off via Key Mapper hardware-key bindings.
+    private fun handleShortcutIntent(intent: Intent?) {
+        val action = intent?.action ?: return
+        if (action != RecordingShortcut.ACTION_START_RECORDING &&
+            action != RecordingShortcut.ACTION_PAUSE_RECORDING) return
+        // Consume so rotation / process recreation doesn't re-fire.
+        intent.action = null
+        setIntent(intent)
+        RecordingShortcut.reportUsed(this,
+            if (action == RecordingShortcut.ACTION_START_RECORDING) RecordingShortcut.ID_START
+            else RecordingShortcut.ID_PAUSE
+        )
+        val interactive = isScreenInteractive()
+        when (action) {
+            RecordingShortcut.ACTION_START_RECORDING -> lifecycleScope.launch { startFromExternal() }
+            RecordingShortcut.ACTION_PAUSE_RECORDING -> lifecycleScope.launch { pauseFromExternal() }
+        }
+        if (!interactive) moveTaskToBack(true)
+    }
+
+    // Start recording from shortcut/Key Mapper. If already recording, stop & save.
+    private suspend fun startFromExternal() {
+        val recorder = app.recorder
+        if (recorder.state.value.isRecording) {
+            recorder.stop()
+            RecordingShortcut.refresh(this, false, false)
+            return
+        }
+        val micGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        micGrantedState = micGranted
+        val q = app.prefs.qualityFlow.first()
+        val nr = app.prefs.noiseReductionFlow.first()
+        var source = AudioSource.fromPref(app.prefs.audioSourceFlow.first())
+        // System capture is parked — fall back to mic so a hardware key
+        // always does something useful.
+        if (source == AudioSource.SYSTEM && !AudioSource.SYSTEM_ENABLED) {
+            source = AudioSource.MIC
+        }
+        if (!micGranted) {
+            requestMicAndRecord(source)
+            return
+        }
+        if (source == AudioSource.SYSTEM) {
+            requestSystemCaptureAndRecord()
+            return
+        }
+        recorder.start(q, AudioSource.MIC, nr)
+        RecordingShortcut.refresh(this, true, false)
+    }
+
+    // Pause / resume from shortcut/Key Mapper.
+    private suspend fun pauseFromExternal() {
+        val recorder = app.recorder
+        val s = recorder.state.value
+        if (!s.isRecording) return
+        if (s.isPaused) recorder.resume() else recorder.pause()
+    }
+
+    private fun isScreenInteractive(): Boolean = try {
+        (getSystemService(POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
+    } catch (_: Exception) {
+        true
     }
 
     private fun refreshPermissionStates() {

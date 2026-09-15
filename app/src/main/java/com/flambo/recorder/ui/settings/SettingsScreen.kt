@@ -42,6 +42,10 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.SettingsBrightness
+import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
@@ -58,6 +62,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -86,6 +91,7 @@ import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.R
 import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.data.SafFolderHelper
 import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.domain.RecordingQuality
 import com.flambo.recorder.record.AudioSource
@@ -110,7 +116,7 @@ fun SettingsScreen(
     scope: CoroutineScope,
     transcription: TranscriptionManager,
     onBack: () -> Unit,
-    onRerunIntro: () -> Unit = {},
+    onRerunOnboarding: () -> Unit = {},
     onRequestSystemCapture: () -> Unit = {}
 ) {
     val quality by prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
@@ -127,6 +133,8 @@ fun SettingsScreen(
     val sttLanguage by prefs.sttLanguageFlow.collectAsState(initial = "")
     val modelProgress by transcription.modelProgress.collectAsState()
     val updateChannel by prefs.updateChannelFlow.collectAsState(initial = UpdateChecker.CHANNEL_BETA)
+    val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
+    val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -151,6 +159,23 @@ fun SettingsScreen(
     var showSttLanguageDialog by remember { mutableStateOf(false) }
     var showVoskModelsDialog by remember { mutableStateOf(false) }
     var modelsTick by remember { mutableStateOf(0) }
+    var showNamingDialog by remember { mutableStateOf(false) }
+    var namingDraft by remember { mutableStateOf(recordingPrefix) }
+    LaunchedEffect(recordingPrefix) { if (!showNamingDialog) namingDraft = recordingPrefix }
+
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            try {
+                val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            } catch (_: Exception) {}
+            SafFolderHelper.takePersistablePermission(context.applicationContext, uri)
+            scope.launch {
+                prefs.setCustomFolderUri(uri.toString())
+                (context.applicationContext as? FlamboApp)?.let { it.customFolderUri = uri.toString() }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -183,9 +208,11 @@ fun SettingsScreen(
                         supportingContent = { Text("${quality.label} • ${quality.description}") },
                         leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showQualityDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -219,9 +246,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showAudioSourceDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -241,10 +270,69 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showStorageDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Recording name") },
+                        supportingContent = { Text("$recordingPrefix 1  •  $recordingPrefix 2  •  e.g. \"$recordingPrefix 1\"") },
+                        leadingContent = {
+                            Icon(
+                                Icons.Filled.Title,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingContent = {
+                            FilledTonalButton(
+                                onClick = { namingDraft = recordingPrefix; showNamingDialog = true },
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
+                            ) { Text("Change") }
+                        },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    val customLabel = if (customFolderUri.isBlank()) "Not set — uses Storage folder above"
+                    else SafFolderHelper.displayName(context, customFolderUri)
+                    ListItem(
+                        headlineContent = { Text("Custom folder (system picker)") },
+                        supportingContent = { Text(customLabel) },
+                        leadingContent = {
+                            Icon(
+                                Icons.Filled.FolderOpen,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingContent = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                if (customFolderUri.isNotBlank()) {
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                prefs.clearCustomFolderUri()
+                                                (context.applicationContext as? FlamboApp)?.let { it.customFolderUri = "" }
+                                            }
+                                        },
+                                        shapes = ButtonDefaults.shapes()
+                                    ) { Text("Clear") }
+                                }
+                                TextButton(
+                                    onClick = { folderPicker.launch(null) },
+                                    shapes = ButtonDefaults.shapes()
+                                ) { Text("Pick") }
+                            }
                         },
                         colors = segmentedListItemColors()
                     )
@@ -281,9 +369,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showEnhanceStrengthDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -332,9 +422,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showThemeDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -366,9 +458,11 @@ fun SettingsScreen(
                             )
                         },
                         trailingContent = {
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showSttLanguageDialog = true },
-                                shapes = ButtonDefaults.shapes()
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
                             ) { Text("Change") }
                         },
                         colors = segmentedListItemColors()
@@ -596,12 +690,12 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 ListItem(
-                    headlineContent = { Text("Replay introduction") },
+                    headlineContent = { Text("Replay onboarding") },
                     supportingContent = { Text("Take the quick tour again") },
                     leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         TextButton(
-                            onClick = onRerunIntro,
+                            onClick = onRerunOnboarding,
                             shapes = ButtonDefaults.shapes()
                         ) { Text("Replay") }
                     },
@@ -1196,6 +1290,52 @@ fun SettingsScreen(
                     onClick = { showVoskModelsDialog = false },
                     shapes = ButtonDefaults.shapes()
                 ) { Text("Done") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showNamingDialog) {
+        AlertDialog(
+            onDismissRequest = { showNamingDialog = false },
+            title = { Text("Recording name", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Choose the prefix for new recordings. Next one will be \"$recordingPrefix 1\", then \"$recordingPrefix 2\", and so on.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = namingDraft,
+                        onValueChange = { namingDraft = it },
+                        label = { Text("Prefix") },
+                        placeholder = { Text("e.g. Sound, Voice, MyRec") },
+                        singleLine = true,
+                        shape = ShapeLargeIncreased,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        "Preview: \"${namingDraft.ifBlank { "Recording" }} 1\" • \"${namingDraft.ifBlank { "Recording" }} 2\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            prefs.setRecordingPrefix(namingDraft)
+                            (context.applicationContext as? FlamboApp)?.let { it.recordingPrefix = namingDraft.ifBlank { "Recording" } }
+                        }
+                        showNamingDialog = false
+                    },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNamingDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Cancel") }
             },
             shape = ShapeLargeIncreased
         )

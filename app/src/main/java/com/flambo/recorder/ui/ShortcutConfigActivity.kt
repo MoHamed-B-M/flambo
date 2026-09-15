@@ -17,8 +17,12 @@ class ShortcutConfigActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (intent?.action == Intent.ACTION_CREATE_SHORTCUT) {
-            val shortcut = Intent(this, RecordingReceiver::class.java).apply {
-                action = RecordingReceiver.ACTION_TOGGLE
+            // Package-scoped implicit broadcast: explicit enough for
+            // background delivery, with no hard-coded class for hosts
+            // (Key Mapper, Tasker) to choke on when re-firing it.
+            val shortcut = Intent(RecordingReceiver.ACTION_TOGGLE).apply {
+                setPackage(packageName)
+                addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             }
             val result = Intent()
                 .putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcut)

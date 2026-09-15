@@ -421,8 +421,14 @@ class RecordingController(
             val prefs = app?.prefs
             if (prefs != null) {
                 val prefix = prefs.recordingPrefix().ifBlank { "Recording" }
-                val n = prefs.nextRecordingNumberAndIncrement()
-                "$prefix $n"
+                // Next free number: highest "<prefix> N" currently in the
+                // library + 1. Empty library restarts at 1; renamed titles
+                // that don't match the pattern are ignored.
+                val pattern = Regex("^${Regex.escape(prefix)}\\s+(\\d+)$")
+                val max = repository.activeTitles().mapNotNull {
+                    pattern.matchEntire(it)?.groupValues?.get(1)?.toIntOrNull()
+                }.maxOrNull() ?: 0
+                "$prefix ${max + 1}"
             } else {
                 val count = (System.currentTimeMillis() % 1000).toInt()
                 "Recording ${count.toString().padStart(3, '0')}"

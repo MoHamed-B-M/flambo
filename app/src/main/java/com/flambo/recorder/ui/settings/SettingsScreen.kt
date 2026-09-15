@@ -1302,7 +1302,7 @@ fun SettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "Choose the prefix for new recordings. Next one will be \"$recordingPrefix 1\", then \"$recordingPrefix 2\", and so on.",
+                        "Choose the prefix for new recordings. Numbering follows the highest existing number and restarts at 1 when the library is empty.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -164,6 +164,7 @@ fun HomeScreen(
 
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
+    var showEmptyTrashConfirm by remember { mutableStateOf(false) }
     var whatsNewVersion by remember { mutableStateOf<String?>(null) }
     var installedVersion by remember { mutableStateOf<String?>(null) }
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
@@ -374,7 +375,18 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Trash", style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = { viewModel.toggleTrash(false) }) { Text("Done") }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (uiState.trash.isNotEmpty()) {
+                            FilledTonalButton(
+                                onClick = { showEmptyTrashConfirm = true },
+                                shapes = ButtonDefaults.shapes()
+                            ) { Text("Empty trash") }
+                        }
+                        TextButton(onClick = { viewModel.toggleTrash(false) }) { Text("Done") }
+                    }
                 }
                 if (uiState.trash.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -429,6 +441,28 @@ fun HomeScreen(
             version = version,
             highlights = whatsNewItems,
             onDismiss = { whatsNewVersion = null }
+        )
+    }
+
+    // Empty-trash confirm
+    if (showEmptyTrashConfirm) {
+        val count = uiState.trash.size
+        AlertDialog(
+            onDismissRequest = { showEmptyTrashConfirm = false },
+            title = { Text("Empty trash?") },
+            text = {
+                Text(
+                    "Permanently delete $count recording${if (count == 1) "" else "s"}? This cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.emptyTrash()
+                    showEmptyTrashConfirm = false
+                }) { Text("Delete all", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showEmptyTrashConfirm = false }) { Text("Cancel") } },
+            shape = ShapeLargeIncreased
         )
     }
 

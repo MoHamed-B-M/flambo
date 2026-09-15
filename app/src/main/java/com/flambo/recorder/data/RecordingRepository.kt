@@ -45,6 +45,13 @@ class RecordingRepository(
         }
     }
 
+    // Permanent delete of everything in trash (files + rows).
+    suspend fun emptyTrash() {
+        dao.getTrash().forEach { deletePermanently(it.id) }
+    }
+
+    suspend fun activeTitles(): List<String> = dao.activeTitles()
+
     suspend fun saveEnhanced(id: Long, path: String) {
         dao.updateEnhancedPath(id, path)
     }

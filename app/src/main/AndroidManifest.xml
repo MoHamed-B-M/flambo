@@ -50,14 +50,14 @@
         </activity>
 
         <!-- Automation "launch app shortcut" pickers (Key Mapper, Tasker):
-             returns a shortcut that broadcasts ACTION_TOGGLE. Finished
-             instantly — no UI, excluded from recents. -->
+             returns a shortcut that toggles via the handler below. Finished
+             instantly — no window, no UI, excluded from recents. -->
         <activity
             android:name=".ui.ShortcutConfigActivity"
             android:exported="true"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
                 <action android:name="android.intent.action.CREATE_SHORTCUT" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -66,13 +66,14 @@
 
         <!-- Transparent trampoline for the shortcut above: mapper runners
              execute shortcuts via startActivity(), which a receiver target
-             cannot survive — this toggles headlessly and finishes. -->
+             cannot survive. NoDisplay means no window is ever created —
+             no flash, no recents entry, nothing over the lock screen. -->
         <activity
             android:name=".ui.ShortcutHandlerActivity"
             android:exported="true"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+            android:theme="@android:style/Theme.NoDisplay" />
 
         <service
             android:name=".record.RecordingService"

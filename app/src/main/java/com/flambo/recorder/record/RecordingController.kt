@@ -1,6 +1,7 @@
 package com.flambo.recorder.record
 
 import android.Manifest
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -124,7 +125,16 @@ class RecordingController(
             quality = quality,
             source = AudioSource.MIC
         )
-        startForegroundService()
+        if (!startForegroundService()) {
+            // Background start refused — unwind fully so no headless
+            // MediaRecorder is left running without its service.
+            runCatching { recorder?.stop() }
+            runCatching { recorder?.release() }
+            recorder = null
+            releaseVoiceEffects()
+            _state.value = RecorderState()
+            return false
+        }
         startSampling()
         return true
     }
@@ -148,7 +158,12 @@ class RecordingController(
             quality = quality,
             source = AudioSource.SYSTEM
         )
-        startForegroundService(AudioSource.SYSTEM)
+        if (!startForegroundService(AudioSource.SYSTEM)) {
+            sysEngine.stop()
+            releaseVoiceEffects()
+            _state.value = RecorderState()
+            return false
+        }
         startSampling()
         return true
     }
@@ -338,14 +353,28 @@ class RecordingController(
         }
     }
 
-    private fun startForegroundService(source: AudioSource = AudioSource.MIC) {
+    // Returns false when the system refuses the background FGS start
+    // (ForegroundServiceStartNotAllowedException on API 31+, or a
+    // SecurityException when the mic FGS permission is missing on API 34+)
+    // so callers can unwind instead of crashing or leaking a recorder
+    // that runs with no service or notification.
+    private fun startForegroundService(source: AudioSource = AudioSource.MIC): Boolean {
         val intent = Intent(appContext, RecordingService::class.java).apply {
             putExtra(RecordingService.EXTRA_FGS_TYPE, source.fgsType)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            appContext.startForegroundService(intent)
-        } else {
-            appContext.startService(intent)
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                appContext.startForegroundService(intent)
+            } else {
+                appContext.startService(intent)
+            }
+            true
+        } catch (_: ForegroundServiceStartNotAllowedException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        } catch (_: Exception) {
+            false
         }
     }
 

@@ -49,6 +49,21 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- Automation "launch app shortcut" pickers (Key Mapper, Tasker):
+             returns a shortcut that broadcasts ACTION_TOGGLE. Finished
+             instantly — no UI, excluded from recents. -->
+        <activity
+            android:name=".ui.ShortcutConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".record.RecordingService"
             android:exported="false"

@@ -11,4 +11,5 @@
     <string name="shortcut_stop_short">Stop recording</string>
     <string name="shortcut_stop_long">Stop and save recording</string>
     <string name="shortcut_toggle_disabled">Recording unavailable</string>
+    <string name="shortcut_config_name">Toggle Recording</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.flambo.recorder.record
 
 import android.Manifest
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -51,9 +52,12 @@ class RecordingReceiver : BroadcastReceiver() {
                 }
                 val s = app.recorder.state.value
                 RecordingShortcut.refresh(app, s.isRecording, s.isPaused)
+            } catch (_: ForegroundServiceStartNotAllowedException) {
+                // Background FGS start refused (API 31+) — headless by
+                // design, so there is nothing useful to show from here.
+            } catch (_: SecurityException) {
+                // Missing mic / FGS permission at service start — same deal.
             } catch (_: Exception) {
-                // Headless by design: background FGS start can be refused by
-                // the system (API 31+) — nothing useful to show from here.
             } finally {
                 pending.finish()
             }

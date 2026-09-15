@@ -103,6 +103,7 @@ ci: bump BASE_VERSION to 1.0.3
 
 - `record/RecordingReceiver` (exported) handles `com.flambo.recorder.ACTION_TOGGLE` / `ACTION_START` / `ACTION_STOP` for automation apps that send **broadcasts** instead of opening activities — e.g. Key Mapper "Send intent" with action set, package `com.flambo.recorder`, class `com.flambo.recorder.record.RecordingReceiver`.
 - It routes straight to `RecordingController` via `FlamboApp.recorder` using `goAsync()` + `appScope`; no window ever opens. Starting needs `RECORD_AUDIO` already granted and always uses mic (system capture needs its consent UI, so it falls back). `START` is a no-op while recording; `STOP` saves.
+- Automation apps can also pick Flambo from their "launch app shortcut" menu: `ui.ShortcutConfigActivity` answers `ACTION_CREATE_SHORTCUT` with a Toggle Recording shortcut (no typing intent strings by hand).
 
 ---
 

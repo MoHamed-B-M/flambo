@@ -39,9 +39,14 @@ env:
   # Single source of truth for versions. Bump BASE_VERSION on every stable;
   # beta follows it automatically. Beta codes sit above any stable build so
   # installing a beta over stable always counts as an update for Android.
-  BASE_VERSION: "1.0.2"
-  STABLE_BUILD: "1"
+  # STABLE_BUILD must keep increasing across stables — Android refuses to
+  # install an update whose versionCode is not higher than the installed one.
+  BASE_VERSION: "1.1.0"
+  STABLE_BUILD: "2"
   BETA_CODE_OFFSET: "100000"
+  # Codename for the stable release title, e.g. "Obsidian" → "Flambo 1.1.0+2 — Obsidian".
+  # Empty for a maintenance release with no codename.
+  RELEASE_TAGLINE: "Obsidian"
 
 jobs:
   build:
@@ -424,9 +429,12 @@ jobs:
       - name: Generate full release notes
         id: notes
         run: |
-          cat > release_notes.md <<'EOF'
-          # Flambo ${{ needs.build.outputs.display_version }}${{ needs.build.outputs.title_suffix }}
-
+          TITLE="Flambo ${{ needs.build.outputs.display_version }}${{ needs.build.outputs.title_suffix }}"
+          if [[ -n "$RELEASE_TAGLINE" ]]; then TITLE="$TITLE — $RELEASE_TAGLINE"; fi
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          echo "# $TITLE" > release_notes.md
+          echo "" >> release_notes.md
+          cat >> release_notes.md <<'EOF'
           A calm yet expressive voice recorder — crafted with Material 3 Expressive.
           EOF
           if [[ -n "${{ needs.build.outputs.title_suffix }}" ]]; then
@@ -455,6 +463,9 @@ jobs:
           - **Onboarding blocks until mic granted**: first-launch tour won't dismiss until microphone permission is allowed
           - **Settings buttons redesigned**: all 'Change' buttons now use filled tonal style with animated shapes
           - **Universal APK**: alongside per-ABI splits, a universal APK installs on any device
+          - **Custom recording names**: pick your own prefix with auto-incrementing numbers
+          - **Custom export folder**: pick any folder via the system picker, plus internal/phone/SD-card volumes
+          - **Faster startup**: splash intro removed, no permission prompt on launch — the app opens straight into your library
           - What's New sheet shows real GitHub release notes (offline fallback included)
           - One-tap recording with live waveform, pause/resume and a persistent notification (timer, Pause/Resume, Save)
           - Microphone + system-sound capture (system capture is parked as under-development while projection bugs are fixed)
@@ -506,7 +517,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build.outputs.release_tag }}
-          name: "Flambo ${{ needs.build.outputs.display_version }}${{ needs.build.outputs.title_suffix }}"
+          name: "${{ steps.notes.outputs.title }}"
           body_path: ${{ steps.notes.outputs.notes_path }}
           generate_release_notes: true
           make_latest: true

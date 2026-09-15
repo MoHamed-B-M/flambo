@@ -116,7 +116,7 @@ fun SettingsScreen(
     scope: CoroutineScope,
     transcription: TranscriptionManager,
     onBack: () -> Unit,
-    onRerunIntro: () -> Unit = {},
+    onRerunOnboarding: () -> Unit = {},
     onRequestSystemCapture: () -> Unit = {}
 ) {
     val quality by prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
@@ -695,7 +695,7 @@ fun SettingsScreen(
                     leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         TextButton(
-                            onClick = onRerunIntro,
+                            onClick = onRerunOnboarding,
                             shapes = ButtonDefaults.shapes()
                         ) { Text("Replay") }
                     },

@@ -44,12 +44,12 @@ android {
         minSdk = 26
         targetSdk = 36
         // Version code from CI run number for monotonic Play Store / GitHub release ordering.
-        // Stable releases pin both explicitly (MAJOR.MINOR.PATCH+BUILD, build starts at 1).
+        // Stable releases pin both explicitly (MAJOR.MINOR.PATCH+BUILD, BUILD always grows).
         val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         val baseCode = 1
         versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull()
             ?: runNumber?.let { baseCode + it } ?: baseCode
-        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.0.1-dev"
+        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.1.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

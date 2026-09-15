@@ -193,7 +193,7 @@ fun FlamboNavGraph(
                 scope = scope,
                 transcription = app.transcription,
                 onBack = { navController.popBackStack() },
-                onRerunIntro = onRerunOnboarding,
+                onRerunOnboarding = onRerunOnboarding,
                 onRequestSystemCapture = onRequestSystemCapture
             )
         }

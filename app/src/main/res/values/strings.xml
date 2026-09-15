@@ -3,4 +3,12 @@
     <string name="recording_notification_channel">Recording</string>
     <string name="recording_notification_title">Recording in progress</string>
     <string name="recording_notification_text">Tap to return to Flambo</string>
+    <!-- Launcher shortcut / Key Mapper intents -->
+    <string name="shortcut_start_short">Start recording</string>
+    <string name="shortcut_start_long">Start voice recording</string>
+    <string name="shortcut_pause_short">Pause / Resume</string>
+    <string name="shortcut_pause_long">Pause or resume recording</string>
+    <string name="shortcut_stop_short">Stop recording</string>
+    <string name="shortcut_stop_long">Stop and save recording</string>
+    <string name="shortcut_toggle_disabled">Recording unavailable</string>
 </resources>

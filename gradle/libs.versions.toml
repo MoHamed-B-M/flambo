@@ -41,6 +41,7 @@ androidx-adaptive-layout = { module = "androidx.compose.material3.adaptive:adapt
 androidx-adaptive-navigation = { module = "androidx.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptive" }
 vosk-android = { group = "com.alphacephei", name = "vosk-android", version.ref = "vosk" }
 androidx-compose-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "compose" }
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version = "1.0.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

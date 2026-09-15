@@ -1,13 +1,20 @@
 <div align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="120" alt="Flambo app icon" />
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="140" alt="Flambo app icon" style="border-radius: 28px" />
   <h1>Flambo</h1>
-  <p>A calm yet expressive voice recorder for Android — record, transcribe, and keep everything on your device.</p>
+  <p><em>A calm yet expressive voice recorder for Android — record, transcribe, and keep everything on your device.</em></p>
   <p>
-    <img src="https://img.shields.io/badge/Material_3-Expressive-%23D8572A" alt="Material 3 Expressive" />
-    <img src="https://img.shields.io/badge/Kotlin-2.3.10-7F52FF" alt="Kotlin 2.3.10" />
-    <img src="https://img.shields.io/badge/minSdk-26-lightgrey" alt="minSdk 26" />
-    <img src="https://img.shields.io/badge/targetSdk-36-green" alt="targetSdk 36" />
-    <a href="https://github.com/MoHamed-B-M/flambo/releases"><img src="https://img.shields.io/github/downloads/MoHamed-B-M/flambo/total" alt="Downloads" /></a>
+    <a href="https://m3.material.io/blog/introducing-m3-expressive"><img src="https://img.shields.io/badge/Material_3-Expressive-6750A4?style=for-the-badge&logo=materialdesign&logoColor=white" alt="Material 3 Expressive" /></a>
+    <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.3.10-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin 2.3.10" /></a>
+    <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/Compose-BOM_2026.08-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose BOM" /></a>
+    <img src="https://img.shields.io/badge/minSdk-26-625B71?style=for-the-badge" alt="minSdk 26" />
+    <img src="https://img.shields.io/badge/targetSdk-36-006A60?style=for-the-badge" alt="targetSdk 36" />
+    <a href="https://github.com/MoHamed-B-M/flambo/releases"><img src="https://img.shields.io/github/downloads/MoHamed-B-M/flambo/total?label=downloads&color=D8572A&style=for-the-badge&logo=github&logoColor=white" alt="Downloads" /></a>
+  </p>
+  <p>
+    <a href="https://github.com/MoHamed-B-M/flambo/actions/workflows/build.yaml"><img src="https://img.shields.io/github/actions/workflow/status/MoHamed-B-M/flambo/build.yaml?branch=beta&label=beta%20build&style=flat-square&color=2E7D32" alt="beta build" /></a>
+    <img src="https://img.shields.io/github/last-commit/MoHamed-B-M/flambo/beta?style=flat-square&label=last%20commit&color=6750A4" alt="last commit" />
+    <img src="https://img.shields.io/github/commit-activity/m/MoHamed-B-M/flambo?style=flat-square&label=commits%2Fmonth&color=D8572A" alt="commit activity" />
+    <a href="https://github.com/MoHamed-B-M/flambo/blob/beta/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-006A60?style=flat-square" alt="contributions welcome" /></a>
   </p>
 </div>
 
@@ -34,12 +41,14 @@
 ## Get the app
 
 [![Get it on Orion Store](https://raw.githubusercontent.com/RookieEnough/Orion-Store/refs/heads/main/assets/orion-badge.png)](https://rookieenough.github.io/Orion-Data/redirect.html?id=flambo)
+<a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
 
-Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.0.1-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
+Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.1.0-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
 
 | File suffix | Architecture | Most devices |
 |---|---|---|
-| `*-arm64.apk` | arm64-v8a | Yes, most phones from ~2017 on |
+| `*-universal.apk` | All ABIs | **Recommended** — works on any Android device |
+| `*-arm64.apk` | arm64-v8a | Most phones from ~2017 on |
 | `*-armv7.apk` | armeabi-v7a | Older 32-bit devices |
 
 > [!NOTE]
@@ -60,8 +69,10 @@ Debug keystore fallback means `assembleRelease` works locally with no secrets co
 
 [`build.yaml`](.github/workflows/build.yaml) builds every push to `beta` and `main`:
 
-- **`beta`** → signed dev build `1.0.1-dev(#N)` (arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
+- **`beta`** → signed dev build `1.1.0-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
 - **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
+
+Pushes touching only `README.md` or `screenshots/` skip CI entirely (no code changed, nothing to build).
 
 ### Required secrets
 
@@ -93,7 +104,7 @@ Format examples:
 - `2.0.0+120` → complete UI redesign + new audio engine
 - `2.0.1+121` → rebuilt with updated libraries
 
-Beta builds follow the stable line with a dev tag: `1.0.1-dev(#N)`, where `N` is the CI run number (e.g. `1.0.1-dev(#42)`). When stable moves to `1.0.2`, beta becomes `1.0.2-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
+Beta builds follow the stable line with a dev tag: `1.1.0-dev(#N)`, where `N` is the CI run number (e.g. `1.1.0-dev(#42)`). When stable moves to `1.1.1`, beta becomes `1.1.1-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
 
 Beta version codes sit `100000` above the run number, so installing a beta over a stable release always counts as an update for Android (which requires the code to increase).
 
@@ -134,3 +145,22 @@ MVVM throughout: `ViewModel` + `StateFlow` UI state, repository pattern, thin pl
 ## Tech stack
 
 Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) · Navigation Compose · Room 2.8.5 (KSP) · DataStore · Media3 ExoPlayer · Vosk 0.3.75 · AGP 9.3.2, JDK 21.
+
+---
+
+## 📈 Commits
+
+<p align="center">
+  <a href="https://github.com/MoHamed-B-M/flambo/graphs/commit-activity">
+    <img src="https://ghchart.rshah.org/MoHamed-B-M/flambo" alt="GitHub contribution chart" />
+  </a>
+</p>
+
+<p align="center">
+  <sub>Daily contributions · <a href="https://github.com/MoHamed-B-M/flambo/graphs/commit-activity">commit activity</a> · <a href="https://github.com/MoHamed-B-M/flambo/pulse">pulse</a></sub>
+</p>
+
+<div align="center">
+  <img src="https://img.shields.io/github/commit-activity/m/MoHamed-B-M/flambo?style=for-the-badge&label=monthly%20commits&color=6750A4" alt="monthly commits" />
+  <img src="https://img.shields.io/github/commit-activity/w/MoHamed-B-M/flambo?style=for-the-badge&label=weekly%20commits&color=D8572A" alt="weekly commits" />
+</div>

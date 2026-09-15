@@ -15,7 +15,7 @@ git checkout beta          # active development lives here
 ./gradlew :app:assembleRelease
 ```
 
-Per-ABI APKs land in `app/build/outputs/apk/release/` (`arm64` + `armv7`, no universal). A debug-keystore fallback means the command works with **no secrets** configured.
+Per-ABI APKs plus a universal APK land in `app/build/outputs/apk/release/` (`universal` + `arm64` + `armv7`). A debug-keystore fallback means the command works with **no secrets** configured.
 
 Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compileSdk 37 / targetSdk 36 / minSdk 26` (`platforms;android-37` comes from the canary channel or the preinstalled runner image — it is not on the stable sdkmanager channel).
 
@@ -25,10 +25,10 @@ Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compile
 
 | Branch | What it is | CI does |
 |---|---|---|
-| `beta` | Rolling preview `1.0.2-dev(#N)` (`100000 + runNumber` versionCode so stable→beta is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
+| `beta` | Rolling preview `1.1.0-dev(#N)` (`100000 + runNumber` versionCode so stable→beta is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
 | `main` | Versioned stable `x.y.z+BUILD` (pins `BASE_VERSION`/`STABLE_BUILD`) | Builds, signs, creates `vX.Y.Z+BUILD` release with notes + checksums, artifact 30 days, marks latest |
 
-- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, beta follows automatically (`1.0.2-dev(#N)`).
+- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, beta follows automatically (`1.1.0-dev(#N)`). `STABLE_BUILD` must keep increasing across stables (Android rejects updates whose versionCode doesn't grow). `RELEASE_TAGLINE` sets the stable codename (e.g. `1.1.0 — Obsidian`).
 - Docs-only pushes (`README.md`, `screenshots/**`) skip CI via `paths-ignore`.
 - Never commit a keystore — CI decodes `KEYSTORE_BASE64` → `app/release.keystore` at build time, falls back to ephemeral/debug otherwise.
 
@@ -42,19 +42,17 @@ app/src/main/java/com/flambo/recorder/
 │   ├── home/          # Library, search, recording panel, mini-player
 │   ├── detail/        # Playback, waveform scrubber, transcribe sheet, transcript card
 │   ├── settings/      # Segmented preference groups, Vosk model manager, updates, about
-│   ├── onboarding/    # First-launch expressive pager tour
-│   ├── intro/         # 3s zoom+fade splash + intro sound (every cold start)
+│   ├── onboarding/    # First-launch expressive pager tour (blocks until mic granted)
 │   ├── components/    # Waveform, cards, SegmentedList, mini-player
 │   └── theme/         # M3 Expressive color/type/shape/motion tokens
-├── record/            # RecordingController (MediaRecorder / SystemAudioEngine), service
+├── record/            # RecordingController (MediaRecorder / SystemAudioEngine), service, launcher-shortcut intents
 ├── audio/             # Offline enhancer
 ├── stt/               # Vosk offline transcription
 ├── playback/          # ExoPlayer controller
-├── update/            # UpdateChecker (pop sound on available) + ApkInstaller
-└── data/              # Room, Repository, DataStore prefs, SafFolderHelper, SoundPlayer
+├── update/            # UpdateChecker + ApkInstaller
+└── data/              # Room, Repository, DataStore prefs, SafFolderHelper
 app/src/main/res/
-├── raw/pop.mp3, intro_sound.mp3
-├── drawable/intro.xml
+├── xml/shortcuts.xml  # Start / Pause recording shortcuts (also fired by Key Mapper)
 └── mipmap/.../ic_launcher.png
 ```
 
@@ -95,10 +93,11 @@ ci: bump BASE_VERSION to 1.0.3
 3. Add row in `SettingsScreen` inside the appropriate `SegmentedList` (see Recording / Sound / Appearance groups). Follow the existing `ListItem` + `Switch` / `ToggleButton` pattern; add an `AlertDialog` with `ShapeLargeIncreased` for selection.
 4. For folder picks, use `rememberLauncherForActivityResult(OpenDocumentTree)` + `takePersistableUriPermission` + `SafFolderHelper`.
 
-### Sounds & intro
+### Shortcuts & external intents
 
-- `res/raw/pop.mp3` plays via `SoundPlayer.playPop()` only when `UpdateChecker.available == true` (posted to main thread).
-- `res/raw/intro_sound.mp3` plays together with `IntroScreen` (zoom 0.6→1 + fade) for 3 s on every cold start. To change duration, edit `IntroScreen(durationMs)`.
+- `res/xml/shortcuts.xml` declares the **Start recording** (`start_recording`) and **Pause / Resume** (`pause_recording`) launcher shortcuts.
+- Automation apps (Key Mapper, Tasker) fire them as explicit intents: action `com.flambo.recorder.ACTION_START_RECORDING` or `com.flambo.recorder.ACTION_PAUSE_RECORDING`, package `com.flambo.recorder`, class `com.flambo.recorder.MainActivity`.
+- Handling lives in `MainActivity.handleShortcutIntent()` (called from both `onCreate` and `onNewIntent`); the actual work goes through `RecordingController`. Keep new external actions in `RecordingShortcut` with the same consume-once + screen-off `moveTaskToBack` pattern.
 
 ---
 

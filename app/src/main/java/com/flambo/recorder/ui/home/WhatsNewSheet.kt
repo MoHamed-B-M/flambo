@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -34,6 +35,9 @@ private val fallbackHighlights = listOf(
     WhatsNewItem("Onboarding", "First-launch tour now blocks until microphone permission is granted."),
     WhatsNewItem("Settings buttons", "All 'Change' buttons redesigned with filled tonal style and animated shapes."),
     WhatsNewItem("Universal APK", "New universal APK alongside per-ABI splits — installs on any device."),
+    WhatsNewItem("Recording names", "Custom prefix with auto-incrementing numbers."),
+    WhatsNewItem("Export folder", "Pick any folder via the system picker, or use phone / SD-card storage."),
+    WhatsNewItem("Faster startup", "No splash screen, no launch permission prompt — straight into your library."),
     WhatsNewItem("Record", "One-tap recording with live waveform, pause and resume."),
     WhatsNewItem("Enhance", "Clean audio hush and leveling, fully offline."),
     WhatsNewItem("Transcribe", "Downloadable language models, searchable transcripts."),
@@ -81,7 +85,9 @@ fun WhatsNewSheet(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            (highlights?.takeIf { it.isNotEmpty() } ?: fallbackHighlights).forEach { item ->
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            val items = highlights?.takeIf { it.isNotEmpty() } ?: fallbackHighlights
+            items.forEachIndexed { index, item ->
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
@@ -103,6 +109,11 @@ fun WhatsNewSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+                if (index < items.lastIndex) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
                 }
             }
             Spacer(Modifier.height(16.dp))

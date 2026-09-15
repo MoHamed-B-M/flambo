@@ -186,8 +186,8 @@ class MainActivity : ComponentActivity() {
             }
 
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
-            var rerunIntro by remember { mutableStateOf(false) }
-            val showOnboarding = onboardingDone == false || rerunIntro
+            var rerunOnboarding by remember { mutableStateOf(false) }
+            val showOnboarding = onboardingDone == false || rerunOnboarding
 
             FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
@@ -197,7 +197,7 @@ class MainActivity : ComponentActivity() {
                             showOnboarding -> OnboardingScreen(
                                 onFinish = {
                                     lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
-                                    rerunIntro = false
+                                    rerunOnboarding = false
                                 },
                                 micGranted = micGrantedState,
                                 notifGranted = notifGrantedState,
@@ -210,7 +210,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             else -> FlamboNavGraph(
-                                onRerunOnboarding = { rerunIntro = true },
+                                onRerunOnboarding = { rerunOnboarding = true },
                                 onRequestSystemCapture = { requestSystemCapture() },
                                 onEnableSystemSound = { requestSystemCaptureAndRecord() },
                                 onRequestMicPermission = { requestMicAndRecord(it) }

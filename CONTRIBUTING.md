@@ -99,6 +99,11 @@ ci: bump BASE_VERSION to 1.0.3
 - Automation apps (Key Mapper, Tasker) fire them as explicit intents: action `com.flambo.recorder.ACTION_START_RECORDING` or `com.flambo.recorder.ACTION_PAUSE_RECORDING`, package `com.flambo.recorder`, class `com.flambo.recorder.MainActivity`.
 - Handling lives in `MainActivity.handleShortcutIntent()` (called from both `onCreate` and `onNewIntent`); the actual work goes through `RecordingController`. Keep new external actions in `RecordingShortcut` with the same consume-once + screen-off `moveTaskToBack` pattern.
 
+### Headless broadcast receiver (no UI)
+
+- `record/RecordingReceiver` (exported) handles `com.flambo.recorder.ACTION_TOGGLE` / `ACTION_START` / `ACTION_STOP` for automation apps that send **broadcasts** instead of opening activities — e.g. Key Mapper "Send intent" with action set, package `com.flambo.recorder`, class `com.flambo.recorder.record.RecordingReceiver`.
+- It routes straight to `RecordingController` via `FlamboApp.recorder` using `goAsync()` + `appScope`; no window ever opens. Starting needs `RECORD_AUDIO` already granted and always uses mic (system capture needs its consent UI, so it falls back). `START` is a no-op while recording; `STOP` saves.
+
 ---
 
 ## Reporting bugs & ideas

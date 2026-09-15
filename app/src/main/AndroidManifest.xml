@@ -54,6 +54,19 @@
             android:exported="false"
             android:foregroundServiceType="microphone|mediaPlayback|mediaProjection" />
 
+        <!-- Headless automation entry: Key Mapper / Tasker "send broadcast"
+             with one of the actions below. Exported on purpose; no activity
+             opens and the screen is left alone. -->
+        <receiver
+            android:name=".record.RecordingReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.flambo.recorder.ACTION_TOGGLE" />
+                <action android:name="com.flambo.recorder.ACTION_START" />
+                <action android:name="com.flambo.recorder.ACTION_STOP" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

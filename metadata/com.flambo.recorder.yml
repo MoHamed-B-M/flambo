@@ -1,0 +1,62 @@
+Categories:
+  - Multimedia
+License: GPL-3.0-only
+AuthorName: Mohamed Ben Mohamed
+WebSite: https://github.com/MoHamed-B-M/flambo
+SourceCode: https://github.com/MoHamed-B-M/flambo
+IssueTracker: https://github.com/MoHamed-B-M/flambo/issues
+Changelog: https://github.com/MoHamed-B-M/flambo/releases
+Donate: https://github.com/sponsors/MoHamed-B-M
+
+AutoName: Flambo
+Summary: Calm voice recorder with offline transcription
+Description: |-
+  Flambo is a calm, Material 3 Expressive voice recorder for Android. Everything
+  stays on your device — no account, no cloud.
+
+  Record in one tap with a live waveform, pause/resume on a single timeline,
+  and a foreground notification that keeps the take alive with the screen off.
+  Transcribe any recording fully offline with downloadable Vosk language models,
+  then copy, share, edit, or search the text.
+
+  Headless automation for hardware keys:
+  * Launcher shortcuts (Start / Pause) and exported BroadcastReceiver intents
+    (ACTION_TOGGLE / ACTION_START / ACTION_STOP) for Key Mapper, Tasker,
+    MacroDroid — sent as broadcasts to com.flambo.recorder.record.RecordingReceiver
+  * App-shortcut picker (CREATE_SHORTCUT) so mappers can choose Flambo from a
+    menu instead of typing intent strings
+  * NoDisplay trampoline with empty taskAffinity + finishAndRemoveTask() — no
+    window is created, no flash, no recents entry, nothing queued on the
+    lock screen
+
+  Library built for speed:
+  * Long-press multi-select → Group (shared tag), Move across volumes
+    (Phone / Internal / SD, copy-fallback, collision-safe), Delete to Trash;
+    Empty Trash with count dialog
+  * List or Grid (2-column compact tiles) — toggle in Settings → Appearance
+  * Custom names (MAX+1, empty restarts at 1) and custom folder via system
+    picker + StorageVolumes
+  * Persistent update download: survives closing Settings and even process
+    death — kept until you tap Install, then auto-deleted next launch
+
+  Also: dynamic color & theme seeds, quality presets, noise reduction / Clean
+  audio, waveform playback, tags / favorites / search, Trash auto-purge.
+
+  Free as in freedom — GPL-3.0-only. No trackers, no ads.
+
+RepoType: git
+Repo: https://github.com/MoHamed-B-M/flambo.git
+
+Builds:
+  - versionName: 1.2.1
+    versionCode: 3
+    commit: v1.2.1+3
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version v%v+%c
+UpdateCheckMode: Tags
+UpdateCheckData: RepoTags
+CurrentVersion: 1.2.1
+CurrentVersionCode: 3

@@ -25,10 +25,10 @@ Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compile
 
 | Branch | What it is | CI does |
 |---|---|---|
-| `beta` | Rolling preview `1.1.0-dev(#N)` (`100000 + runNumber` versionCode so stable→beta is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
+| `beta` | Rolling preview `1.2.1-dev(#N)` (`100000 + runNumber` versionCode so stable→beta is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
 | `main` | Versioned stable `x.y.z+BUILD` (pins `BASE_VERSION`/`STABLE_BUILD`) | Builds, signs, creates `vX.Y.Z+BUILD` release with notes + checksums, artifact 30 days, marks latest |
 
-- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, beta follows automatically (`1.1.0-dev(#N)`). `STABLE_BUILD` must keep increasing across stables (Android rejects updates whose versionCode doesn't grow). `RELEASE_TAGLINE` sets the stable codename (e.g. `1.1.0 — Obsidian`).
+- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, beta follows automatically (`1.2.1-dev(#N)`). `STABLE_BUILD` must keep increasing across stables (Android rejects updates whose versionCode doesn't grow). `RELEASE_TAGLINE` sets the stable codename (e.g. `1.2.1 — Tachylite`).
 - Docs-only pushes (`README.md`, `screenshots/**`) skip CI via `paths-ignore`.
 - Never commit a keystore — CI decodes `KEYSTORE_BASE64` → `app/release.keystore` at build time, falls back to ephemeral/debug otherwise.
 

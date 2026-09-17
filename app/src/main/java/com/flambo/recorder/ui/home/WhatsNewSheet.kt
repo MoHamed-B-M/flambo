@@ -29,11 +29,17 @@ import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.update.WhatsNewItem
 
-// Offline fallback when GitHub is unreachable — mirrors the latest release notes.
+// Offline fallback when GitHub is unreachable — mirrors the latest release notes (Tachylite).
 private val fallbackHighlights = listOf(
-    WhatsNewItem("Shortcuts", "Start / Pause recording from your launcher icon or hardware keys via Key Mapper."),
-    WhatsNewItem("Onboarding", "First-launch tour now blocks until microphone permission is granted."),
-    WhatsNewItem("Settings buttons", "All 'Change' buttons redesigned with filled tonal style and animated shapes."),
+    WhatsNewItem("Tachylite", "Headless Key Mapper / Tasker automation — broadcast receiver + shortcut picker + NoDisplay trampoline that never flashes the UI or queues on the lock screen."),
+    WhatsNewItem("FGS fix", "Android 14+ background start no longer crashes — safely unwinds when the system denies the foreground service."),
+    WhatsNewItem("Bulk actions", "Long-press to select many → Group (shared tag), Move across volumes, Delete to trash; Empty Trash with count dialog."),
+    WhatsNewItem("Library layout", "List or Grid (2-column compact tiles) — toggle in Settings → Appearance."),
+    WhatsNewItem("Smarter naming", "Next recording is MAX + 1 of the current prefix; empty library restarts at 1."),
+    WhatsNewItem("Persistent update", "Download survives closing Settings and process death — kept until Install; auto-deletes after install."),
+    WhatsNewItem("Shortcuts", "Start / Pause recording from launcher icon or hardware keys via Key Mapper."),
+    WhatsNewItem("Onboarding", "First-launch tour blocks until microphone permission is granted."),
+    WhatsNewItem("Settings buttons", "All 'Change' buttons use filled tonal style with animated shapes."),
     WhatsNewItem("Universal APK", "New universal APK alongside per-ABI splits — installs on any device."),
     WhatsNewItem("Recording names", "Custom prefix with auto-incrementing numbers."),
     WhatsNewItem("Export folder", "Pick any folder via the system picker, or use phone / SD-card storage."),

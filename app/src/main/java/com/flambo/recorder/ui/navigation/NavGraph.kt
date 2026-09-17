@@ -34,6 +34,7 @@ import com.flambo.recorder.ui.detail.DetailViewModel
 import com.flambo.recorder.ui.home.HomeScreen
 import com.flambo.recorder.ui.home.HomeViewModel
 import com.flambo.recorder.ui.settings.SettingsScreen
+import com.flambo.recorder.update.UpdateDownloadState
 
 sealed class Dest(val route: String) {
     data object Home : Dest("home")
@@ -106,6 +107,9 @@ fun FlamboNavGraph(
     val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val audioSource by app.prefs.audioSourceFlow.collectAsState(initial = "mic")
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
+    val homeLayout by app.prefs.homeLayoutFlow.collectAsState(initial = "list")
+    // Outlives Settings so downloads survive closing the screen.
+    val updateDownload = remember { UpdateDownloadState() }
 
     NavHost(
         navController = navController,
@@ -138,6 +142,7 @@ fun FlamboNavGraph(
                 quality = quality,
                 audioSource = audioSource,
                 noiseReduction = noiseReduction,
+                homeLayout = homeLayout,
                 onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
                 onOpenSettings = { navController.navigate(Dest.Settings.route) },
                 onEnableSystemSound = onEnableSystemSound,
@@ -192,6 +197,7 @@ fun FlamboNavGraph(
                 prefs = app.prefs,
                 scope = scope,
                 transcription = app.transcription,
+                updateDownload = updateDownload,
                 onBack = { navController.popBackStack() },
                 onRerunOnboarding = onRerunOnboarding,
                 onRequestSystemCapture = onRequestSystemCapture

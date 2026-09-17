@@ -31,6 +31,67 @@ class RecordingRepository(
         getById(id)?.let { dao.update(it.copy(isTrashed = true, trashedAt = System.currentTimeMillis())) }
     }
 
+    suspend fun softDeleteAll(ids: Collection<Long>) {
+        ids.forEach { softDelete(it) }
+    }
+
+    // Shared tag ("group") for several recordings at once.
+    suspend fun addTagToAll(ids: Collection<Long>, tag: String): Int {
+        val clean = tag.trim().trim(',')
+        if (clean.isEmpty()) return 0
+        var tagged = 0
+        ids.forEach { id ->
+            getById(id)?.let { rec ->
+                if (clean !in rec.tagList) {
+                    dao.update(rec.copy(tags = (rec.tagList + clean).joinToString(",")))
+                }
+                tagged++
+            }
+        }
+        return tagged
+    }
+
+    // Moves audio files (+ cleaned copies) into targetDir and rewrites rows.
+    // Works across volumes (copy + delete fallback). Returns moved count.
+    suspend fun moveToDirectory(ids: Collection<Long>, targetDir: File): Int {
+        runCatching { targetDir.mkdirs() }
+        var moved = 0
+        ids.forEach { id ->
+            val rec = getById(id) ?: return@forEach
+            val newMain = moveFile(File(rec.filePath), targetDir) ?: return@forEach
+            var newEnhanced = rec.enhancedPath
+            if (newEnhanced.isNotBlank()) {
+                moveFile(File(newEnhanced), targetDir)?.let { newEnhanced = it.absolutePath }
+            }
+            dao.update(rec.copy(filePath = newMain.absolutePath, enhancedPath = newEnhanced))
+            moved++
+        }
+        return moved
+    }
+
+    private fun moveFile(src: File, targetDir: File): File? {
+        if (!src.exists()) return null
+        var dest = File(targetDir, src.name)
+        if (dest.absolutePath == src.absolutePath) return dest // already there
+        if (dest.exists()) {
+            val base = src.nameWithoutExtension
+            val ext = src.extension.let { if (it.isBlank()) "" else ".$it" }
+            var i = 2
+            while (File(targetDir, "$base ($i)$ext").exists()) i++
+            dest = File(targetDir, "$base ($i)$ext")
+        }
+        return try {
+            if (src.renameTo(dest)) dest
+            else {
+                src.copyTo(dest, overwrite = true)
+                src.delete()
+                dest
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     suspend fun restore(id: Long) {
         getById(id)?.let { dao.update(it.copy(isTrashed = false, trashedAt = null)) }
     }
@@ -44,6 +105,13 @@ class RecordingRepository(
             dao.deletePermanently(id)
         }
     }
+
+    // Permanent delete of everything in trash (files + rows).
+    suspend fun emptyTrash() {
+        dao.getTrash().forEach { deletePermanently(it.id) }
+    }
+
+    suspend fun activeTitles(): List<String> = dao.activeTitles()
 
     suspend fun saveEnhanced(id: Long, path: String) {
         dao.updateEnhancedPath(id, path)

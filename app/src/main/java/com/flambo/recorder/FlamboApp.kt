@@ -36,7 +36,7 @@ class FlamboApp : Application() {
     val recorder by lazy { RecordingController(this, repository) }
     val transcription by lazy { TranscriptionManager(this, prefs) }
 
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    internal val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()

@@ -76,6 +76,16 @@ class HomeViewModel(
 
     fun permanentDelete(id: Long) = viewModelScope.launch { repository.deletePermanently(id) }
 
+    fun emptyTrash() = viewModelScope.launch { repository.emptyTrash() }
+
+    fun softDeleteAll(ids: Set<Long>) = viewModelScope.launch { repository.softDeleteAll(ids) }
+
+    fun moveRecordings(ids: Set<Long>, dir: java.io.File, onDone: (Int) -> Unit = {}) =
+        viewModelScope.launch { onDone(repository.moveToDirectory(ids, dir)) }
+
+    fun tagRecordings(ids: Set<Long>, tag: String, onDone: (Int) -> Unit = {}) =
+        viewModelScope.launch { onDone(repository.addTagToAll(ids, tag)) }
+
     fun restoreFromTrash(id: Long) = viewModelScope.launch { repository.restore(id) }
 
     fun rename(id: Long, newTitle: String) = viewModelScope.launch { repository.rename(id, newTitle) }

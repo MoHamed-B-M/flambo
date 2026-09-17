@@ -16,6 +16,12 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE isTrashed = 1 ORDER BY trashedAt DESC")
     fun observeTrash(): Flow<List<Recording>>
 
+    @Query("SELECT * FROM recordings WHERE isTrashed = 1")
+    suspend fun getTrash(): List<Recording>
+
+    @Query("SELECT title FROM recordings WHERE isTrashed = 0")
+    suspend fun activeTitles(): List<String>
+
     @Query("SELECT * FROM recordings WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): Recording?
 

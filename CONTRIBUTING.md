@@ -25,10 +25,10 @@ Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compile
 
 | Branch | What it is | CI does |
 |---|---|---|
-| `beta` | Rolling preview `1.1.0-dev(#N)` (`100000 + runNumber` versionCode so stable→beta is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
+| `beta` | Rolling preview `1.2.1-dev(#N)` (`100000 + runNumber` versionCode so stable→beta is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
 | `main` | Versioned stable `x.y.z+BUILD` (pins `BASE_VERSION`/`STABLE_BUILD`) | Builds, signs, creates `vX.Y.Z+BUILD` release with notes + checksums, artifact 30 days, marks latest |
 
-- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, beta follows automatically (`1.1.0-dev(#N)`). `STABLE_BUILD` must keep increasing across stables (Android rejects updates whose versionCode doesn't grow). `RELEASE_TAGLINE` sets the stable codename (e.g. `1.1.0 — Obsidian`).
+- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, beta follows automatically (`1.2.1-dev(#N)`). `STABLE_BUILD` must keep increasing across stables (Android rejects updates whose versionCode doesn't grow). `RELEASE_TAGLINE` sets the stable codename (e.g. `1.2.1 — Tachylite`).
 - Docs-only pushes (`README.md`, `screenshots/**`) skip CI via `paths-ignore`.
 - Never commit a keystore — CI decodes `KEYSTORE_BASE64` → `app/release.keystore` at build time, falls back to ephemeral/debug otherwise.
 
@@ -98,6 +98,12 @@ ci: bump BASE_VERSION to 1.0.3
 - `res/xml/shortcuts.xml` declares the **Start recording** (`start_recording`) and **Pause / Resume** (`pause_recording`) launcher shortcuts.
 - Automation apps (Key Mapper, Tasker) fire them as explicit intents: action `com.flambo.recorder.ACTION_START_RECORDING` or `com.flambo.recorder.ACTION_PAUSE_RECORDING`, package `com.flambo.recorder`, class `com.flambo.recorder.MainActivity`.
 - Handling lives in `MainActivity.handleShortcutIntent()` (called from both `onCreate` and `onNewIntent`); the actual work goes through `RecordingController`. Keep new external actions in `RecordingShortcut` with the same consume-once + screen-off `moveTaskToBack` pattern.
+
+### Headless broadcast receiver (no UI)
+
+- `record/RecordingReceiver` (exported) handles `com.flambo.recorder.ACTION_TOGGLE` / `ACTION_START` / `ACTION_STOP` for automation apps that send **broadcasts** instead of opening activities — e.g. Key Mapper "Send intent" with action set, package `com.flambo.recorder`, class `com.flambo.recorder.record.RecordingReceiver`.
+- It routes straight to `RecordingController` via `FlamboApp.recorder` using `goAsync()` + `appScope`; no window ever opens. Starting needs `RECORD_AUDIO` already granted and always uses mic (system capture needs its consent UI, so it falls back). `START` is a no-op while recording; `STOP` saves.
+- Automation apps can also pick Flambo from their "launch app shortcut" menu: `ui.ShortcutConfigActivity` answers `ACTION_CREATE_SHORTCUT` with a Toggle Recording shortcut. Because mapper runners execute shortcuts via `startActivity()`, it points at the transparent `ui.ShortcutHandlerActivity` trampoline (not the receiver) — shared `toggleHeadless()`/`startHeadless()` helpers on `RecordingController` keep all headless entries on one code path.
 
 ---
 

@@ -49,10 +49,51 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- Automation "launch app shortcut" pickers (Key Mapper, Tasker):
+             returns a shortcut that toggles via the handler below. Finished
+             instantly — no window, no UI, excluded from recents. -->
+        <activity
+            android:name=".ui.ShortcutConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Transparent trampoline for the shortcut above: mapper runners
+             execute shortcuts via startActivity(), which a receiver target
+             cannot survive. NoDisplay + empty taskAffinity isolates it so
+             the main task is never foregrounded — nothing over lock screen
+             and nothing queued for unlock. -->
+        <activity
+            android:name=".ui.ShortcutHandlerActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+
         <service
             android:name=".record.RecordingService"
             android:exported="false"
             android:foregroundServiceType="microphone|mediaPlayback|mediaProjection" />
+
+        <!-- Headless automation entry: Key Mapper / Tasker "send broadcast"
+             with one of the actions below. Exported on purpose; no activity
+             opens and the screen is left alone. -->
+        <receiver
+            android:name=".record.RecordingReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.flambo.recorder.ACTION_TOGGLE" />
+                <action android:name="com.flambo.recorder.ACTION_START" />
+                <action android:name="com.flambo.recorder.ACTION_STOP" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

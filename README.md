@@ -43,7 +43,12 @@
 [![Get it on Orion Store](https://raw.githubusercontent.com/RookieEnough/Orion-Store/refs/heads/main/assets/orion-badge.png)](https://rookieenough.github.io/Orion-Data/redirect.html?id=flambo)
 <a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
 
+<<<<<<< HEAD
 Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.1.0-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
+=======
+
+Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.2.1-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
+>>>>>>> beta
 
 | File suffix | Architecture | Most devices |
 |---|---|---|
@@ -69,7 +74,7 @@ Debug keystore fallback means `assembleRelease` works locally with no secrets co
 
 [`build.yaml`](.github/workflows/build.yaml) builds every push to `beta` and `main`:
 
-- **`beta`** → signed dev build `1.1.0-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
+- **`beta`** → signed dev build `1.2.1-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
 - **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
 
 Pushes touching only `README.md` or `screenshots/` skip CI entirely (no code changed, nothing to build).
@@ -104,7 +109,7 @@ Format examples:
 - `2.0.0+120` → complete UI redesign + new audio engine
 - `2.0.1+121` → rebuilt with updated libraries
 
-Beta builds follow the stable line with a dev tag: `1.1.0-dev(#N)`, where `N` is the CI run number (e.g. `1.1.0-dev(#42)`). When stable moves to `1.1.1`, beta becomes `1.1.1-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
+Beta builds follow the stable line with a dev tag: `1.2.1-dev(#N)`, where `N` is the CI run number (e.g. `1.2.1-dev(#42)`). When stable moves to `1.2.2`, beta becomes `1.2.2-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
 
 Beta version codes sit `100000` above the run number, so installing a beta over a stable release always counts as an update for Android (which requires the code to increase).
 
@@ -164,3 +169,13 @@ Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) �
   <img src="https://img.shields.io/github/commit-activity/m/MoHamed-B-M/flambo?style=for-the-badge&label=monthly%20commits&color=6750A4" alt="monthly commits" />
   <img src="https://img.shields.io/github/commit-activity/w/MoHamed-B-M/flambo?style=for-the-badge&label=weekly%20commits&color=D8572A" alt="weekly commits" />
 </div>
+
+## ⭐ Star History
+
+<a href="https://www.star-history.com/?repos=mohamed-b-m%2Fflambo&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
+ </picture>
+</a>

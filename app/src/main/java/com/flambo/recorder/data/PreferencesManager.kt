@@ -37,8 +37,8 @@ class PreferencesManager(private val context: Context) {
         val TIP_INDEX = intPreferencesKey("tip_index")
         val TIPS_ENABLED = booleanPreferencesKey("tips_enabled")
         val RECORDING_PREFIX = stringPreferencesKey("recording_prefix") // e.g. "Recording", "Sound", "Voice"
+        val HOME_LAYOUT = stringPreferencesKey("home_layout") // list, grid
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri") // SAF tree URI, empty = use StorageVolumes
-        val RECORDING_NEXT_NUMBER = intPreferencesKey("recording_next_number") // next integer for "Sound 1" style
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -196,6 +196,13 @@ class PreferencesManager(private val context: Context) {
     suspend fun recordingPrefix(): String =
         context.dataStore.data.map { it[Keys.RECORDING_PREFIX] ?: "Recording" }.first()
 
+    val homeLayoutFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.HOME_LAYOUT] ?: "list" }
+
+    suspend fun setHomeLayout(layout: String) {
+        context.dataStore.edit { it[Keys.HOME_LAYOUT] = if (layout == "grid") "grid" else "list" }
+    }
+
     val customFolderUriFlow: Flow<String> =
         context.dataStore.data.map { it[Keys.CUSTOM_FOLDER_URI] ?: "" }
 
@@ -208,25 +215,6 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun clearCustomFolderUri() {
         context.dataStore.edit { it.remove(Keys.CUSTOM_FOLDER_URI) }
-    }
-
-    val recordingNextNumberFlow: Flow<Int> =
-        context.dataStore.data.map { it[Keys.RECORDING_NEXT_NUMBER] ?: 1 }
-
-    suspend fun recordingNextNumber(): Int =
-        context.dataStore.data.map { it[Keys.RECORDING_NEXT_NUMBER] ?: 1 }.first()
-
-    suspend fun setRecordingNextNumber(n: Int) {
-        context.dataStore.edit { it[Keys.RECORDING_NEXT_NUMBER] = n.coerceAtLeast(1) }
-    }
-
-    suspend fun nextRecordingNumberAndIncrement(): Int {
-        var next = 1
-        context.dataStore.edit { prefs ->
-            next = prefs[Keys.RECORDING_NEXT_NUMBER] ?: 1
-            prefs[Keys.RECORDING_NEXT_NUMBER] = next + 1
-        }
-        return next
     }
 
     companion object {

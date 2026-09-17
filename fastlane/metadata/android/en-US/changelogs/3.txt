@@ -1,7 +1,7 @@
-Tachylite — 1.2.1+3
+1.2.1 Tachylite
 
-• Headless automation: exported RecordingReceiver + CREATE_SHORTCUT picker + NoDisplay trampoline (no flash, no lockscreen queue)
-• Android 14+ FGS fix — background start denied by system no longer crashes
-• Library bulk actions: long-press → Group / Move / Delete; Empty Trash; List / Grid layout; MAX+1 naming
-• Persistent update download kept until Install, auto-deleted next launch
-• Lockscreen isolation: taskAffinity="" + finishAndRemoveTask()
+- Headless Key Mapper/Tasker via BroadcastReceiver and shortcut picker; NoDisplay trampoline (no flash, no lockscreen queue)
+- Fix Android 14+ background FGS crash (denied starts now unwind cleanly)
+- Bulk library: long-press select, Group/Move/Delete, Empty Trash; List/Grid toggle
+- Smarter naming: MAX+1, empty restarts at 1
+- Persistent update kept until Install

@@ -12,8 +12,9 @@ import kotlinx.coroutines.launch
  * target crashes them with "Error opening this app shortcut", so the
  * shortcut points here instead. Toggles recording through
  * [com.flambo.recorder.record.RecordingController.toggleHeadless] and
- * finishes inside onCreate — NoDisplay, so no window ever exists:
- * no flash, no recents entry, nothing over the lock screen.
+ * finishes inside onCreate — NoDisplay + empty taskAffinity, so no window
+ * ever exists and the main task is never foregrounded: no flash, no
+ * recents entry, nothing over lock screen and nothing queued for unlock.
  */
 class ShortcutHandlerActivity : Activity() {
 
@@ -21,9 +22,10 @@ class ShortcutHandlerActivity : Activity() {
         super.onCreate(savedInstanceState)
         val app = application as FlamboApp
         // NoDisplay activities must finish inside onCreate — no window is
-        // ever created, so nothing flashes, nothing enters recents, and
-        // nothing pops over the lock screen. The toggle continues on the
-        // app scope, which outlives this activity.
+        // ever created. finishAndRemoveTask() + empty affinity ensures this
+        // trampoline never brings Flambo's main task forward, even if it
+        // sits in Recents or on the lock screen. The toggle continues on
+        // the app scope, which outlives this activity.
         app.appScope.launch {
             try {
                 app.recorder.toggleHeadless()
@@ -33,6 +35,6 @@ class ShortcutHandlerActivity : Activity() {
                 runCatching { RecordingShortcut.refresh(app, s.isRecording, s.isPaused) }
             }
         }
-        finish()
+        finishAndRemoveTask()
     }
 }

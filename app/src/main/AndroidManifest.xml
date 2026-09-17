@@ -66,11 +66,13 @@
 
         <!-- Transparent trampoline for the shortcut above: mapper runners
              execute shortcuts via startActivity(), which a receiver target
-             cannot survive. NoDisplay means no window is ever created —
-             no flash, no recents entry, nothing over the lock screen. -->
+             cannot survive. NoDisplay + empty taskAffinity isolates it so
+             the main task is never foregrounded — nothing over lock screen
+             and nothing queued for unlock. -->
         <activity
             android:name=".ui.ShortcutHandlerActivity"
             android:exported="true"
+            android:taskAffinity=""
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay" />

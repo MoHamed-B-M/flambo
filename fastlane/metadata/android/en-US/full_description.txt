@@ -1,0 +1,22 @@
+Flambo is a calm, Material 3 Expressive voice recorder for Android.
+Everything stays on your device — no account, no cloud.
+
+• One-tap recording with live waveform, pause/resume on a single timeline and a foreground notification that keeps the take alive with the screen off
+• Offline transcription — Vosk language models download once, then run fully on-device; copy, share, edit, and search transcripts
+• Noise reduction while recording and one-tap Clean audio enhancement (Light / Balanced / Strong)
+
+Headless automation for hardware keys:
+• Launcher shortcuts (Start / Pause) and exported BroadcastReceiver (ACTION_TOGGLE / ACTION_START / ACTION_STOP) for Key Mapper, Tasker, MacroDroid — send a broadcast to com.flambo.recorder.record.RecordingReceiver
+• CREATE_SHORTCUT picker so mappers can choose Flambo from a menu instead of typing intent strings
+• NoDisplay trampoline with empty taskAffinity + finishAndRemoveTask() — no window is ever created, no flash, no recents entry, nothing queued on the lock screen
+• Android 14+ FGS fix: background starts that the system denies are caught (ForegroundServiceStartNotAllowedException / SecurityException) and unwound cleanly
+
+Library built for speed:
+• Long-press multi-select → Group (shared tag), Move across storage volumes (Phone / Internal / SD, copy-fallback, collision-safe), Delete to Trash; Empty Trash with count dialog
+• List or Grid (2-column compact tiles) — toggle in Settings → Appearance
+• Custom recording names (MAX+1, empty restarts at 1) and custom folder via system picker + StorageVolumes
+• Persistent update download: survives closing Settings and even process death — kept until you tap Install, then auto-deleted on next launch
+
+Also: dynamic color & theme seeds, quality presets, storage folder choices, tags / favorites / search, Trash auto-purge, waveform playback with speed and skip controls, rotating tips and What's New sheet.
+
+Free as in freedom — GPL-3.0-only. No trackers, no ads. Source at github.com/MoHamed-B-M/flambo.

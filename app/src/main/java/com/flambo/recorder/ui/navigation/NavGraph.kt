@@ -16,6 +16,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.flambo.recorder.domain.RecordingQuality
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

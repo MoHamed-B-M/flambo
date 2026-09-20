@@ -35,7 +35,6 @@ class RecordingRepository(
         ids.forEach { softDelete(it) }
     }
 
-    // Shared tag ("group") for several recordings at once.
     suspend fun addTagToAll(ids: Collection<Long>, tag: String): Int {
         val clean = tag.trim().trim(',')
         if (clean.isEmpty()) return 0
@@ -51,8 +50,6 @@ class RecordingRepository(
         return tagged
     }
 
-    // Moves audio files (+ cleaned copies) into targetDir and rewrites rows.
-    // Works across volumes (copy + delete fallback). Returns moved count.
     suspend fun moveToDirectory(ids: Collection<Long>, targetDir: File): Int {
         runCatching { targetDir.mkdirs() }
         var moved = 0
@@ -72,7 +69,7 @@ class RecordingRepository(
     private fun moveFile(src: File, targetDir: File): File? {
         if (!src.exists()) return null
         var dest = File(targetDir, src.name)
-        if (dest.absolutePath == src.absolutePath) return dest // already there
+        if (dest.absolutePath == src.absolutePath) return dest
         if (dest.exists()) {
             val base = src.nameWithoutExtension
             val ext = src.extension.let { if (it.isBlank()) "" else ".$it" }
@@ -99,14 +96,13 @@ class RecordingRepository(
     suspend fun deletePermanently(id: Long) {
         val rec = getById(id)
         rec?.let {
-            // delete files best-effort (original + cleaned copy, if any)
+
             try { File(it.filePath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
             try { File(it.enhancedPath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
             dao.deletePermanently(id)
         }
     }
 
-    // Permanent delete of everything in trash (files + rows).
     suspend fun emptyTrash() {
         dao.getTrash().forEach { deletePermanently(it.id) }
     }
@@ -141,9 +137,9 @@ class RecordingRepository(
     suspend fun purgeOldTrash(days: Int = 7) {
         val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
         val purged = dao.purgeOldTrash(cutoff)
-        // files already soft-deleted; actual file deletion occurs on permanent delete
+
         if (purged > 0) {
-            // no-op
+
         }
     }
 

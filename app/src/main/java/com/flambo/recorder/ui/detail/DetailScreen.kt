@@ -143,9 +143,11 @@ fun DetailScreen(
         return
     }
 
-    val isThisPlaying = playbackState.isPlaying && playback.isPlayingPath(rec.filePath) || playbackState.positionMs > 0 && playback.isPlayingPath(rec.filePath)
-    val progress = if (playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
-    val duration = if (playbackState.durationMs > 0) playbackState.durationMs else rec.durationMs
+    val isCurrentTrack = playbackState.currentPath == rec.filePath
+    val isThisPlaying = isCurrentTrack && playbackState.isPlaying
+    val progress = if (isCurrentTrack && playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
+    val duration = if (isCurrentTrack && playbackState.durationMs > 0) playbackState.durationMs else rec.durationMs
+    val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
 
     Scaffold(
         topBar = {
@@ -182,7 +184,7 @@ fun DetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Title — inline editable
+
             Surface(
                 shape = ShapeLargeIncreased,
                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -231,7 +233,6 @@ fun DetailScreen(
                 }
             }
 
-            // Waveform + scrubber
             Surface(
                 shape = ShapeLargeIncreased,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -243,38 +244,38 @@ fun DetailScreen(
                         progress = progress,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    // Slider for seeking
+
                     Slider(
                         value = progress,
                         onValueChange = { p ->
-                            val target = (p * duration).toLong()
-                            playback.seekTo(target)
+                            if (isCurrentTrack) {
+                                val target = (p * duration).toLong()
+                                playback.seekTo(target)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(formatDuration(playbackState.positionMs.takeIf { it > 0 } ?: 0L), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(formatDuration(positionForUi), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
-                    // Controls — large expressive pill buttons with bouncy spring
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         FilledTonalIconButton(
-                            onClick = { playback.skip(-5000) },
+                            onClick = { if (isCurrentTrack) playback.skip(-5000) },
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {
                             Icon(Icons.Filled.Replay5, contentDescription = "Back 5s")
                         }
 
-                        // Play / pause morphing FAB — bouncy scale
                         androidx.compose.material3.FloatingActionButton(
                             onClick = {
-                                if (isThisPlaying && playbackState.isPlaying) playback.pause()
+                                if (isThisPlaying) playback.pause()
                                 else playback.play(rec.filePath)
                             },
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -283,14 +284,14 @@ fun DetailScreen(
                             modifier = Modifier.size(64.dp)
                         ) {
                             Icon(
-                                imageVector = if (playbackState.isPlaying && playback.isPlayingPath(rec.filePath)) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (playbackState.isPlaying) "Pause" else "Play",
+                                imageVector = if (isThisPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isThisPlaying) "Pause" else "Play",
                                 modifier = Modifier.size(32.dp)
                             )
                         }
 
                         FilledTonalIconButton(
-                            onClick = { playback.skip(10000) },
+                            onClick = { if (isCurrentTrack) playback.skip(10000) },
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {
@@ -298,7 +299,6 @@ fun DetailScreen(
                         }
                     }
 
-                    // Speed control — expressive connected ToggleButtons (bouncy)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -330,7 +330,6 @@ fun DetailScreen(
                 }
             }
 
-            // Transcript — saved text, fresh result, progress, or the entry point
             TranscriptSection(
                 savedTranscript = rec.transcriptText,
                 transcriptionUi = transcriptionUi,
@@ -356,7 +355,6 @@ fun DetailScreen(
                 onClearSaved = { viewModel.clearSavedTranscript() }
             )
 
-            // Clean audio — offline enhancement with progress + result
             EnhanceSection(
                 savedEnhancedPath = rec.enhancedPath,
                 enhanceUi = enhanceUi,
@@ -369,7 +367,6 @@ fun DetailScreen(
                 onDeleteEnhanced = { viewModel.deleteEnhanced() }
             )
 
-            // Quick actions row
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 FilledTonalButton(onClick = { showDeleteConfirm = true }, shape = ShapeFull, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -618,28 +615,32 @@ private fun EnhanceSection(
                         )
                         TextButton(onClick = onDismiss) { Text("Dismiss") }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         FilledTonalButton(
                             onClick = { onPlayEnhanced(enhanceUi.path) },
                             shape = ShapeFull,
-                            modifier = Modifier.weight(1f)
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                         ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Play")
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Play", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                         }
                         OutlinedButton(
                             onClick = { onShareEnhanced(enhanceUi.path) },
                             shape = ShapeFull,
-                            modifier = Modifier.weight(1f)
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                         ) {
-                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Share")
+                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                         }
                         if (!enhanceUi.replaced) {
                             TextButton(onClick = onDeleteEnhanced) {
-                                Text("Delete copy", color = MaterialTheme.colorScheme.error)
+                                Text("Delete copy", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                         }
                     }
@@ -673,27 +674,31 @@ private fun EnhanceSection(
                             Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Text("Cleaned copy saved", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             FilledTonalButton(
                                 onClick = { onPlayEnhanced(savedEnhancedPath) },
                                 shape = ShapeFull,
-                                modifier = Modifier.weight(1f)
+                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                             ) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Play")
+                                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Play", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                             OutlinedButton(
                                 onClick = { onShareEnhanced(savedEnhancedPath) },
                                 shape = ShapeFull,
-                                modifier = Modifier.weight(1f)
+                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                             ) {
-                                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Share")
+                                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                             TextButton(onClick = onDeleteEnhanced) {
-                                Text("Delete copy", color = MaterialTheme.colorScheme.error)
+                                Text("Delete copy", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                         }
                     }
@@ -848,7 +853,6 @@ private fun TranscribeSheet(
                 }
             }
 
-            // Model status for the chosen language
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -876,7 +880,7 @@ private fun TranscribeSheet(
                                 val result = app.transcription.vosk.models.download(currentBase)
                                 downloading = null
                                 if (result.isFailure) {
-                                    // surface via snackbar-less inline note next render
+
                                 }
                             }
                         },

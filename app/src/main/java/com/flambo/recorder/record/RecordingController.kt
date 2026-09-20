@@ -28,10 +28,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.log10
 
-/**
- * Thin wrapper around MediaRecorder that exposes amplitude sampling and lifecycle.
- * Kept intentionally small — no broad storage permission, files live in app private dir.
- */
 class RecordingController(
     private val appContext: Context,
     private val repository: RecordingRepository
@@ -41,7 +37,7 @@ class RecordingController(
         val isRecording: Boolean = false,
         val isPaused: Boolean = false,
         val elapsedMs: Long = 0L,
-        val amplitude: Float = 0f, // 0..1
+        val amplitude: Float = 0f,
         val peaks: List<Float> = emptyList(),
         val currentFile: File? = null,
         val quality: RecordingQuality = RecordingQuality.HIGH,
@@ -54,9 +50,6 @@ class RecordingController(
     private var recorder: MediaRecorder? = null
     private val sysEngine by lazy { SystemAudioEngine(appContext) }
 
-    // Docs require RECORD_AUDIO even for playback capture — without it
-    // AudioRecord creation fails (notably on strict OEM skins like ColorOS),
-    // so the UI gates system recording on this first.
     fun hasRecordAudioPermission(): Boolean =
         ContextCompat.checkSelfPermission(
             appContext, Manifest.permission.RECORD_AUDIO
@@ -78,9 +71,6 @@ class RecordingController(
         instance = this
     }
 
-    // Returns false when the recording couldn't start (e.g. system capture
-    // without a MediaProjection grant) so the UI can explain instead of
-    // silently doing nothing.
     fun start(
         quality: RecordingQuality = RecordingQuality.HIGH,
         source: AudioSource = AudioSource.MIC,
@@ -94,9 +84,7 @@ class RecordingController(
         val file = File(dir, "FLAMBO_${System.currentTimeMillis()}.m4a")
 
         val mr = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(appContext) else @Suppress("DEPRECATION") MediaRecorder()
-        // MediaRecorder exposes no audio session, so built-in NS/AGC effects
-        // can't attach here — VOICE_RECOGNITION gets the device's own speech
-        // tuning instead when noise reduction is on.
+
         mr.setAudioSource(
             if (noiseReduction) MediaRecorder.AudioSource.VOICE_RECOGNITION
             else MediaRecorder.AudioSource.MIC
@@ -127,8 +115,7 @@ class RecordingController(
             source = AudioSource.MIC
         )
         if (!startForegroundService()) {
-            // Background start refused — unwind fully so no headless
-            // MediaRecorder is left running without its service.
+
             runCatching { recorder?.stop() }
             runCatching { recorder?.release() }
             recorder = null
@@ -140,8 +127,6 @@ class RecordingController(
         return true
     }
 
-    // System-sound path: AudioPlaybackCapture needs Android 10+ and a grant.
-    // The user's quality choice is stored as the label (WAV has no bitrate).
     private fun startSystemCapture(quality: RecordingQuality, noiseReduction: Boolean): Boolean {
         if (!AudioSource.SYSTEM_ENABLED) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
@@ -169,13 +154,6 @@ class RecordingController(
         return true
     }
 
-    /**
-     * Headless start for automation entry points (broadcast receiver,
-     * shortcut trampoline activity). Needs RECORD_AUDIO already granted —
-     * there is no UI to prompt from — and always uses mic (system capture
-     * needs its consent dialog, so it falls back). Returns false when
-     * nothing happened.
-     */
     suspend fun startHeadless(): Boolean {
         if (_state.value.isRecording) return false
         if (!hasRecordAudioPermission()) return false
@@ -187,10 +165,6 @@ class RecordingController(
         return start(q, source, nr)
     }
 
-    /**
-     * Headless toggle for automation entry points: stops (saving) when
-     * recording, otherwise [startHeadless].
-     */
     suspend fun toggleHeadless(): Boolean {
         if (_state.value.isRecording) {
             stop()
@@ -235,8 +209,6 @@ class RecordingController(
         }
     }
 
-    // Built-in noise suppressor + gain control on the live session.
-    // Silently skipped where the device has no such effect.
     private fun attachVoiceEffects(sessionId: Int) {
         if (sessionId == 0) return
         runCatching {
@@ -270,7 +242,7 @@ class RecordingController(
             val res = sysEngine.stop()
             val file = res.file
             val peaks = res.peaks
-            _state.value = RecorderState() // reset immediately for UI
+            _state.value = RecorderState()
             stopForegroundService()
             if (file != null && file.exists()) {
                 scope.launch(Dispatchers.IO) {
@@ -285,7 +257,7 @@ class RecordingController(
                         quality = s.quality.name
                     )
                     val id = repository.insert(rec)
-                    // Also copy to custom SAF folder if chosen
+
                     copyToCustomFolderIfNeeded(file)
                     withContext(Dispatchers.Main) {
                         onSaved?.invoke(rec.copy(id = id))
@@ -295,7 +267,7 @@ class RecordingController(
             return
         }
 
-        try { recorder?.stop() } catch (_: Exception) { /* may throw if too short */ }
+        try { recorder?.stop() } catch (_: Exception) {  }
         try { recorder?.release() } catch (_: Exception) {}
         recorder = null
 
@@ -307,7 +279,7 @@ class RecordingController(
 
         val file = s.currentFile
         val peaks = s.peaks
-        _state.value = RecorderState() // reset immediately for UI
+        _state.value = RecorderState()
 
         stopForegroundService()
 
@@ -361,17 +333,17 @@ class RecordingController(
                 } else {
                     try { recorder?.maxAmplitude ?: 0 } catch (_: Exception) { 0 }
                 }
-                // normalize 0..1 using log scale for more natural waveform
+
                 val norm = if (raw <= 0) 0f else {
                     val db = 20 * log10(raw / 32768.0)
-                    // db in -90..0, map to 0..1
+
                     ((db + 60) / 60.0).coerceIn(0.0, 1.0).toFloat()
                 }
-                // add slight liveliness when silent
+
                 val jitter = if (norm < 0.05f) (0.02f + (Math.random().toFloat() * 0.03f)) else norm
                 samples += jitter
                 if (samples.size > 180) samples.removeAt(0)
-                // System engine counts only captured frames, so pauses stay exact.
+
                 val elapsed = if (_state.value.source == AudioSource.SYSTEM) sysEngine.elapsedMs
                 else System.currentTimeMillis() - startTimeMs - pauseAccumMs
                 _state.value = _state.value.copy(
@@ -384,11 +356,6 @@ class RecordingController(
         }
     }
 
-    // Returns false when the system refuses the background FGS start
-    // (ForegroundServiceStartNotAllowedException on API 31+, or a
-    // SecurityException when the mic FGS permission is missing on API 34+)
-    // so callers can unwind instead of crashing or leaking a recorder
-    // that runs with no service or notification.
     private fun startForegroundService(source: AudioSource = AudioSource.MIC): Boolean {
         val intent = Intent(appContext, RecordingService::class.java).apply {
             putExtra(RecordingService.EXTRA_FGS_TYPE, source.fgsType)
@@ -421,9 +388,7 @@ class RecordingController(
             val prefs = app?.prefs
             if (prefs != null) {
                 val prefix = prefs.recordingPrefix().ifBlank { "Recording" }
-                // Next free number: highest "<prefix> N" currently in the
-                // library + 1. Empty library restarts at 1; renamed titles
-                // that don't match the pattern are ignored.
+
                 val pattern = Regex("^${Regex.escape(prefix)}\\s+(\\d+)$")
                 val max = repository.activeTitles().mapNotNull {
                     pattern.matchEntire(it)?.groupValues?.get(1)?.toIntOrNull()
@@ -442,7 +407,7 @@ class RecordingController(
     private suspend fun copyToCustomFolderIfNeeded(file: File) {
         try {
             val app = appContext as? FlamboApp ?: return
-            // Prefer live DataStore value, fall back to cached volatile
+
             val uri = try { app.prefs.customFolderUri() } catch (_: Exception) { app.customFolderUri }
             if (uri.isBlank()) return
             if (!SafFolderHelper.isTreeUriValid(appContext, uri)) return

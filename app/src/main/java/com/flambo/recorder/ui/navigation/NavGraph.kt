@@ -16,6 +16,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.flambo.recorder.domain.RecordingQuality
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -44,17 +46,17 @@ sealed class Dest(val route: String) {
     }
 }
 
-// Expressive bouncy spring — low damping for playful overshoot, medium stiffness
 private val expressiveSpring = spring<Float>(
-    dampingRatio = Spring.DampingRatioMediumBouncy, // 0.7f bouncy
-    stiffness = Spring.StiffnessMediumLow // ~300f
+    dampingRatio = 0.85f,
+    stiffness = 400f
 )
 private val expressiveSpringOffset = spring<IntOffset>(
-    dampingRatio = Spring.DampingRatioMediumBouncy,
-    stiffness = Spring.StiffnessMediumLow
+    dampingRatio = 0.9f,
+    stiffness = 380f
 )
 
-// Slide + scale + fade — feels alive, not just sliding
+private val fastFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 600f)
+
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveEnter() =
     slideInHorizontally(
         initialOffsetX = { it / 5 },
@@ -68,27 +70,27 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveExit() =
     slideOutHorizontally(
         targetOffsetX = { -it / 6 },
         animationSpec = expressiveSpringOffset
-    ) + fadeOut(animationSpec = spring(dampingRatio = 0.9f)) + scaleOut(
+    ) + fadeOut(animationSpec = fastFadeSpring) + scaleOut(
         targetScale = 0.98f,
-        animationSpec = spring(dampingRatio = 0.9f)
+        animationSpec = fastFadeSpring
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopEnter() =
     slideInHorizontally(
         initialOffsetX = { -it / 5 },
         animationSpec = expressiveSpringOffset
-    ) + fadeIn(animationSpec = spring(dampingRatio = 0.8f)) + scaleIn(
+    ) + fadeIn(animationSpec = fastFadeSpring) + scaleIn(
         initialScale = 0.98f,
-        animationSpec = expressiveSpring
+        animationSpec = fastFadeSpring
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit() =
     slideOutHorizontally(
         targetOffsetX = { it / 4 },
         animationSpec = expressiveSpringOffset
-    ) + fadeOut(animationSpec = spring(dampingRatio = 0.9f)) + scaleOut(
+    ) + fadeOut(animationSpec = fastFadeSpring) + scaleOut(
         targetScale = 0.96f,
-        animationSpec = expressiveSpring
+        animationSpec = fastFadeSpring
     )
 
 @Composable
@@ -108,13 +110,34 @@ fun FlamboNavGraph(
     val audioSource by app.prefs.audioSourceFlow.collectAsState(initial = "mic")
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
     val homeLayout by app.prefs.homeLayoutFlow.collectAsState(initial = "list")
-    // Outlives Settings so downloads survive closing the screen.
+
     val updateDownload = remember { UpdateDownloadState() }
+
+    val isNavigating = remember { androidx.compose.runtime.mutableStateOf(false) }
+    fun debouncedNavigate(route: String) {
+        if (isNavigating.value) return
+        isNavigating.value = true
+        navController.navigate(route) { launchSingleTop = true }
+        scope.launch {
+            kotlinx.coroutines.delay(450)
+            isNavigating.value = false
+        }
+    }
+    fun debouncedPop(): Boolean {
+        if (isNavigating.value) return false
+        isNavigating.value = true
+        val popped = navController.popBackStack()
+        scope.launch {
+            kotlinx.coroutines.delay(450)
+            isNavigating.value = false
+        }
+        return popped
+    }
 
     NavHost(
         navController = navController,
         startDestination = Dest.Home.route,
-        // Default bouncy transitions for all destinations unless overridden per-composable
+
         enterTransition = { expressiveEnter() },
         exitTransition = { expressiveExit() },
         popEnterTransition = { expressivePopEnter() },
@@ -143,8 +166,8 @@ fun FlamboNavGraph(
                 audioSource = audioSource,
                 noiseReduction = noiseReduction,
                 homeLayout = homeLayout,
-                onOpenDetail = { id -> navController.navigate(Dest.Detail.create(id)) },
-                onOpenSettings = { navController.navigate(Dest.Settings.route) },
+                onOpenDetail = { id -> debouncedNavigate(Dest.Detail.create(id)) },
+                onOpenSettings = { debouncedNavigate(Dest.Settings.route) },
                 onEnableSystemSound = onEnableSystemSound,
                 onRequestMicPermission = onRequestMicPermission
             )
@@ -171,14 +194,14 @@ fun FlamboNavGraph(
             DetailScreen(
                 viewModel = vm,
                 playback = playback,
-                onBack = { navController.popBackStack() },
-                onDeleted = { navController.popBackStack() }
+                onBack = { debouncedPop() },
+                onDeleted = { debouncedPop() }
             )
         }
 
         composable(
             route = Dest.Settings.route,
-            // Settings slides up like a modal sheet — vertical expressive motion
+
             enterTransition = {
                 slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = expressiveSpringOffset) +
                     fadeIn(spring(dampingRatio = 0.8f)) + scaleIn(initialScale = 0.97f, animationSpec = expressiveSpring)
@@ -198,7 +221,7 @@ fun FlamboNavGraph(
                 scope = scope,
                 transcription = app.transcription,
                 updateDownload = updateDownload,
-                onBack = { navController.popBackStack() },
+                onBack = { debouncedPop() },
                 onRerunOnboarding = onRerunOnboarding,
                 onRequestSystemCapture = onRequestSystemCapture
             )

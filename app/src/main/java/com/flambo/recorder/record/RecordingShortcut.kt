@@ -8,17 +8,6 @@ import androidx.core.graphics.drawable.IconCompat
 import com.flambo.recorder.MainActivity
 import com.flambo.recorder.R
 
-/**
- * Launcher shortcuts + external intent entry points for controlling
- * the recorder from outside the app (long-press icon, Key Mapper, Tasker, etc.).
- *
- * Two intents:
- * - [ACTION_START_RECORDING] — start a new recording (no-op if already recording).
- * - [ACTION_PAUSE_RECORDING] — toggle pause/resume while recording.
- *
- * Handling lives in [MainActivity] (onCreate + onNewIntent) so permission /
- * projection consent can reuse the existing launchers.
- */
 object RecordingShortcut {
 
     const val ACTION_START_RECORDING = "com.flambo.recorder.ACTION_START_RECORDING"
@@ -39,21 +28,13 @@ object RecordingShortcut {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
-    /**
-     * Update dynamic shortcuts to reflect current recorder state.
-     * - While idle: both "Start recording" and "Pause / Resume" shown,
-     *   pause is greyed out (disabled).
-     * - While recording: "Start" disabled, "Pause / Resume" active
-     *   with label reflecting pause/resume state.
-     * - While paused: same as recording but label says "Resume".
-     */
     fun refresh(context: Context, isRecording: Boolean, isPaused: Boolean) {
         try {
             val startLabel = if (isRecording) context.getString(R.string.shortcut_stop_short)
                 else context.getString(R.string.shortcut_start_short)
             val pauseLabel = when {
                 !isRecording -> context.getString(R.string.shortcut_pause_short)
-                isPaused -> context.getString(R.string.shortcut_start_long) // "Resume"
+                isPaused -> context.getString(R.string.shortcut_start_long)
                 else -> context.getString(R.string.shortcut_pause_short)
             }
 

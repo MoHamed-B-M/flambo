@@ -14,8 +14,6 @@ import androidx.core.content.ContextCompat
 import com.flambo.recorder.MainActivity
 import com.flambo.recorder.R
 
-// System ping when the launch-time auto-check finds a newer build.
-// Fires once per version (see notifiedUpdateVersion in prefs).
 object UpdateNotifier {
 
     private const val CHANNEL_ID = "flambo_updates"

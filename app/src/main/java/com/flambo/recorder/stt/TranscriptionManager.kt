@@ -11,8 +11,6 @@ sealed interface FileResult {
     data class Failed(val message: String, val needsModelCode: String? = null) : FileResult
 }
 
-// Offline-only transcription: saved recordings are decoded to PCM and run
-// through Vosk on-device. No mic streaming, no cloud, no account.
 class TranscriptionManager(
     context: Context,
     private val prefs: PreferencesManager
@@ -20,13 +18,30 @@ class TranscriptionManager(
     private val appContext = context.applicationContext
 
     val vosk = VoskEngine(appContext)
+    val whisper = WhisperEngine(appContext)
 
     val modelProgress: StateFlow<Map<String, Float>> = vosk.models.progress
+    val whisperProgress: StateFlow<Map<String, Float>> = whisper.models.progress
 
     suspend fun transcribeFileWithProgress(
         path: String,
         onProgress: (Float) -> Unit
     ): FileResult {
+        val engine = runCatching { prefs.sttEngineFlow.first() }.getOrDefault("vosk")
+        if (engine == "whisper") {
+            val result = whisper.transcribeFile(path, onProgress)
+            return result.fold(
+                onSuccess = { FileResult.Done(it, offline = true) },
+                onFailure = { e ->
+                    if (e is ModelMissingException && e.code == "whisper") {
+                        FileResult.Failed(
+                            "Whisper model missing — download ggml-tiny.bin in Settings > Speech-to-text.",
+                            needsModelCode = "whisper"
+                        )
+                    } else FileResult.Failed(e.message ?: "Whisper failed.")
+                }
+            )
+        }
         val tag = runCatching { prefs.sttLanguageFlow.first() }.getOrDefault("")
             .ifBlank { Locale.getDefault().toLanguageTag() }
         val result = vosk.transcribeFile(path, tag, onProgress)
@@ -46,5 +61,6 @@ class TranscriptionManager(
 
     fun release() {
         vosk.release()
+        whisper.release()
     }
 }

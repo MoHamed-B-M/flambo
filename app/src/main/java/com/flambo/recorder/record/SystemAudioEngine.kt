@@ -20,9 +20,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.log10
 
-// Records device playback (music, video, anything the playing app leaves
-// capturable) straight to a WAV file. Needs a MediaProjection grant, which
-// the user confirms once — just like a screen recorder.
 @RequiresApi(Build.VERSION_CODES.Q)
 class SystemAudioEngine(private val context: Context) {
 
@@ -56,7 +53,6 @@ class SystemAudioEngine(private val context: Context) {
 
     val elapsedMs: Long get() = countedFrames * 1000 / SAMPLE_RATE
 
-    // Audio session for built-in effects (AGC/NS). 0 = not recording.
     val sessionId: Int get() = record?.audioSessionId ?: 0
 
     fun start(file: File): Boolean {
@@ -89,7 +85,7 @@ class SystemAudioEngine(private val context: Context) {
             }
             raf = RandomAccessFile(file, "rw").also {
                 it.setLength(0)
-                it.write(ByteArray(44)) // WAV header goes in on stop()
+                it.write(ByteArray(44))
             }
             outFile = file
             countedFrames = 0L
@@ -130,7 +126,7 @@ class SystemAudioEngine(private val context: Context) {
             if (file != null && frames > 0) {
                 raf?.let { writeWavHeader(it, frames) }
             }
-        } catch (_: Exception) { /* header best-effort */ }
+        } catch (_: Exception) {  }
         runCatching { raf?.close() }
         runCatching { rec?.release() }
         record = null
@@ -189,7 +185,7 @@ class SystemAudioEngine(private val context: Context) {
             if (n <= 0) continue
             if (paused) {
                 lastMax = 0
-                continue // keep draining so resume stays in sync
+                continue
             }
             var max = 0
             for (i in 0 until n) {
@@ -206,7 +202,7 @@ class SystemAudioEngine(private val context: Context) {
                 break
             }
             countedFrames += n / CHANNELS
-            // One normalized peak per second for the saved waveform preview.
+
             if (max > windowMax) windowMax = max
             windowFrames += n / CHANNELS
             if (windowFrames >= SAMPLE_RATE) {
@@ -226,7 +222,7 @@ class SystemAudioEngine(private val context: Context) {
         buf.put("WAVE".toByteArray())
         buf.put("fmt ".toByteArray())
         buf.putInt(16)
-        buf.putShort(1) // PCM
+        buf.putShort(1)
         buf.putShort(CHANNELS.toShort())
         buf.putInt(SAMPLE_RATE)
         buf.putInt(SAMPLE_RATE * CHANNELS * 2)

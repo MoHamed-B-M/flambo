@@ -125,11 +125,9 @@ fun HomeScreen(
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    // Starts with the preferred quality + source; explains instead of
-    // silently doing nothing when system capture has no grant yet.
     fun startRecording() {
         val source = AudioSource.fromPref(audioSource)
-        // System capture is parked until its projection bugs are fixed.
+
         if (source == AudioSource.SYSTEM && !AudioSource.SYSTEM_ENABLED) {
             scope.launch {
                 snackbarHostState.showSnackbar(
@@ -139,8 +137,7 @@ fun HomeScreen(
             }
             return
         }
-        // Playback capture requires RECORD_AUDIO too (enforced at AudioRecord
-        // creation on strict skins) — ask first, then continue automatically.
+
         if (!recorder.hasRecordAudioPermission()) {
             scope.launch {
                 val r = snackbarHostState.showSnackbar(
@@ -157,8 +154,7 @@ fun HomeScreen(
         if (!recorder.start(quality, source, noiseReduction)) {
             scope.launch {
                 if (source == AudioSource.SYSTEM) {
-                    // Grant may have died with the process — offer to re-ask
-                    // right here instead of a dead-end message.
+
                     val r = snackbarHostState.showSnackbar(
                         message = "System sound needs permission",
                         actionLabel = "Enable",
@@ -175,7 +171,7 @@ fun HomeScreen(
     var showRenameDialog by remember { mutableStateOf<Recording?>(null) }
     var renameText by remember { mutableStateOf("") }
     var showEmptyTrashConfirm by remember { mutableStateOf(false) }
-    // Multi-select (long-press): bulk delete / move / group.
+
     var selection by remember { mutableStateOf(setOf<Long>()) }
     val selectionMode = selection.isNotEmpty()
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
@@ -191,9 +187,6 @@ fun HomeScreen(
 
     var whatsNewItems by remember { mutableStateOf<List<WhatsNewItem>?>(null) }
 
-    // What's New: show once per installed version after an update.
-    // First-ever launch just stamps the version (onboarding covers it).
-    // Notes come from the GitHub release; bundled text covers offline.
     LaunchedEffect(Unit) {
         val (version, code) = UpdateChecker.installed(context)
         installedVersion = version
@@ -205,7 +198,6 @@ fun HomeScreen(
         prefs.setLastSeenVersionCode(code)
     }
 
-    // Launch-time auto-check: ping once per version, then hush.
     LaunchedEffect(Unit) {
         if (!prefs.autoUpdateCheckFlow.first()) return@LaunchedEffect
         val channel = prefs.updateChannelFlow.first()
@@ -226,7 +218,6 @@ fun HomeScreen(
         if (r == SnackbarResult.ActionPerformed) onOpenSettings()
     }
 
-    // Undo snackbar
     LaunchedEffect(uiState.lastDeleted) {
         val deleted = uiState.lastDeleted ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
@@ -294,10 +285,14 @@ fun HomeScreen(
                         }) {
                             Icon(Icons.Filled.Info, contentDescription = "What's new")
                         }
-                        IconButton(onClick = {
-                            selection = emptySet()
-                            viewModel.toggleTrash(!uiState.showTrash)
-                        }) {
+                        IconButton(
+                            onClick = {
+                                if (recorderState.isRecording) return@IconButton
+                                selection = emptySet()
+                                viewModel.toggleTrash(!uiState.showTrash)
+                            },
+                            enabled = !recorderState.isRecording
+                        ) {
                             Icon(Icons.Filled.Delete, contentDescription = "Trash")
                         }
                         IconButton(onClick = onOpenSettings) {
@@ -314,11 +309,11 @@ fun HomeScreen(
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !recorderState.isRecording && !selectionMode,
+                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {
-                // Expressive record button — shape morphs on press, bouncy scale on appear.
+
                 Button(
                     onClick = { startRecording() },
                     shapes = ButtonDefaults.shapes(),
@@ -349,7 +344,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Search — expressive outlined field (replaces legacy SearchBar which broke in M3 1.5.0-alpha26)
+
             androidx.compose.material3.OutlinedTextField(
                 value = uiState.query,
                 onValueChange = viewModel::onQueryChange,
@@ -367,7 +362,6 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            // Rotating how-to tip — hidden while recording and when switched off
             if (tipsEnabled && !recorderState.isRecording) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]
                 TipCard(
@@ -379,7 +373,6 @@ fun HomeScreen(
                 )
             }
 
-            // Active recording panel — morphing container
             AnimatedVisibility(
                 visible = recorderState.isRecording,
                 enter = fadeIn(tween(300)) + scaleIn(tween(300)),
@@ -397,7 +390,6 @@ fun HomeScreen(
                 )
             }
 
-            // Mini player when playing and not recording
             AnimatedVisibility(visible = !recorderState.isRecording && playbackState.isPlaying) {
                 val currentTitle = uiState.recordings.find { playback.isPlayingPath(it.filePath) }?.title ?: "Playing"
                 MiniPlayer(
@@ -413,7 +405,6 @@ fun HomeScreen(
                 )
             }
 
-            // Trash toggle header
             if (uiState.showTrash) {
                 Row(
                     modifier = Modifier
@@ -455,7 +446,7 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // Main list — list or grid, long-press to multi-select
+
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
                     EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())
                 } else if (homeLayout == "grid") {
@@ -525,7 +516,6 @@ fun HomeScreen(
         )
     }
 
-    // Empty-trash confirm
     if (showEmptyTrashConfirm) {
         val count = uiState.trash.size
         AlertDialog(
@@ -547,7 +537,6 @@ fun HomeScreen(
         )
     }
 
-    // Bulk-delete confirm
     if (showBulkDeleteConfirm) {
         val count = selection.size
         AlertDialog(
@@ -568,7 +557,6 @@ fun HomeScreen(
         )
     }
 
-    // Bulk move — pick a storage volume, files relocate there
     if (showMoveDialog) {
         val volumes = remember { StorageVolumes.list(context.applicationContext) }
         AlertDialog(
@@ -614,7 +602,6 @@ fun HomeScreen(
         )
     }
 
-    // Bulk group — one shared tag for everything selected
     if (showGroupDialog) {
         AlertDialog(
             onDismissRequest = { showGroupDialog = false },
@@ -663,7 +650,6 @@ fun HomeScreen(
         )
     }
 
-    // Rename dialog
     showRenameDialog?.let { rec ->
         AlertDialog(
             onDismissRequest = { showRenameDialog = null },

@@ -14,12 +14,12 @@ data class ApkAsset(val name: String, val url: String)
 data class ReleaseInfo(
     val tag: String,
     val name: String,
-    val version: String, // e.g. 1.0.6 or 1.0.6-beta
-    val buildNumber: Int, // parsed from "(#N)" in the preview title, 0 if absent
+    val version: String,
+    val buildNumber: Int,
     val pageUrl: String,
     val apkAssets: List<ApkAsset>
 ) {
-    // Releases carry one APK per ABI (arm64 / armv7) — pick this device's.
+
     fun bestApk(): ApkAsset? {
         if (apkAssets.isEmpty()) return null
         val abis = Build.SUPPORTED_ABIS ?: emptyArray()
@@ -32,15 +32,11 @@ data class ReleaseInfo(
         return apkAssets.first()
     }
 
-    // Back-compat for callers that just need any APK link.
     val apkUrl: String? get() = bestApk()?.url
 }
 
 data class WhatsNewItem(val title: String, val body: String)
 
-// Pulls the "## What's in …" bullet list from the latest stable release
-// notes, so the in-app What's New sheet always matches GitHub.
-// Returns null when offline or unparsable — callers fall back to bundled text.
 object ReleaseNotes {
 
     suspend fun fetchWhatsNew(): List<WhatsNewItem>? = withContext(Dispatchers.IO) {
@@ -70,8 +66,7 @@ object ReleaseNotes {
             }
             if (!inSection || !line.startsWith("- ")) continue
             val text = line.removePrefix("- ").trim()
-            // "Playback: waveform scrubber…" → title + body; plain sentences
-            // stay body-only so nothing reads awkwardly.
+
             val split = Regex("^([^:]{2,32}):\\s+(.+)$").find(text)
             if (split != null) items += WhatsNewItem(split.groupValues[1], split.groupValues[2])
             else items += WhatsNewItem("", text)
@@ -83,7 +78,7 @@ object ReleaseNotes {
 }
 
 data class UpdateCheck(
-    val channel: String, // beta | stable
+    val channel: String,
     val installedVersion: String,
     val installedBuild: Long,
     val release: ReleaseInfo?,
@@ -91,9 +86,6 @@ data class UpdateCheck(
     val error: String? = null
 )
 
-// Compares this install against GitHub releases. Beta tracks the rolling
-// `beta-latest` prerelease by build number (version tie-break), stable tracks
-// versioned `v*` releases by semantic version only.
 object UpdateChecker {
 
     const val CHANNEL_BETA = "beta"
@@ -101,9 +93,6 @@ object UpdateChecker {
 
     private const val API = "https://api.github.com/repos/MoHamed-B-M/flambo/releases"
 
-    // Mirrors BETA_CODE_OFFSET in build.yaml: beta codes sit above any
-    // stable build so installing a beta over stable always counts as an
-    // update. Keep the two in sync if the workflow value ever changes.
     const val BETA_CODE_OFFSET = 100000L
 
     fun installed(context: Context): Pair<String, Long> {
@@ -119,8 +108,7 @@ object UpdateChecker {
     suspend fun check(context: Context, channel: String): UpdateCheck =
         withContext(Dispatchers.IO) {
             val (installedVersion, installedCode) = installed(context)
-            // Recover the CI run number for beta-vs-beta comparison: beta
-            // codes are BETA_CODE_OFFSET + run, stable codes are the build itself.
+
             val installedBuild = if (installedCode >= BETA_CODE_OFFSET) {
                 installedCode - BETA_CODE_OFFSET
             } else {
@@ -161,8 +149,7 @@ object UpdateChecker {
         val tag = json.optString("tag_name", "")
         val name = json.optString("name", tag)
         val body = json.optString("body", "")
-        // Prefer the explicit `Version: \`x\`` line in our release notes,
-        // then the title, then the tag itself.
+
         val version = Regex("Version:\\s*`([^`]+)`").find(body)?.groupValues?.get(1)
             ?: Regex("(\\d+\\.\\d+\\.\\d+(?:-beta|-dev)?)").find(name)?.groupValues?.get(1)
             ?: tag.removePrefix("v")
@@ -182,7 +169,6 @@ object UpdateChecker {
         return ReleaseInfo(tag, name, version, build, json.optString("html_url", ""), apks)
     }
 
-    // Triplet compare; a stable release beats a beta/dev of the same triplet.
     fun compareVersions(a: String, b: String): Int {
         fun parts(v: String): List<Int> =
             (v.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 } + listOf(0, 0, 0)).take(3)

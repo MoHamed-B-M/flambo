@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.update.WhatsNewItem
 
-// Offline fallback when GitHub is unreachable — mirrors the latest release notes (Tachylite).
 private val fallbackHighlights = listOf(
     WhatsNewItem("Tachylite", "Headless Key Mapper / Tasker automation — broadcast receiver + shortcut picker + NoDisplay trampoline that never flashes the UI or queues on the lock screen."),
     WhatsNewItem("FGS fix", "Android 14+ background start no longer crashes — safely unwinds when the system denies the foreground service."),

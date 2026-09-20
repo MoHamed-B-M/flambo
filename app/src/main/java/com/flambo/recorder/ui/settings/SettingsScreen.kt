@@ -136,7 +136,9 @@ fun SettingsScreen(
     val reminder by prefs.recordingReminderFlow.collectAsState(initial = true)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
     val sttLanguage by prefs.sttLanguageFlow.collectAsState(initial = "")
+    val sttEngine by prefs.sttEngineFlow.collectAsState(initial = "vosk")
     val modelProgress by transcription.modelProgress.collectAsState()
+    val whisperProgress by transcription.whisperProgress.collectAsState()
     val updateChannel by prefs.updateChannelFlow.collectAsState(initial = UpdateChecker.CHANNEL_BETA)
     val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
     val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
@@ -155,9 +157,7 @@ fun SettingsScreen(
         val (version, code) = UpdateChecker.installed(context.applicationContext)
         installedLabel = "v$version • build ${(code - 1).coerceAtLeast(0)}"
     }
-    // A finished download survives closing Settings (holder lives in the
-    // nav graph) and even process death (file name in DataStore) — reopening
-    // shows Install instead of starting over.
+
     LaunchedEffect(Unit) {
         if (updateDownload.downloadedFile == null && updateDownload.progress == null) {
             val pending = runCatching { prefs.pendingApkDelete() }.getOrNull()
@@ -178,6 +178,7 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSttLanguageDialog by remember { mutableStateOf(false) }
     var showVoskModelsDialog by remember { mutableStateOf(false) }
+    var showEngineDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
     var modelsTick by remember { mutableStateOf(0) }
     var showNamingDialog by remember { mutableStateOf(false) }
@@ -221,7 +222,6 @@ fun SettingsScreen(
         ) {
             Text("Recording", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
 
-            // Recording group — connected segmented rows, no shadows
             SegmentedList {
                 item {
                     ListItem(
@@ -483,11 +483,27 @@ fun SettingsScreen(
 
             SegmentedList {
                 item {
-                    // Offline transcription runs fully on-device after a recording.
+
                     ListItem(
                         headlineContent = { Text("Offline transcription") },
-                        supportingContent = { Text("Vosk turns recordings into text — no cloud, no account") },
+                        supportingContent = { Text("Vosk and Whisper run fully offline — no cloud, no account") },
                         leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        colors = segmentedListItemColors()
+                    )
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Engine") },
+                        supportingContent = { Text(if (sttEngine == "whisper") "Whisper • multilingual 95+ langs" else "Vosk • per-language models") },
+                        leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        trailingContent = {
+                            FilledTonalButton(
+                                onClick = { showEngineDialog = true },
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
+                            ) { Text("Change") }
+                        },
                         colors = segmentedListItemColors()
                     )
                 }
@@ -529,6 +545,32 @@ fun SettingsScreen(
                         },
                         colors = segmentedListItemColors()
                     )
+                }
+                if (sttEngine == "whisper") {
+                    item {
+                        val whisperInstalled = remember(modelsTick, whisperProgress) { transcription.whisper.models.isInstalled() }
+                        val prog = whisperProgress["whisper"]
+                        ListItem(
+                            headlineContent = { Text("Whisper tiny model") },
+                            supportingContent = {
+                                Text(
+                                    when {
+                                        prog != null -> "Downloading ${(prog * 100).toInt()}%"
+                                        whisperInstalled -> "Ready offline • 95+ languages • ~75 MB"
+                                        else -> "Not installed — 75 MB multilingual"
+                                    }
+                                )
+                            },
+                            trailingContent = {
+                                when {
+                                    prog != null -> TextButton(onClick = {}, shapes = ButtonDefaults.shapes()) { Text("${(prog * 100).toInt()}%") }
+                                    whisperInstalled -> TextButton(onClick = { scope.launch { transcription.whisper.models.delete(); modelsTick++ } }, shapes = ButtonDefaults.shapes()) { Text("Delete") }
+                                    else -> FilledTonalButton(onClick = { scope.launch { transcription.whisper.models.download(); modelsTick++ } }, shapes = ButtonDefaults.shapes()) { Text("Download") }
+                                }
+                            },
+                            colors = segmentedListItemColors()
+                        )
+                    }
                 }
             }
 
@@ -629,7 +671,7 @@ fun SettingsScreen(
                                         )
                                         val asset = result.release.bestApk()
                                         val downloading = updateDownload.progress != null
-                                        // Saved file only counts for this exact release.
+
                                         val savedFile = updateDownload.fileFor(asset?.name)
                                         if (downloading) {
                                             LinearWavyProgressIndicator(
@@ -671,8 +713,7 @@ fun SettingsScreen(
                                                     }
                                                     needsUnknownSources = false
                                                     context.startActivity(ApkInstaller.installIntent(context, savedFile))
-                                                    // File stays put for the installer; FlamboApp
-                                                    // auto-deletes it on the next launch.
+
                                                 },
                                                 shapes = ButtonDefaults.shapes(),
                                                 modifier = Modifier.fillMaxWidth()
@@ -704,7 +745,7 @@ fun SettingsScreen(
                                                     }
                                                     needsUnknownSources = false
                                                     downloadError = null
-                                                    // Drop any stale file from another version first.
+
                                                     updateDownload.downloadedFile?.takeIf { it.name != asset.name }?.let {
                                                         runCatching { it.delete() }
                                                     }
@@ -775,7 +816,6 @@ fun SettingsScreen(
 
             Text("About", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
 
-            // Replay the first-launch tour
             Surface(
                 shape = ShapeLargeIncreased,
                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -824,7 +864,6 @@ fun SettingsScreen(
                 )
             }
 
-            // App card — flat tonal, follows dynamic color, no shadow
             androidx.compose.material3.Card(
                 shape = ShapeLargeIncreased,
                 colors = androidx.compose.material3.CardDefaults.cardColors(
@@ -873,7 +912,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Developer card — flat tonal, follows dynamic color, no shadow
             androidx.compose.material3.Card(
                 shape = ShapeLargeIncreased,
                 colors = androidx.compose.material3.CardDefaults.cardColors(
@@ -947,7 +985,7 @@ fun SettingsScreen(
             title = { Text("Recording quality", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Expressive ToggleButton group for quality
+
                     RecordingQuality.entries.forEachIndexed { index, q ->
                         val selected = q == quality
                         ToggleButton(
@@ -1039,8 +1077,7 @@ fun SettingsScreen(
                             "Parked for now — projection capture still has bugs on some phones"
                         )
                     ).forEachIndexed { index, (value, label, description) ->
-                        // System capture is disabled until its bugs are fixed;
-                        // the engine behind it stays intact for the comeback.
+
                         val enabled = value == "mic"
                         ToggleButton(
                             checked = audioSource == value,
@@ -1427,6 +1464,48 @@ fun SettingsScreen(
                     onClick = { showLayoutDialog = false },
                     shapes = ButtonDefaults.shapes()
                 ) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showEngineDialog) {
+        AlertDialog(
+            onDismissRequest = { showEngineDialog = false },
+            title = { Text("Transcription engine", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Whisper is multilingual (95+ languages) via ggml-tiny • Vosk uses per-language models",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    listOf(
+                        Triple("vosk", "Vosk", "Per-language models • proven offline"),
+                        Triple("whisper", "Whisper", "Multilingual 95+ • ggml-tiny 75 MB")
+                    ).forEachIndexed { index, (value, label, desc) ->
+                        ToggleButton(
+                            checked = sttEngine == value,
+                            onCheckedChange = {
+                                scope.launch { prefs.setSttEngine(value) }
+                                showEngineDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
+                                Text(label, style = MaterialTheme.typography.titleMedium)
+                                Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showEngineDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
             },
             shape = ShapeLargeIncreased
         )

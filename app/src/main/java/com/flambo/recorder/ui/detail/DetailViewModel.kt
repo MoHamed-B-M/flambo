@@ -49,8 +49,6 @@ class DetailViewModel(
 
     fun softDelete() = viewModelScope.launch { repository.softDelete(recordingId) }
 
-    // ---- Offline speech-to-text (Vosk) ----
-
     val languagePref: StateFlow<String> =
         prefs.sttLanguageFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
@@ -94,8 +92,6 @@ class DetailViewModel(
         repository.clearTranscript(recordingId)
     }
 
-    // ---- Clean audio (offline enhancement) ----
-
     val enhanceStrength: StateFlow<String> =
         prefs.enhanceStrengthFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "balanced")
 
@@ -138,7 +134,7 @@ class DetailViewModel(
         return try {
             original.delete()
             if (!cleaned.renameTo(original)) {
-                // Same folder so this shouldn't happen — keep both rather than lose audio.
+
                 repository.saveEnhanced(recordingId, cleaned.absolutePath)
                 return
             }
@@ -151,7 +147,7 @@ class DetailViewModel(
 
     fun cancelEnhance() {
         enhanceJob?.cancel()
-        // Only remove a file this run created, never a previously kept copy.
+
         recording.value?.let { rec ->
             val dir = File(rec.filePath).parentFile
             val candidate = File(dir, File(rec.filePath).nameWithoutExtension + "_enhanced.wav")

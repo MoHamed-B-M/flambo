@@ -8,15 +8,13 @@ import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-// Decodes recorded files (AAC/M4A/WAV) to PCM. decodeTo16kMono feeds Vosk;
-// decodeNative preserves rate + channels for enhancement.
 object PcmDecoder {
 
     const val TARGET_RATE = 16000
     private const val MAX_MINUTES = 30
 
     data class PcmAudio(
-        val samples: ShortArray, // interleaved if stereo
+        val samples: ShortArray,
         val sampleRate: Int,
         val channels: Int
     ) {
@@ -52,7 +50,7 @@ object PcmDecoder {
                     val cap = (srcRate * 60L * maxMinutes * channels.coerceAtLeast(1))
                         .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
                     val raw = decodeAll(codec, extractor, cap)
-                    // Overshooting the cap means the file ran past maxMinutes.
+
                     if (raw.size > cap) error("Audio is longer than $maxMinutes minutes.")
                     PcmAudio(raw, srcRate, channels)
                 } finally {
@@ -110,7 +108,7 @@ object PcmDecoder {
     ): ShortArray {
         val chunks = ArrayList<ShortArray>(64)
         var total = 0
-        // Cap total samples so long takes can't blow the heap.
+
         val cap = capSamples
         val info = MediaCodec.BufferInfo()
         var inputDone = false
@@ -147,7 +145,7 @@ object PcmDecoder {
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
                 }
                 outIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> if (inputDone) break
-                else -> Unit // format change etc — keep going
+                else -> Unit
             }
         }
         val out = ShortArray(total)
@@ -169,7 +167,7 @@ object PcmDecoder {
 
     private fun toMono16k(raw: ShortArray, channels: Int, srcRate: Int): ShortArray {
         if (raw.isEmpty()) return raw
-        // Stereo -> mono by averaging.
+
         val mono = if (channels > 1) {
             val frames = raw.size / channels
             ShortArray(frames) { f ->
@@ -179,7 +177,7 @@ object PcmDecoder {
             }
         } else raw
         if (srcRate == TARGET_RATE) return mono
-        // Cheap linear resample — plenty for speech.
+
         val ratio = srcRate.toDouble() / TARGET_RATE
         val outLen = (mono.size / ratio).toInt().coerceAtLeast(1)
         return ShortArray(outLen) { i ->

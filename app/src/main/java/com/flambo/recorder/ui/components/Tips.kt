@@ -21,7 +21,6 @@ import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
 data class Tip(val title: String, val body: String)
 
-// Short how-tos, one per card. Kept plain and factual — each must stay true.
 val AppTips = listOf(
     Tip(
         "Pause without stopping",

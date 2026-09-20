@@ -10,8 +10,6 @@ android {
 
     signingConfigs {
         create("release") {
-            // CI: decoded from secrets or generated temporary keystore at app/release.keystore
-            // Local: falls back to debug keystore so assembleRelease always produces a signed APK
             val ciKeystore = file("release.keystore")
             val debugKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
             when {
@@ -28,8 +26,6 @@ android {
                     keyPassword = "android"
                 }
                 else -> {
-                    // Let AGP generate a debug keystore on demand — use well-known debug credentials
-                    // File will be created at debugKeystore path automatically
                     storeFile = debugKeystore
                     storePassword = "android"
                     keyAlias = "androiddebugkey"
@@ -43,18 +39,13 @@ android {
         applicationId = "com.flambo.recorder"
         minSdk = 26
         targetSdk = 36
-        // Version code from CI run number for monotonic Play Store / GitHub release ordering.
-        // Stable releases pin both explicitly (MAJOR.MINOR.PATCH+BUILD, BUILD always grows).
         val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         val baseCode = 1
         versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull()
             ?: runNumber?.let { baseCode + it } ?: baseCode
         versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.2.1-dev"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary = true
-        }
+        vectorDrawables { useSupportLibrary = true }
     }
 
     buildTypes {
@@ -69,8 +60,6 @@ android {
         }
     }
 
-    // Per-ABI APKs: Vosk ships big native libs, so arm64 and armv7 go out
-    // as separate files instead of one bloated universal APK.
     splits {
         abi {
             isEnable = true
@@ -85,20 +74,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    buildFeatures {
-        compose = true
-    }
+    buildFeatures { compose = true }
 
     packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }
 }
 
-kotlin {
-    jvmToolchain(21)
-}
+kotlin { jvmToolchain(21) }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -118,11 +101,8 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.documentfile)
-    // Expressive adaptive
     implementation(libs.androidx.adaptive)
     implementation(libs.androidx.adaptive.layout)
-    // Offline speech-to-text
     implementation(libs.vosk.android)
-
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

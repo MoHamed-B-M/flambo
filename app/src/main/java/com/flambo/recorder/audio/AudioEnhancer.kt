@@ -12,9 +12,6 @@ import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.min
 
-// Offline "Clean audio": hushes background noise and evens out levels using
-// plain Kotlin DSP — no native libraries, no cloud, works on every device.
-// Pipeline: DC-block → adaptive noise gate → loudness normalize → WAV out.
 enum class EnhanceStrength(
     val label: String,
     val description: String,
@@ -36,8 +33,6 @@ data class EnhancedAudio(val file: File, val peaks: List<Float>)
 
 object AudioEnhancer {
 
-    // Enhancement holds full PCM in memory — 10 minutes of stereo 48 kHz is
-    // ~115 MB, the most we'll ask of a phone.
     const val MAX_MINUTES = 10
 
     suspend fun enhance(
@@ -76,11 +71,10 @@ object AudioEnhancer {
     ) {
         val ch = pcm.channels.coerceAtLeast(1)
         val rate = pcm.sampleRate.coerceAtLeast(8000)
-        val frameLen = (rate / 50).coerceAtLeast(64) // ~20 ms frames
+        val frameLen = (rate / 50).coerceAtLeast(64)
         val frames = pcm.frames
         val frameCount = (frames + frameLen - 1) / frameLen
 
-        // Pass 1: per-frame peak levels to learn the noise floor (15th percentile).
         val levels = DoubleArray(frameCount)
         var fi = 0
         while (fi < frameCount) {
@@ -105,10 +99,8 @@ object AudioEnhancer {
             .coerceIn(-70.0, -30.0)
         val threshold = floorDb + strength.gateMarginDb
 
-        // Pass 2: DC-block + smoothed gate, shared decision across channels so
-        // stereo music doesn't wobble side to side.
-        val attack = Math.exp(-1.0 / (rate * 0.005)) // ~5 ms open
-        val release = Math.exp(-1.0 / (rate * 0.150)) // ~150 ms close
+        val attack = Math.exp(-1.0 / (rate * 0.005))
+        val release = Math.exp(-1.0 / (rate * 0.150))
         var gain = 0.0
         val xm1 = DoubleArray(ch)
         val ym1 = DoubleArray(ch)
@@ -118,7 +110,7 @@ object AudioEnhancer {
         while (fi < frameCount) {
             val start = fi * frameLen * ch
             val end = minOf(start + frameLen * ch, pcm.samples.size)
-            // Gate target from this frame's level with a ±3 dB soft knee.
+
             val over = levels[fi] - threshold
             val target = when {
                 over >= 3 -> 1.0
@@ -137,7 +129,7 @@ object AudioEnhancer {
                     target + (gain - target) * release
                 }
                 val s = pcm.samples[i].toDouble() / 32768.0
-                // One-pole DC blocker (~75 Hz) kills rumble and mic thumps.
+
                 val y = s - xm1[c] + 0.992 * ym1[c]
                 xm1[c] = s
                 ym1[c] = y
@@ -155,9 +147,6 @@ object AudioEnhancer {
             }
         }
 
-        // Pass 3: normalize to the strength's target peak (capped so near-silent
-        // takes don't get blasted), with a gentle ceiling above 0.92 instead
-        // of hard clipping.
         if (globalPeak > 1e-4) {
             val g = minOf(strength.normPeak / globalPeak, 4.0).toFloat()
             var i = 0

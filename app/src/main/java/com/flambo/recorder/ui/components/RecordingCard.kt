@@ -90,7 +90,7 @@ fun RecordingCard(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            // Play affordance — tonal surface, expressive pill
+
             Surface(
                 shape = ShapeLargeIncreased,
                 color = if (isPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
@@ -164,7 +164,7 @@ fun RecordingCard(
                     tint = if (recording.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            // overflow — expressive tonal menu, segmented connected actions
+
             androidx.compose.foundation.layout.Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "More")
@@ -220,7 +220,6 @@ fun RecordingCard(
     }
 }
 
-// Compact tile for the grid library layout — tap opens, hold selects.
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RecordingGridTile(

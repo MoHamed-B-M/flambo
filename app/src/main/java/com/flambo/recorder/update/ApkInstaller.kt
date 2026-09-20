@@ -12,14 +12,11 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-// Downloads a release APK into app cache, hands it to the system installer,
-// and cleans up afterwards. APKs never touch shared storage.
 object ApkInstaller {
 
     fun updatesDir(context: Context): File =
         File(context.cacheDir, "updates").apply { mkdirs() }
 
-    // Streams the file with progress (0..1). Caller drives UI state.
     suspend fun download(
         context: Context,
         url: String,
@@ -27,7 +24,7 @@ object ApkInstaller {
         onProgress: (Float) -> Unit = {}
     ): Result<File> = withContext(Dispatchers.IO) {
         val dest = File(updatesDir(context), fileName)
-        // Resume nothing — release APKs change every build; stale file goes first.
+
         runCatching { if (dest.exists()) dest.delete() }
         try {
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -84,8 +81,6 @@ object ApkInstaller {
             Uri.parse("package:${context.packageName}")
         ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
 
-    // Deletes the APK handed to the installer on the previous run plus any
-    // download older than a week. Never touches anything else.
     suspend fun cleanupStale(context: Context, pendingName: String?) =
         withContext(Dispatchers.IO) {
             val dir = updatesDir(context)

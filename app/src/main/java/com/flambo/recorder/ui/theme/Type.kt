@@ -5,10 +5,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Expressive type scale — slightly larger display/headline, generous line heights,
-// Roboto Flex via system default (MD3 default). Emphasized variants would bump weight.
-
-// Keep it readable; large recording timer uses displayLarge.
 val FlamboTypography = Typography(
     displayLarge = TextStyle(
         fontWeight = FontWeight.W400,

@@ -5,9 +5,6 @@ import android.content.Intent
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 
-// Holds the one-shot screen-capture consent so the recorder can build a
-// MediaProjection when a system-sound recording starts. The grant survives
-// while the process lives; after a restart the user re-confirms in Settings.
 object MediaProjectionHolder {
 
     private var resultCode: Int = 0

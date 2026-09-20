@@ -143,7 +143,6 @@ fun DetailScreen(
         return
     }
 
-    // Single source of truth keyed by path — ignore background track state
     val isCurrentTrack = playbackState.currentPath == rec.filePath
     val isThisPlaying = isCurrentTrack && playbackState.isPlaying
     val progress = if (isCurrentTrack && playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
@@ -185,7 +184,7 @@ fun DetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Title — inline editable
+
             Surface(
                 shape = ShapeLargeIncreased,
                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -234,7 +233,6 @@ fun DetailScreen(
                 }
             }
 
-            // Waveform + scrubber
             Surface(
                 shape = ShapeLargeIncreased,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -246,7 +244,7 @@ fun DetailScreen(
                         progress = progress,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    // Slider for seeking — only active for current track
+
                     Slider(
                         value = progress,
                         onValueChange = { p ->
@@ -262,7 +260,6 @@ fun DetailScreen(
                         Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
-                    // Controls — large expressive pill buttons with bouncy spring
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
@@ -276,7 +273,6 @@ fun DetailScreen(
                             Icon(Icons.Filled.Replay5, contentDescription = "Back 5s")
                         }
 
-                        // Play / pause — scoped to current track, replay seeks to 0 internally
                         androidx.compose.material3.FloatingActionButton(
                             onClick = {
                                 if (isThisPlaying) playback.pause()
@@ -303,7 +299,6 @@ fun DetailScreen(
                         }
                     }
 
-                    // Speed control — expressive connected ToggleButtons (bouncy)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -335,7 +330,6 @@ fun DetailScreen(
                 }
             }
 
-            // Transcript — saved text, fresh result, progress, or the entry point
             TranscriptSection(
                 savedTranscript = rec.transcriptText,
                 transcriptionUi = transcriptionUi,
@@ -361,7 +355,6 @@ fun DetailScreen(
                 onClearSaved = { viewModel.clearSavedTranscript() }
             )
 
-            // Clean audio — offline enhancement with progress + result
             EnhanceSection(
                 savedEnhancedPath = rec.enhancedPath,
                 enhanceUi = enhanceUi,
@@ -374,7 +367,6 @@ fun DetailScreen(
                 onDeleteEnhanced = { viewModel.deleteEnhanced() }
             )
 
-            // Quick actions row
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 FilledTonalButton(onClick = { showDeleteConfirm = true }, shape = ShapeFull, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -853,7 +845,6 @@ private fun TranscribeSheet(
                 }
             }
 
-            // Model status for the chosen language
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -881,7 +872,7 @@ private fun TranscribeSheet(
                                 val result = app.transcription.vosk.models.download(currentBase)
                                 downloading = null
                                 if (result.isFailure) {
-                                    // surface via snackbar-less inline note next render
+
                                 }
                             }
                         },

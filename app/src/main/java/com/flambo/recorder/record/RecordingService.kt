@@ -27,7 +27,7 @@ class RecordingService : Service() {
         const val NOTIF_ID = 1001
         const val ACTION_PAUSE = "flambo.action.PAUSE"
         const val ACTION_RESUME = "flambo.action.RESUME"
-        const val ACTION_STOP = "flambo.action.STOP" // stop & save
+        const val ACTION_STOP = "flambo.action.STOP"
         const val EXTRA_FGS_TYPE = "flambo.extra.FGS_TYPE"
     }
 
@@ -89,7 +89,6 @@ class RecordingService : Service() {
         mgr.createNotificationChannel(channel)
     }
 
-    // Ticks once a second so the timer stays live; each update is silent.
     private fun startTicker() {
         ticker?.cancel()
         ticker = scope.launch {

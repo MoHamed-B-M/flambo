@@ -9,15 +9,11 @@ import org.vosk.Recognizer
 
 class ModelMissingException(val code: String) : Exception("Offline model missing: $code")
 
-// Secondary engine: fully offline file transcription with Vosk. Model loading
-// is expensive, so loaded models are cached for the process lifetime.
 class VoskEngine(private val context: Context) {
 
     val models = VoskModelManager(context)
     private val loaded = mutableMapOf<String, Model>()
 
-    // Best installed model for a BCP-47 tag, preferring an exact base match,
-    // then English, then whatever is installed.
     @Synchronized
     fun resolveModelCode(languageTag: String): String {
         val base = languageTag.substringBefore('-').substringBefore('_').lowercase()

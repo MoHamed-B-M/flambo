@@ -5,11 +5,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-// Flambo seed — warm ember inspired, expressive but not aggressive.
-// On Android 12+ this is overridden by dynamic color when enabled.
 private val seed = Color(0xFFD8572A)
 
-// Light scheme derived from seed (hand-tuned for good contrast and M3 tonal balance)
 val FlamboLightColors = lightColorScheme(
     primary = Color(0xFF8F4A2E),
     onPrimary = Color(0xFFFFFFFF),
@@ -48,7 +45,6 @@ val FlamboLightColors = lightColorScheme(
     inversePrimary = Color(0xFFFFB59B),
 )
 
-// Dark scheme — same hue, adapted for OLED-friendly tonal surfaces
 val FlamboDarkColors = darkColorScheme(
     primary = Color(0xFFFFB59B),
     onPrimary = Color(0xFF55200B),
@@ -87,10 +83,6 @@ val FlamboDarkColors = darkColorScheme(
     inversePrimary = Color(0xFF8F4A2E),
 )
 
-// Pickable accent families. Each seed reuses Flambo's neutrals and error
-// roles and only swaps the primary/secondary/tertiary families, so contrast
-// stays safe by construction (40-tone on white / 80-tone on dark in light
-// mode, mirrored in dark mode).
 data class ThemeSeed(
     val id: String,
     val label: String,
@@ -127,7 +119,7 @@ private fun seedLight(
 )
 
 val ThemeSeeds = listOf(
-    // Ember keeps the hand-tuned Flambo schemes exactly as they were.
+
     ThemeSeed("ember", "Ember", Color(0xFFD8572A), FlamboLightColors, FlamboDarkColors),
     seedLight(
         primary = Color(0xFF0061A4), onPrimaryContainer = Color(0xFF001D36), primaryContainer = Color(0xFFD1E4FF),

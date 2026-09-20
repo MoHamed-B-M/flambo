@@ -22,11 +22,6 @@ data class PlaybackState(
     val currentPath: String? = null
 )
 
-/**
- * Single source of truth for playback, keyed by path.
- * Global player survives navigation for mini-player, but state is scoped
- * via currentPath — screens must check currentPath before using progress.
- */
 class PlaybackController(private val context: Context) {
 
     private var player: ExoPlayer? = null
@@ -38,7 +33,7 @@ class PlaybackController(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main)
 
     fun play(path: String) {
-        // Same track -> resume or replay if ended
+
         if (currentPath == path && player != null) {
             val p = player!!
             val ended = p.playbackState == Player.STATE_ENDED
@@ -90,7 +85,7 @@ class PlaybackController(private val context: Context) {
     fun toggle() {
         if (_state.value.isPlaying) pause()
         else {
-            // Ensure replay at end also works via toggle
+
             val p = player
             if (p != null && (p.playbackState == Player.STATE_ENDED || (_state.value.durationMs > 0 && _state.value.positionMs >= _state.value.durationMs - 300))) {
                 p.seekTo(0)
@@ -101,7 +96,7 @@ class PlaybackController(private val context: Context) {
     }
 
     fun seekTo(ms: Long) {
-        // Only allow seek if this is the active track
+
         player?.seekTo(ms.coerceIn(0, _state.value.durationMs))
         _state.value = _state.value.copy(positionMs = ms.coerceIn(0, _state.value.durationMs))
     }

@@ -11,14 +11,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.ZipFile
 
-// Offline model catalog + manager. Models live in internal storage
-// (filesDir/vosk-models/<code>), so no storage permission is needed.
 class VoskModelManager(private val context: Context) {
 
     data class VoskModel(
-        val code: String, // ISO-639 base, matches BCP-47 prefix
+        val code: String,
         val label: String,
-        val file: String, // zip name on alphacephei.com
+        val file: String,
         val sizeMb: Int,
         val large: Boolean = false
     )
@@ -46,7 +44,6 @@ class VoskModelManager(private val context: Context) {
         }
     }
 
-    // code -> 0..1 download progress
     private val _progress = MutableStateFlow<Map<String, Float>>(emptyMap())
     val progress: StateFlow<Map<String, Float>> = _progress.asStateFlow()
 
@@ -65,7 +62,7 @@ class VoskModelManager(private val context: Context) {
     private fun findModelDir(code: String): File? {
         val direct = modelDir(code)
         if (containsFinalMdl(direct)) return direct
-        // Be lenient: accept the raw unzipped folder name too.
+
         return modelsRoot().listFiles()
             ?.firstOrNull { it.isDirectory && (it.name == code || containsFinalMdl(it)) }
     }
@@ -86,8 +83,7 @@ class VoskModelManager(private val context: Context) {
         try {
             setProgress(code, 0f)
             val url = URL(BASE_URL + model.file)
-            // Note: HttpURLConnection is not Closeable, so no .use {} here —
-            // disconnect explicitly in finally instead.
+
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000
                 readTimeout = 30_000
@@ -142,7 +138,7 @@ class VoskModelManager(private val context: Context) {
                 }
             }
         }
-        // The zip wraps the model in a single top-level folder — normalize to <code>/.
+
         val root = staging.listFiles()?.firstOrNull { it.isDirectory && containsFinalMdl(it) }
             ?: staging.takeIf { containsFinalMdl(it) }
             ?: throw IllegalStateException("That archive didn't contain a usable model.")

@@ -30,7 +30,6 @@ fun FlamboTheme(
         else -> seed.light
     }
 
-    // Expressive mode uses MaterialExpressiveTheme with bouncy MotionScheme
     if (expressive) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,

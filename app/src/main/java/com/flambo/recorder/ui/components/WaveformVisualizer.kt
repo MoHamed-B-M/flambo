@@ -38,7 +38,6 @@ fun WaveformVisualizer(
         val height = size.height
         val centerY = height / 2f
 
-        // background pill
         drawRoundRect(
             color = backgroundColor,
             cornerRadius = CornerRadius(24.dp.toPx()),
@@ -46,7 +45,7 @@ fun WaveformVisualizer(
         )
 
         if (amplitudes.isEmpty()) {
-            // idle pulse
+
             val pulseH = (height * 0.18f) + (animatedAmp * height * 0.45f)
             drawRoundRect(
                 color = barColor.copy(alpha = 0.95f),
@@ -66,7 +65,7 @@ fun WaveformVisualizer(
         recent.forEachIndexed { idx, amp ->
             val hNorm = (amp * 0.9f + 0.08f).coerceIn(0.08f, 1f)
             val barH = height * (0.12f + hNorm * 0.78f)
-            // give latest bar a tiny boost from live amplitude
+
             val boost = if (idx == recent.lastIndex) animatedAmp * 0.12f * height else 0f
             val finalH = (barH + boost).coerceAtMost(height * 0.92f)
             val x = startX + idx * barW
@@ -84,7 +83,7 @@ fun WaveformVisualizer(
 @Composable
 fun StaticWaveform(
     peaks: List<Float>,
-    progress: Float, // 0..1
+    progress: Float,
     modifier: Modifier = Modifier,
     playedColor: Color = MaterialTheme.colorScheme.primary,
     remainingColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest

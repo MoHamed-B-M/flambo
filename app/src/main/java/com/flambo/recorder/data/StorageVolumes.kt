@@ -5,10 +5,6 @@ import android.os.Environment
 import androidx.core.content.ContextCompat
 import java.io.File
 
-// Where new recordings land. Only app-private volumes are offered, so every
-// path stays a plain File — the player, transcriber, enhancer and share sheet
-// all keep working with zero permission prompts. Existing recordings keep
-// their absolute paths and keep working wherever they are.
 data class StorageVolume(
     val id: String,
     val label: String,
@@ -22,8 +18,7 @@ object StorageVolumes {
 
     fun list(context: Context): List<StorageVolume> {
         val out = mutableListOf<StorageVolume>()
-        // Legacy behavior first: recordings used to go straight into the
-        // primary external app dir, and that path must keep working.
+
         val primary = context.getExternalFilesDir(null) ?: context.filesDir
         out += StorageVolume(ID_DEFAULT, "Phone storage", primary, freeOf(primary))
         out += StorageVolume(
@@ -50,7 +45,7 @@ object StorageVolumes {
             val match = list(context).firstOrNull { it.id == id }?.dir
             match ?: (context.getExternalFilesDir(null) ?: context.filesDir)
         }
-        // ID_DEFAULT and anything unknown (e.g. ejected SD card) fall back here.
+
         else -> context.getExternalFilesDir(null) ?: context.filesDir
     }
 

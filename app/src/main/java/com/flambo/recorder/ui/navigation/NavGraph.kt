@@ -44,7 +44,6 @@ sealed class Dest(val route: String) {
     }
 }
 
-// Expressive spring — tuned for quick settle, less overlay
 private val expressiveSpring = spring<Float>(
     dampingRatio = 0.85f,
     stiffness = 400f
@@ -53,10 +52,9 @@ private val expressiveSpringOffset = spring<IntOffset>(
     dampingRatio = 0.9f,
     stiffness = 380f
 )
-// Fast fade for pop to avoid screen overlay swallowing taps
+
 private val fastFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 600f)
 
-// Slide + scale + fade — feels alive, not just sliding
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveEnter() =
     slideInHorizontally(
         initialOffsetX = { it / 5 },
@@ -110,9 +108,9 @@ fun FlamboNavGraph(
     val audioSource by app.prefs.audioSourceFlow.collectAsState(initial = "mic")
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
     val homeLayout by app.prefs.homeLayoutFlow.collectAsState(initial = "list")
-    // Outlives Settings so downloads survive closing the screen.
+
     val updateDownload = remember { UpdateDownloadState() }
-    // Debounce navigation to prevent double-taps during transition
+
     val isNavigating = remember { androidx.compose.runtime.mutableStateOf(false) }
     fun debouncedNavigate(route: String) {
         if (isNavigating.value) return
@@ -137,7 +135,7 @@ fun FlamboNavGraph(
     NavHost(
         navController = navController,
         startDestination = Dest.Home.route,
-        // Default bouncy transitions for all destinations unless overridden per-composable
+
         enterTransition = { expressiveEnter() },
         exitTransition = { expressiveExit() },
         popEnterTransition = { expressivePopEnter() },
@@ -201,7 +199,7 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.Settings.route,
-            // Settings slides up like a modal sheet — vertical expressive motion
+
             enterTransition = {
                 slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = expressiveSpringOffset) +
                     fadeIn(spring(dampingRatio = 0.8f)) + scaleIn(initialScale = 0.97f, animationSpec = expressiveSpring)

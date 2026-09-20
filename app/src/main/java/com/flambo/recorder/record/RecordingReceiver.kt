@@ -7,21 +7,6 @@ import android.content.Intent
 import com.flambo.recorder.FlamboApp
 import kotlinx.coroutines.launch
 
-/**
- * Headless entry point for automation apps (Key Mapper, Tasker, MacroDroid).
- *
- * Unlike the launcher shortcuts (which route through MainActivity so permission
- * and projection consent can reuse the UI), these broadcasts never touch an
- * activity — no window opens, the screen stays as it is. Fire them with
- * "Send broadcast" / "Send intent" (broadcast) targeting this receiver:
- *
- * - action `com.flambo.recorder.ACTION_TOGGLE`, `ACTION_START` or `ACTION_STOP`
- * - package `com.flambo.recorder`, class `com.flambo.recorder.record.RecordingReceiver`
- *
- * Starting requires RECORD_AUDIO already granted (a receiver cannot prompt);
- * without it the broadcast is ignored. System-sound source falls back to mic
- * for the same reason (its consent needs UI).
- */
 class RecordingReceiver : BroadcastReceiver() {
 
     companion object {
@@ -33,7 +18,7 @@ class RecordingReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
         if (action != ACTION_TOGGLE && action != ACTION_START && action != ACTION_STOP) return
-        // Prefs reads suspend — hold the broadcast open while we work.
+
         val pending = goAsync()
         val app = context.applicationContext as FlamboApp
         app.appScope.launch {
@@ -46,10 +31,9 @@ class RecordingReceiver : BroadcastReceiver() {
                 val s = app.recorder.state.value
                 RecordingShortcut.refresh(app, s.isRecording, s.isPaused)
             } catch (_: ForegroundServiceStartNotAllowedException) {
-                // Background FGS start refused (API 31+) — headless by
-                // design, so there is nothing useful to show from here.
+
             } catch (_: SecurityException) {
-                // Missing mic / FGS permission at service start — same deal.
+
             } catch (_: Exception) {
             } finally {
                 pending.finish()

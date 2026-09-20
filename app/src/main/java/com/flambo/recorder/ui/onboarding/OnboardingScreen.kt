@@ -84,7 +84,7 @@ fun OnboardingScreen(
     onGrantNotifications: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Three story pages plus a final permissions page.
+
     val totalPages = pages.size + 1
     val pagerState = rememberPagerState(pageCount = { totalPages })
     val scope = rememberCoroutineScope()
@@ -101,7 +101,7 @@ fun OnboardingScreen(
                 .padding(horizontal = 24.dp)
                 .padding(top = 16.dp, bottom = 32.dp)
         ) {
-            // Skip stays visible until the last page
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (!isLast) {
                     TextButton(onClick = onFinish) { Text("Skip") }
@@ -133,7 +133,7 @@ fun OnboardingScreen(
                         verticalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                    // Hero morphs per page — bouncy scale-in on each swipe
+
                     AnimatedContent(
                         targetState = index,
                         transitionSpec = {
@@ -183,7 +183,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // Bouncy dot pills
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 modifier = Modifier
@@ -211,7 +210,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // Back / Next with morphing expressive shapes
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,

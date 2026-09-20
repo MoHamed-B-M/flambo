@@ -20,25 +20,26 @@ class PreferencesManager(private val context: Context) {
         val QUALITY = stringPreferencesKey("quality")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val RECORDING_REMINDER = booleanPreferencesKey("recording_reminder")
-        val DARK_THEME = stringPreferencesKey("dark_theme") // system, light, dark
-        val STT_LANGUAGE = stringPreferencesKey("stt_language") // Vosk model code, e.g. en
-        val UPDATE_CHANNEL = stringPreferencesKey("update_channel") // beta, stable
+        val DARK_THEME = stringPreferencesKey("dark_theme")
+        val STT_LANGUAGE = stringPreferencesKey("stt_language")
+        val STT_ENGINE = stringPreferencesKey("stt_engine")
+        val UPDATE_CHANNEL = stringPreferencesKey("update_channel")
         val AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
-        val PENDING_APK_DELETE = stringPreferencesKey("pending_apk_delete") // file awaiting post-install cleanup
-        val NOTIFIED_UPDATE_VERSION = stringPreferencesKey("notified_update_version") // last version we pinged about
+        val PENDING_APK_DELETE = stringPreferencesKey("pending_apk_delete")
+        val NOTIFIED_UPDATE_VERSION = stringPreferencesKey("notified_update_version")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
-        val AUDIO_SOURCE = stringPreferencesKey("audio_source") // mic, system
+        val AUDIO_SOURCE = stringPreferencesKey("audio_source")
         val NOISE_REDUCTION = booleanPreferencesKey("noise_reduction")
-        val ENHANCE_STRENGTH = stringPreferencesKey("enhance_strength") // light, balanced, strong
+        val ENHANCE_STRENGTH = stringPreferencesKey("enhance_strength")
         val KEEP_ORIGINAL = booleanPreferencesKey("keep_original")
-        val RECORDINGS_VOLUME = stringPreferencesKey("recordings_volume") // default, internal, external, sdcard-<i>
-        val THEME_SEED = stringPreferencesKey("theme_seed") // ember, ocean, grape, forest, rose
+        val RECORDINGS_VOLUME = stringPreferencesKey("recordings_volume")
+        val THEME_SEED = stringPreferencesKey("theme_seed")
         val LAST_SEEN_VERSION_CODE = longPreferencesKey("last_seen_version_code")
         val TIP_INDEX = intPreferencesKey("tip_index")
         val TIPS_ENABLED = booleanPreferencesKey("tips_enabled")
-        val RECORDING_PREFIX = stringPreferencesKey("recording_prefix") // e.g. "Recording", "Sound", "Voice"
-        val HOME_LAYOUT = stringPreferencesKey("home_layout") // list, grid
-        val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri") // SAF tree URI, empty = use StorageVolumes
+        val RECORDING_PREFIX = stringPreferencesKey("recording_prefix")
+        val HOME_LAYOUT = stringPreferencesKey("home_layout")
+        val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -69,12 +70,18 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[Keys.DARK_THEME] = mode }
     }
 
-    // Empty = best installed model (English preferred)
     val sttLanguageFlow: Flow<String> =
         context.dataStore.data.map { it[Keys.STT_LANGUAGE] ?: "" }
 
     suspend fun setSttLanguage(tag: String) {
         context.dataStore.edit { it[Keys.STT_LANGUAGE] = tag }
+    }
+
+    val sttEngineFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.STT_ENGINE] ?: "vosk" }
+
+    suspend fun setSttEngine(engine: String) {
+        context.dataStore.edit { it[Keys.STT_ENGINE] = if (engine == "whisper") "whisper" else "vosk" }
     }
 
     val updateChannelFlow: Flow<String> =

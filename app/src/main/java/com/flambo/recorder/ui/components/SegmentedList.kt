@@ -13,9 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
-// M3 expressive segmented list: one rounded tonal container, rows split by
-// hairline dividers. Rows should use [segmentedListItemColors] (transparent)
-// so the group background shows through with no shadow anywhere.
 class SegmentedListScope internal constructor() {
     internal val rows = mutableListOf<@Composable () -> Unit>()
     fun item(row: @Composable () -> Unit) {

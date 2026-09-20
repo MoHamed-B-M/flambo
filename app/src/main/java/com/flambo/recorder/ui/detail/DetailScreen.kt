@@ -615,28 +615,32 @@ private fun EnhanceSection(
                         )
                         TextButton(onClick = onDismiss) { Text("Dismiss") }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         FilledTonalButton(
                             onClick = { onPlayEnhanced(enhanceUi.path) },
                             shape = ShapeFull,
-                            modifier = Modifier.weight(1f)
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                         ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Play")
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Play", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                         }
                         OutlinedButton(
                             onClick = { onShareEnhanced(enhanceUi.path) },
                             shape = ShapeFull,
-                            modifier = Modifier.weight(1f)
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                         ) {
-                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Share")
+                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                         }
                         if (!enhanceUi.replaced) {
                             TextButton(onClick = onDeleteEnhanced) {
-                                Text("Delete copy", color = MaterialTheme.colorScheme.error)
+                                Text("Delete copy", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                         }
                     }
@@ -670,27 +674,31 @@ private fun EnhanceSection(
                             Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Text("Cleaned copy saved", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             FilledTonalButton(
                                 onClick = { onPlayEnhanced(savedEnhancedPath) },
                                 shape = ShapeFull,
-                                modifier = Modifier.weight(1f)
+                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                             ) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Play")
+                                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Play", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                             OutlinedButton(
                                 onClick = { onShareEnhanced(savedEnhancedPath) },
                                 shape = ShapeFull,
-                                modifier = Modifier.weight(1f)
+                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                             ) {
-                                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Share")
+                                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                             TextButton(onClick = onDeleteEnhanced) {
-                                Text("Delete copy", color = MaterialTheme.colorScheme.error)
+                                Text("Delete copy", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                         }
                     }

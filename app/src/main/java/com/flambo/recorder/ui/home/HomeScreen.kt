@@ -285,10 +285,14 @@ fun HomeScreen(
                         }) {
                             Icon(Icons.Filled.Info, contentDescription = "What's new")
                         }
-                        IconButton(onClick = {
-                            selection = emptySet()
-                            viewModel.toggleTrash(!uiState.showTrash)
-                        }) {
+                        IconButton(
+                            onClick = {
+                                if (recorderState.isRecording) return@IconButton
+                                selection = emptySet()
+                                viewModel.toggleTrash(!uiState.showTrash)
+                            },
+                            enabled = !recorderState.isRecording
+                        ) {
                             Icon(Icons.Filled.Delete, contentDescription = "Trash")
                         }
                         IconButton(onClick = onOpenSettings) {
@@ -305,7 +309,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !recorderState.isRecording && !selectionMode,
+                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {

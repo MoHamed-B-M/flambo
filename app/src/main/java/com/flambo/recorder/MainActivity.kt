@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.flambo.recorder.ui.navigation.FlamboNavGraph
 import com.flambo.recorder.ui.onboarding.OnboardingScreen
@@ -172,6 +174,12 @@ class MainActivity : ComponentActivity() {
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
             var rerunOnboarding by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunOnboarding
+
+            SideEffect {
+                val controller = WindowCompat.getInsetsController(window, window.decorView)
+                controller.isAppearanceLightStatusBars = !darkTheme
+                controller.isAppearanceLightNavigationBars = !darkTheme
+            }
 
             FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {

@@ -1469,6 +1469,48 @@ fun SettingsScreen(
         )
     }
 
+    if (showEngineDialog) {
+        AlertDialog(
+            onDismissRequest = { showEngineDialog = false },
+            title = { Text("Transcription engine", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Whisper is multilingual (95+ languages) via ggml-tiny • Vosk uses per-language models",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    listOf(
+                        Triple("vosk", "Vosk", "Per-language models • proven offline"),
+                        Triple("whisper", "Whisper", "Multilingual 95+ • ggml-tiny 75 MB")
+                    ).forEachIndexed { index, (value, label, desc) ->
+                        ToggleButton(
+                            checked = sttEngine == value,
+                            onCheckedChange = {
+                                scope.launch { prefs.setSttEngine(value) }
+                                showEngineDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
+                                Text(label, style = MaterialTheme.typography.titleMedium)
+                                Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showEngineDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
     if (showNamingDialog) {
         AlertDialog(
             onDismissRequest = { showNamingDialog = false },

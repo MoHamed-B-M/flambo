@@ -66,6 +66,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -143,6 +145,7 @@ fun SettingsScreen(
     val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
     val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
     val homeLayout by prefs.homeLayoutFlow.collectAsState(initial = "list")
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -200,6 +203,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Settings", style = MaterialTheme.typography.titleLarge) },

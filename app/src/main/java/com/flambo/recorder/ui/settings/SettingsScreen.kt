@@ -512,8 +512,29 @@ fun SettingsScreen(
                         headlineContent = { Text("Transcription language") },
                         supportingContent = {
                             Text(
-                                VoskModelManager.forTag(sttLanguage.ifBlank { "en" })?.label
-                                    ?: if (sttLanguage.isBlank()) "Best installed model" else sttLanguage
+                                if (sttEngine == "whisper") {
+                                    when (sttLanguage) {
+                                        "" -> "Auto (detect)"
+                                        "en" -> "English"
+                                        "id" -> "Indonesian"
+                                        "ar" -> "Arabic"
+                                        "fr" -> "French"
+                                        "es" -> "Spanish"
+                                        "de" -> "German"
+                                        "it" -> "Italian"
+                                        "pt" -> "Portuguese"
+                                        "ru" -> "Russian"
+                                        "zh" -> "Chinese"
+                                        "ja" -> "Japanese"
+                                        "ko" -> "Korean"
+                                        "hi" -> "Hindi"
+                                        "tr" -> "Turkish"
+                                        else -> sttLanguage.ifBlank { "Auto (detect)" }
+                                    }
+                                } else {
+                                    VoskModelManager.forTag(sttLanguage.ifBlank { "en" })?.label
+                                        ?: if (sttLanguage.isBlank()) "Best installed model" else sttLanguage
+                                }
                             )
                         },
                         trailingContent = {
@@ -564,8 +585,15 @@ fun SettingsScreen(
                             trailingContent = {
                                 when {
                                     prog != null -> TextButton(onClick = {}, shapes = ButtonDefaults.shapes()) { Text("${(prog * 100).toInt()}%") }
-                                    whisperInstalled -> TextButton(onClick = { scope.launch { transcription.whisper.models.delete(); modelsTick++ } }, shapes = ButtonDefaults.shapes()) { Text("Delete") }
-                                    else -> FilledTonalButton(onClick = { scope.launch { transcription.whisper.models.download(); modelsTick++ } }, shapes = ButtonDefaults.shapes()) { Text("Download") }
+                                    whisperInstalled -> TextButton(onClick = { scope.launch { transcription.whisper.models.delete(); modelsTick++; snackbarHostState.showSnackbar("Whisper model deleted") } }, shapes = ButtonDefaults.shapes()) { Text("Delete") }
+                                    else -> FilledTonalButton(onClick = {
+                                        scope.launch {
+                                            val res = transcription.whisper.models.download()
+                                            modelsTick++
+                                            res.onFailure { snackbarHostState.showSnackbar(it.message ?: "Download failed") }
+                                            res.onSuccess { snackbarHostState.showSnackbar("Whisper ready • 95+ languages") }
+                                        }
+                                    }, shapes = ButtonDefaults.shapes()) { Text("Download") }
                                 }
                             },
                             colors = segmentedListItemColors()
@@ -1305,34 +1333,72 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    item {
-                        ToggleButton(
-                            checked = sttLanguage.isBlank(),
-                            onCheckedChange = {
-                                scope.launch { prefs.setSttLanguage("") }
-                                showSttLanguageDialog = false
-                            },
-                            shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Best installed model") }
-                    }
-                    items(VoskModelManager.CATALOG, key = { it.code }) { model ->
-                        ToggleButton(
-                            checked = sttLanguage == model.code,
-                            onCheckedChange = {
-                                scope.launch { prefs.setSttLanguage(model.code) }
-                                showSttLanguageDialog = false
-                            },
-                            shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(model.label, modifier = Modifier.weight(1f))
-                            Text(
-                                if (transcription.vosk.models.isInstalled(model.code)) "ready"
-                                else "~${model.sizeMb} MB",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    if (sttEngine == "whisper") {
+                        val whisperLangs = listOf(
+                            "" to "Auto (detect)",
+                            "en" to "English",
+                            "id" to "Indonesian",
+                            "ar" to "Arabic",
+                            "fr" to "French",
+                            "es" to "Spanish",
+                            "de" to "German",
+                            "it" to "Italian",
+                            "pt" to "Portuguese",
+                            "ru" to "Russian",
+                            "zh" to "Chinese",
+                            "ja" to "Japanese",
+                            "ko" to "Korean",
+                            "hi" to "Hindi",
+                            "tr" to "Turkish",
+                            "nl" to "Dutch",
+                            "pl" to "Polish",
+                            "vi" to "Vietnamese",
+                            "th" to "Thai",
+                            "ms" to "Malay",
+                            "fa" to "Persian",
+                            "ur" to "Urdu"
+                        )
+                        items(whisperLangs, key = { it.first.ifBlank { "auto" } }) { (code, label) ->
+                            ToggleButton(
+                                checked = sttLanguage == code,
+                                onCheckedChange = {
+                                    scope.launch { prefs.setSttLanguage(code) }
+                                    showSttLanguageDialog = false
+                                },
+                                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(label, modifier = Modifier.weight(1f)) }
+                        }
+                    } else {
+                        item {
+                            ToggleButton(
+                                checked = sttLanguage.isBlank(),
+                                onCheckedChange = {
+                                    scope.launch { prefs.setSttLanguage("") }
+                                    showSttLanguageDialog = false
+                                },
+                                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Best installed model") }
+                        }
+                        items(VoskModelManager.CATALOG, key = { it.code }) { model ->
+                            ToggleButton(
+                                checked = sttLanguage == model.code,
+                                onCheckedChange = {
+                                    scope.launch { prefs.setSttLanguage(model.code) }
+                                    showSttLanguageDialog = false
+                                },
+                                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(model.label, modifier = Modifier.weight(1f))
+                                Text(
+                                    if (transcription.vosk.models.isInstalled(model.code)) "ready"
+                                    else "~${model.sizeMb} MB",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

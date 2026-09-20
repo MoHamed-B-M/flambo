@@ -143,9 +143,12 @@ fun DetailScreen(
         return
     }
 
-    val isThisPlaying = playbackState.isPlaying && playback.isPlayingPath(rec.filePath) || playbackState.positionMs > 0 && playback.isPlayingPath(rec.filePath)
-    val progress = if (playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
-    val duration = if (playbackState.durationMs > 0) playbackState.durationMs else rec.durationMs
+    // Single source of truth keyed by path — ignore background track state
+    val isCurrentTrack = playbackState.currentPath == rec.filePath
+    val isThisPlaying = isCurrentTrack && playbackState.isPlaying
+    val progress = if (isCurrentTrack && playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
+    val duration = if (isCurrentTrack && playbackState.durationMs > 0) playbackState.durationMs else rec.durationMs
+    val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
 
     Scaffold(
         topBar = {
@@ -243,17 +246,19 @@ fun DetailScreen(
                         progress = progress,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    // Slider for seeking
+                    // Slider for seeking — only active for current track
                     Slider(
                         value = progress,
                         onValueChange = { p ->
-                            val target = (p * duration).toLong()
-                            playback.seekTo(target)
+                            if (isCurrentTrack) {
+                                val target = (p * duration).toLong()
+                                playback.seekTo(target)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(formatDuration(playbackState.positionMs.takeIf { it > 0 } ?: 0L), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(formatDuration(positionForUi), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
@@ -264,17 +269,17 @@ fun DetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         FilledTonalIconButton(
-                            onClick = { playback.skip(-5000) },
+                            onClick = { if (isCurrentTrack) playback.skip(-5000) },
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {
                             Icon(Icons.Filled.Replay5, contentDescription = "Back 5s")
                         }
 
-                        // Play / pause morphing FAB — bouncy scale
+                        // Play / pause — scoped to current track, replay seeks to 0 internally
                         androidx.compose.material3.FloatingActionButton(
                             onClick = {
-                                if (isThisPlaying && playbackState.isPlaying) playback.pause()
+                                if (isThisPlaying) playback.pause()
                                 else playback.play(rec.filePath)
                             },
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -283,14 +288,14 @@ fun DetailScreen(
                             modifier = Modifier.size(64.dp)
                         ) {
                             Icon(
-                                imageVector = if (playbackState.isPlaying && playback.isPlayingPath(rec.filePath)) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (playbackState.isPlaying) "Pause" else "Play",
+                                imageVector = if (isThisPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isThisPlaying) "Pause" else "Play",
                                 modifier = Modifier.size(32.dp)
                             )
                         }
 
                         FilledTonalIconButton(
-                            onClick = { playback.skip(10000) },
+                            onClick = { if (isCurrentTrack) playback.skip(10000) },
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {

@@ -5,3 +5,4 @@
 - Bulk library: long-press select, Group/Move/Delete, Empty Trash; List/Grid toggle
 - Smarter naming: MAX+1, empty restarts at 1
 - Persistent update kept until Install
+- Fix playback: replay at end seeks to 0, scoped progress by track, debounced navigation, no stale duration

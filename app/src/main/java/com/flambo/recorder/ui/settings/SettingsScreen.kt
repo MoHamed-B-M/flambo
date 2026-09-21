@@ -1,5 +1,6 @@
 package com.flambo.recorder.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -44,6 +45,8 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.ViewList
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -66,6 +69,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -143,6 +148,7 @@ fun SettingsScreen(
     val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
     val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
     val homeLayout by prefs.homeLayoutFlow.collectAsState(initial = "list")
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -185,6 +191,12 @@ fun SettingsScreen(
     var namingDraft by remember { mutableStateOf(recordingPrefix) }
     LaunchedEffect(recordingPrefix) { if (!showNamingDialog) namingDraft = recordingPrefix }
 
+    var recordingExpanded by remember { mutableStateOf(true) }
+    var soundExpanded by remember { mutableStateOf(true) }
+    var appearanceExpanded by remember { mutableStateOf(true) }
+    var sttExpanded by remember { mutableStateOf(true) }
+    var updatesExpanded by remember { mutableStateOf(true) }
+
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             try {
@@ -200,6 +212,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Settings", style = MaterialTheme.typography.titleLarge) },
@@ -220,7 +233,7 @@ fun SettingsScreen(
                 .animateContentSize(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text("Recording", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            ExpandableSection(title = "Recording", expanded = recordingExpanded, onToggle = { recordingExpanded = !recordingExpanded }) {
 
             SegmentedList {
                 item {
@@ -359,12 +372,12 @@ fun SettingsScreen(
                     )
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Sound", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 4.dp))
-
-            SegmentedList {
+            ExpandableSection(title = "Sound", expanded = soundExpanded, onToggle = { soundExpanded = !soundExpanded }) {
+                SegmentedList {
                 item {
                     ListItem(
                         headlineContent = { Text("Noise reduction") },
@@ -417,10 +430,11 @@ fun SettingsScreen(
                     )
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            ExpandableSection(title = "Appearance", expanded = appearanceExpanded, onToggle = { appearanceExpanded = !appearanceExpanded }) {
 
             SegmentedList {
                 item {
@@ -476,10 +490,11 @@ fun SettingsScreen(
                     )
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Speech-to-text", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            ExpandableSection(title = "Speech-to-text", expanded = sttExpanded, onToggle = { sttExpanded = !sttExpanded }) {
 
             SegmentedList {
                 item {
@@ -601,20 +616,20 @@ fun SettingsScreen(
                     }
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Updates", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Release channel", style = MaterialTheme.typography.titleMedium)
+            ExpandableSection(title = "Updates", expanded = updatesExpanded, onToggle = { updatesExpanded = !updatesExpanded }) {
+                Surface(
+                    shape = ShapeLargeIncreased,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Release channel", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 if (installedLabel.isBlank()) "Checking installed version…"
                                 else "Installed $installedLabel",
@@ -838,6 +853,7 @@ fun SettingsScreen(
                         Text(if (checkingUpdate) "Checking…" else "Check for updates")
                     }
                 }
+            }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -1621,5 +1637,35 @@ fun SettingsScreen(
             },
             shape = ShapeLargeIncreased
         )
+    }
+}
+
+@Composable
+private fun ExpandableSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(vertical = 4.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.padding(top = 4.dp)) { content() }
+        }
     }
 }

@@ -29,7 +29,8 @@ class TranscriptionManager(
     ): FileResult {
         val engine = runCatching { prefs.sttEngineFlow.first() }.getOrDefault("vosk")
         if (engine == "whisper") {
-            val result = whisper.transcribeFile(path, onProgress)
+            val tag = runCatching { prefs.sttLanguageFlow.first() }.getOrDefault("").ifBlank { null }
+            val result = whisper.transcribeFile(path, tag, onProgress)
             return result.fold(
                 onSuccess = { FileResult.Done(it, offline = true) },
                 onFailure = { e ->

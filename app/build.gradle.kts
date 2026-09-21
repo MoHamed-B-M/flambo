@@ -35,6 +35,8 @@ android {
         }
     }
 
+    ndkVersion = "26.1.10909125"
+
     defaultConfig {
         applicationId = "com.flambo.recorder"
         minSdk = 26
@@ -43,10 +45,14 @@ android {
         val baseCode = 1
         versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull()
             ?: runNumber?.let { baseCode + it } ?: baseCode
-        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.2.1-dev"
+        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.3.0-dev"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        externalNativeBuild { cmake { arguments += listOf("-DANDROID_STL=c++_shared") } }
     }
+
+    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }
 
     buildTypes {
         release {

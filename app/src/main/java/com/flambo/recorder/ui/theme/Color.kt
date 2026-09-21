@@ -24,7 +24,7 @@ val FlamboLightColors = lightColorScheme(
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
-    background = Color(0xFFFFFBFF),
+    background = Color(0xFFFFF8F6),
     onBackground = Color(0xFF201A19),
     surface = Color(0xFFFFFBFF),
     onSurface = Color(0xFF201A19),
@@ -62,18 +62,18 @@ val FlamboDarkColors = darkColorScheme(
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF201A19),
+    background = Color(0xFF1A110F),
     onBackground = Color(0xFFF1DFD8),
-    surface = Color(0xFF201A19),
+    surface = Color(0xFF1A110F),
     onSurface = Color(0xFFF1DFD8),
     surfaceVariant = Color(0xFF53433F),
     onSurfaceVariant = Color(0xFFD8C2BC),
-    surfaceContainerLowest = Color(0xFF150E0C),
+    surfaceContainerLowest = Color(0xFF0F0B0A),
     surfaceContainerLow = Color(0xFF201A19),
     surfaceContainer = Color(0xFF251E1C),
     surfaceContainerHigh = Color(0xFF2F2826),
     surfaceContainerHighest = Color(0xFF3A3330),
-    surfaceDim = Color(0xFF201A19),
+    surfaceDim = Color(0xFF1A110F),
     surfaceBright = Color(0xFF4A4442),
     outline = Color(0xFFA08C87),
     outlineVariant = Color(0xFF53433F),
@@ -119,7 +119,6 @@ private fun seedLight(
 )
 
 val ThemeSeeds = listOf(
-
     ThemeSeed("ember", "Ember", Color(0xFFD8572A), FlamboLightColors, FlamboDarkColors),
     seedLight(
         primary = Color(0xFF0061A4), onPrimaryContainer = Color(0xFF001D36), primaryContainer = Color(0xFFD1E4FF),

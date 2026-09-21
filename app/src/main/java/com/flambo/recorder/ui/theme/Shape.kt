@@ -12,7 +12,7 @@ val FlamboShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
-val ShapeLargeIncreased = RoundedCornerShape(20.dp)
+val ShapeLargeIncreased = RoundedCornerShape(28.dp)
 val ShapeExtraLargeIncreased = RoundedCornerShape(32.dp)
 val ShapeExtraExtraLarge = RoundedCornerShape(48.dp)
 val ShapeFull = RoundedCornerShape(999.dp)

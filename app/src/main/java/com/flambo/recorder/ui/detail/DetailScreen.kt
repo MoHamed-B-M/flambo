@@ -736,45 +736,55 @@ private fun TranscriptCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                androidx.compose.material3.AssistChip(onClick = {}, label = { Text(badge) })
-                Spacer(Modifier.weight(1f))
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                androidx.compose.material3.AssistChip(onClick = {}, label = { Text(badge, maxLines = 1) })
+                androidx.compose.foundation.layout.Box(modifier = Modifier.weight(1f))
                 if (!saved) {
-                    TextButton(onClick = onDiscard) { Text("Discard") }
-                    FilledTonalButton(onClick = { onSave(text) }, shape = ShapeFull) {
-                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Save")
+                    TextButton(onClick = onDiscard) { Text("Discard", maxLines = 1) }
+                    FilledTonalButton(onClick = { onSave(text) }, shape = ShapeFull, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Save", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                     }
                 } else {
                     TextButton(onClick = onClearSaved) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text("Delete", color = MaterialTheme.colorScheme.error, maxLines = 1)
                     }
                 }
             }
             Text(text, style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 OutlinedButton(
                     onClick = { onCopy(text); justCopied = true },
                     shape = ShapeFull,
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         if (justCopied) Icons.Filled.Check else Icons.Filled.ContentCopy,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (justCopied) "Copied" else "Copy")
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (justCopied) "Copied" else "Copy", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { onShareText(text) },
                     shape = ShapeFull,
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Share")
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 androidx.compose.material3.IconButton(onClick = { onEdit(text) }) {
                     Icon(Icons.Filled.Edit, contentDescription = "Edit transcript")
@@ -797,13 +807,17 @@ private fun TranscribeSheet(
     val context = LocalContext.current
     val app = context.applicationContext as FlamboApp
     val modelProgress by app.transcription.modelProgress.collectAsState()
+    val whisperProgress by app.transcription.whisperProgress.collectAsState()
+    val sttEngine by app.prefs.sttEngineFlow.collectAsState(initial = "vosk")
+    val isWhisper = sttEngine == "whisper"
     val scope = rememberCoroutineScope()
     var downloading by remember { mutableStateOf<String?>(null) }
 
     val currentBase = languageTag.substringBefore('-').substringBefore('_').lowercase().ifBlank { "en" }
     val modelEntry = VoskModelManager.forTag(currentBase)
-    val installed = remember(languageTag, modelProgress) {
-        app.transcription.vosk.models.isInstalled(currentBase)
+    val installed = remember(languageTag, modelProgress, whisperProgress, isWhisper) {
+        if (isWhisper) app.transcription.whisper.models.isInstalled()
+        else app.transcription.vosk.models.isInstalled(currentBase)
     }
 
     ModalBottomSheet(
@@ -817,15 +831,36 @@ private fun TranscribeSheet(
         ) {
             Text("Transcribe offline", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Vosk turns this file into text on your device — no cloud, no account. Download the language model once, reuse forever.",
+                if (isWhisper) "Whisper turns this file into text on your device — no cloud, no account. One tiny model covers 95+ languages."
+                else "Vosk turns this file into text on your device — no cloud, no account. Download the language model once, reuse forever.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text("Language", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             ExposedDropdownMenuBox(expanded = langExpanded, onExpandedChange = { langExpanded = it }) {
+                val displayLabel = if (isWhisper) {
+                    when (languageTag) {
+                        "" -> "Auto (detect)"
+                        "en" -> "English"
+                        "id" -> "Indonesian"
+                        "ar" -> "Arabic"
+                        "fr" -> "French"
+                        "es" -> "Spanish"
+                        "de" -> "German"
+                        "it" -> "Italian"
+                        "pt" -> "Portuguese"
+                        "ru" -> "Russian"
+                        "zh" -> "Chinese"
+                        "ja" -> "Japanese"
+                        "ko" -> "Korean"
+                        "hi" -> "Hindi"
+                        "tr" -> "Turkish"
+                        else -> languageTag.ifBlank { "Auto (detect)" }
+                    }
+                } else modelEntry?.label ?: languageTag.ifBlank { "Choose a language" }
                 OutlinedTextField(
-                    value = modelEntry?.label ?: languageTag.ifBlank { "Choose a language" },
+                    value = displayLabel,
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = langExpanded) },
@@ -833,22 +868,56 @@ private fun TranscribeSheet(
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = langExpanded, onDismissRequest = { langExpanded = false }) {
-                    VoskModelManager.CATALOG.forEach { model ->
-                        DropdownMenuItem(
-                            text = { Text(model.label) },
-                            trailingIcon = {
-                                Text(
-                                    if (app.transcription.vosk.models.isInstalled(model.code)) "Ready"
-                                    else "~${model.sizeMb} MB",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            onClick = {
-                                onLanguageChange(model.code)
-                                langExpanded = false
-                            }
+                    if (isWhisper) {
+                        val whisperLangs = listOf(
+                            "" to "Auto (detect)",
+                            "en" to "English",
+                            "id" to "Indonesian",
+                            "ar" to "Arabic",
+                            "fr" to "French",
+                            "es" to "Spanish",
+                            "de" to "German",
+                            "it" to "Italian",
+                            "pt" to "Portuguese",
+                            "ru" to "Russian",
+                            "zh" to "Chinese",
+                            "ja" to "Japanese",
+                            "ko" to "Korean",
+                            "hi" to "Hindi",
+                            "tr" to "Turkish",
+                            "nl" to "Dutch",
+                            "pl" to "Polish",
+                            "vi" to "Vietnamese",
+                            "th" to "Thai",
+                            "ms" to "Malay"
                         )
+                        whisperLangs.forEach { (code, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    onLanguageChange(code)
+                                    langExpanded = false
+                                }
+                            )
+                        }
+                    } else {
+                        VoskModelManager.CATALOG.forEach { model ->
+                            DropdownMenuItem(
+                                text = { Text(model.label) },
+                                trailingIcon = {
+                                    Text(
+                                        if (app.transcription.vosk.models.isInstalled(model.code)) "Ready"
+                                        else "~${model.sizeMb} MB",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                onClick = {
+                                    onLanguageChange(model.code)
+                                    langExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -859,36 +928,68 @@ private fun TranscribeSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        if (installed) "${modelEntry?.label ?: currentBase.uppercase()} model ready"
-                        else "${modelEntry?.label ?: currentBase.uppercase()} model ${modelEntry?.let { "· ~${it.sizeMb} MB" } ?: ""}",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    val prog = modelProgress[currentBase]
-                    if (prog != null) {
-                        LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
-                        Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else if (!installed) {
-                        Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isWhisper) {
+                        Text(
+                            if (installed) "Whisper tiny model ready • 95+ languages"
+                            else "Whisper tiny model • ~75 MB",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        val prog = whisperProgress["whisper"]
+                        if (prog != null) {
+                            LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
+                            Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else if (!installed) {
+                            Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        Text(
+                            if (installed) "${modelEntry?.label ?: currentBase.uppercase()} model ready"
+                            else "${modelEntry?.label ?: currentBase.uppercase()} model ${modelEntry?.let { "· ~${it.sizeMb} MB" } ?: ""}",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        val prog = modelProgress[currentBase]
+                        if (prog != null) {
+                            LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
+                            Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else if (!installed) {
+                            Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
-                if (!installed && modelEntry != null && downloading == null) {
-                    FilledTonalButton(
-                        onClick = {
-                            downloading = currentBase
-                            scope.launch {
-                                val result = app.transcription.vosk.models.download(currentBase)
-                                downloading = null
-                                if (result.isFailure) {
-
+                if (!installed && downloading == null) {
+                    if (isWhisper) {
+                        FilledTonalButton(
+                            onClick = {
+                                downloading = "whisper"
+                                scope.launch {
+                                    app.transcription.whisper.models.download()
+                                    downloading = null
                                 }
-                            }
-                        },
-                        shape = ShapeFull
-                    ) {
-                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Get")
+                            },
+                            shape = ShapeFull
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Get")
+                        }
+                    } else if (modelEntry != null) {
+                        FilledTonalButton(
+                            onClick = {
+                                downloading = currentBase
+                                scope.launch {
+                                    val result = app.transcription.vosk.models.download(currentBase)
+                                    downloading = null
+                                    if (result.isFailure) {
+
+                                    }
+                                }
+                            },
+                            shape = ShapeFull
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Get")
+                        }
                     }
                 }
             }

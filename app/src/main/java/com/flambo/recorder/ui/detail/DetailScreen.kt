@@ -797,13 +797,17 @@ private fun TranscribeSheet(
     val context = LocalContext.current
     val app = context.applicationContext as FlamboApp
     val modelProgress by app.transcription.modelProgress.collectAsState()
+    val whisperProgress by app.transcription.whisperProgress.collectAsState()
+    val sttEngine by app.prefs.sttEngineFlow.collectAsState(initial = "vosk")
+    val isWhisper = sttEngine == "whisper"
     val scope = rememberCoroutineScope()
     var downloading by remember { mutableStateOf<String?>(null) }
 
     val currentBase = languageTag.substringBefore('-').substringBefore('_').lowercase().ifBlank { "en" }
     val modelEntry = VoskModelManager.forTag(currentBase)
-    val installed = remember(languageTag, modelProgress) {
-        app.transcription.vosk.models.isInstalled(currentBase)
+    val installed = remember(languageTag, modelProgress, whisperProgress, isWhisper) {
+        if (isWhisper) app.transcription.whisper.models.isInstalled()
+        else app.transcription.vosk.models.isInstalled(currentBase)
     }
 
     ModalBottomSheet(
@@ -817,15 +821,36 @@ private fun TranscribeSheet(
         ) {
             Text("Transcribe offline", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Vosk turns this file into text on your device — no cloud, no account. Download the language model once, reuse forever.",
+                if (isWhisper) "Whisper turns this file into text on your device — no cloud, no account. One tiny model covers 95+ languages."
+                else "Vosk turns this file into text on your device — no cloud, no account. Download the language model once, reuse forever.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text("Language", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             ExposedDropdownMenuBox(expanded = langExpanded, onExpandedChange = { langExpanded = it }) {
+                val displayLabel = if (isWhisper) {
+                    when (languageTag) {
+                        "" -> "Auto (detect)"
+                        "en" -> "English"
+                        "id" -> "Indonesian"
+                        "ar" -> "Arabic"
+                        "fr" -> "French"
+                        "es" -> "Spanish"
+                        "de" -> "German"
+                        "it" -> "Italian"
+                        "pt" -> "Portuguese"
+                        "ru" -> "Russian"
+                        "zh" -> "Chinese"
+                        "ja" -> "Japanese"
+                        "ko" -> "Korean"
+                        "hi" -> "Hindi"
+                        "tr" -> "Turkish"
+                        else -> languageTag.ifBlank { "Auto (detect)" }
+                    }
+                } else modelEntry?.label ?: languageTag.ifBlank { "Choose a language" }
                 OutlinedTextField(
-                    value = modelEntry?.label ?: languageTag.ifBlank { "Choose a language" },
+                    value = displayLabel,
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = langExpanded) },
@@ -833,22 +858,56 @@ private fun TranscribeSheet(
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = langExpanded, onDismissRequest = { langExpanded = false }) {
-                    VoskModelManager.CATALOG.forEach { model ->
-                        DropdownMenuItem(
-                            text = { Text(model.label) },
-                            trailingIcon = {
-                                Text(
-                                    if (app.transcription.vosk.models.isInstalled(model.code)) "Ready"
-                                    else "~${model.sizeMb} MB",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            onClick = {
-                                onLanguageChange(model.code)
-                                langExpanded = false
-                            }
+                    if (isWhisper) {
+                        val whisperLangs = listOf(
+                            "" to "Auto (detect)",
+                            "en" to "English",
+                            "id" to "Indonesian",
+                            "ar" to "Arabic",
+                            "fr" to "French",
+                            "es" to "Spanish",
+                            "de" to "German",
+                            "it" to "Italian",
+                            "pt" to "Portuguese",
+                            "ru" to "Russian",
+                            "zh" to "Chinese",
+                            "ja" to "Japanese",
+                            "ko" to "Korean",
+                            "hi" to "Hindi",
+                            "tr" to "Turkish",
+                            "nl" to "Dutch",
+                            "pl" to "Polish",
+                            "vi" to "Vietnamese",
+                            "th" to "Thai",
+                            "ms" to "Malay"
                         )
+                        whisperLangs.forEach { (code, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    onLanguageChange(code)
+                                    langExpanded = false
+                                }
+                            )
+                        }
+                    } else {
+                        VoskModelManager.CATALOG.forEach { model ->
+                            DropdownMenuItem(
+                                text = { Text(model.label) },
+                                trailingIcon = {
+                                    Text(
+                                        if (app.transcription.vosk.models.isInstalled(model.code)) "Ready"
+                                        else "~${model.sizeMb} MB",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                onClick = {
+                                    onLanguageChange(model.code)
+                                    langExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -859,36 +918,68 @@ private fun TranscribeSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        if (installed) "${modelEntry?.label ?: currentBase.uppercase()} model ready"
-                        else "${modelEntry?.label ?: currentBase.uppercase()} model ${modelEntry?.let { "· ~${it.sizeMb} MB" } ?: ""}",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    val prog = modelProgress[currentBase]
-                    if (prog != null) {
-                        LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
-                        Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else if (!installed) {
-                        Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isWhisper) {
+                        Text(
+                            if (installed) "Whisper tiny model ready • 95+ languages"
+                            else "Whisper tiny model • ~75 MB",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        val prog = whisperProgress["whisper"]
+                        if (prog != null) {
+                            LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
+                            Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else if (!installed) {
+                            Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        Text(
+                            if (installed) "${modelEntry?.label ?: currentBase.uppercase()} model ready"
+                            else "${modelEntry?.label ?: currentBase.uppercase()} model ${modelEntry?.let { "· ~${it.sizeMb} MB" } ?: ""}",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        val prog = modelProgress[currentBase]
+                        if (prog != null) {
+                            LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
+                            Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else if (!installed) {
+                            Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
-                if (!installed && modelEntry != null && downloading == null) {
-                    FilledTonalButton(
-                        onClick = {
-                            downloading = currentBase
-                            scope.launch {
-                                val result = app.transcription.vosk.models.download(currentBase)
-                                downloading = null
-                                if (result.isFailure) {
-
+                if (!installed && downloading == null) {
+                    if (isWhisper) {
+                        FilledTonalButton(
+                            onClick = {
+                                downloading = "whisper"
+                                scope.launch {
+                                    app.transcription.whisper.models.download()
+                                    downloading = null
                                 }
-                            }
-                        },
-                        shape = ShapeFull
-                    ) {
-                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Get")
+                            },
+                            shape = ShapeFull
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Get")
+                        }
+                    } else if (modelEntry != null) {
+                        FilledTonalButton(
+                            onClick = {
+                                downloading = currentBase
+                                scope.launch {
+                                    val result = app.transcription.vosk.models.download(currentBase)
+                                    downloading = null
+                                    if (result.isFailure) {
+
+                                    }
+                                }
+                            },
+                            shape = ShapeFull
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Get")
+                        }
                     }
                 }
             }

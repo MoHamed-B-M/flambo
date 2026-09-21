@@ -46,10 +46,10 @@ class TranscriptionManager(
                             onSuccess = { FileResult.Done(it, offline = true) },
                             onFailure = { fe ->
                                 if (fe is ModelMissingException) {
-                                    val label = VoskModelManager.forTag(tag)?.label ?: fe.code.uppercase()
+                                    val fallbackLabel = VoskModelManager.forTag("en")?.label ?: "English"
                                     FileResult.Failed(
-                                        "Whisper not ready on this build — Vosk fallback also needs the $label model. Download it in Settings.",
-                                        needsModelCode = fe.code
+                                        "Whisper 95+ languages will be native in the next build. For now your audio was routed to Vosk — download the $fallbackLabel model (40 MB) in Settings > Speech-to-text > Vosk models, then tap Transcribe again. You can also switch Engine back to Vosk for now.",
+                                        needsModelCode = "en"
                                     )
                                 } else FileResult.Failed(fe.message ?: "Transcription failed.")
                             }

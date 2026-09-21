@@ -19,8 +19,9 @@ class WhisperEngine(private val context: Context) {
         var ctx: Long = 0
         try {
             onProgress(0.05f)
-            val samples = PcmDecoder.decodeTo16kMono(path)
-            if (samples.isEmpty()) return@withContext Result.failure(IllegalStateException("No audio could be read."))
+            val shortSamples = PcmDecoder.decodeTo16kMono(path)
+            if (shortSamples.isEmpty()) return@withContext Result.failure(IllegalStateException("No audio could be read."))
+            val samples = FloatArray(shortSamples.size) { shortSamples[it] / 32768f }
             onProgress(0.15f)
             ctx = WhisperJNI.init(models.modelFile().absolutePath)
             if (ctx == 0L) return@withContext Result.failure(IllegalStateException("Failed to load Whisper model."))

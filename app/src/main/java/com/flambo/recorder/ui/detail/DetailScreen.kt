@@ -736,45 +736,55 @@ private fun TranscriptCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                androidx.compose.material3.AssistChip(onClick = {}, label = { Text(badge) })
-                Spacer(Modifier.weight(1f))
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                androidx.compose.material3.AssistChip(onClick = {}, label = { Text(badge, maxLines = 1) })
+                androidx.compose.foundation.layout.Box(modifier = Modifier.weight(1f))
                 if (!saved) {
-                    TextButton(onClick = onDiscard) { Text("Discard") }
-                    FilledTonalButton(onClick = { onSave(text) }, shape = ShapeFull) {
-                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Save")
+                    TextButton(onClick = onDiscard) { Text("Discard", maxLines = 1) }
+                    FilledTonalButton(onClick = { onSave(text) }, shape = ShapeFull, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Save", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                     }
                 } else {
                     TextButton(onClick = onClearSaved) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text("Delete", color = MaterialTheme.colorScheme.error, maxLines = 1)
                     }
                 }
             }
             Text(text, style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 OutlinedButton(
                     onClick = { onCopy(text); justCopied = true },
                     shape = ShapeFull,
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         if (justCopied) Icons.Filled.Check else Icons.Filled.ContentCopy,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (justCopied) "Copied" else "Copy")
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (justCopied) "Copied" else "Copy", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { onShareText(text) },
                     shape = ShapeFull,
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Share")
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 androidx.compose.material3.IconButton(onClick = { onEdit(text) }) {
                     Icon(Icons.Filled.Edit, contentDescription = "Edit transcript")

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -24,12 +26,16 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.update.WhatsNewItem
 
 private val fallbackHighlights = listOf(
+    WhatsNewItem("Whisper", "Multilingual offline transcription via whisper.cpp — ggml-tiny 75 MB, 95+ languages, language picker in Settings and playback sheet."),
+    WhatsNewItem("Transcription engine", "Switch between Vosk (per-language) and Whisper (tiny multilingual) — fallback to Vosk English while Whisper builds."),
+    WhatsNewItem("Playback fix", "Replay at end seeks to 0, progress scoped by track, debounced navigation — no stale duration or background leakage."),
     WhatsNewItem("Tachylite", "Headless Key Mapper / Tasker automation — broadcast receiver + shortcut picker + NoDisplay trampoline that never flashes the UI or queues on the lock screen."),
     WhatsNewItem("FGS fix", "Android 14+ background start no longer crashes — safely unwinds when the system denies the foreground service."),
     WhatsNewItem("Bulk actions", "Long-press to select many → Group (shared tag), Move across volumes, Delete to trash; Empty Trash with count dialog."),
@@ -61,11 +67,14 @@ fun WhatsNewSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = ShapeLargeIncreased,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = modifier
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -81,11 +90,9 @@ fun WhatsNewSheet(
                     modifier = Modifier.size(28.dp)
                 )
                 Column {
-                    Text("What's new", style = MaterialTheme.typography.headlineSmall)
                     Text(
-                        "Flambo v$version",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "What's new",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     )
                 }
             }

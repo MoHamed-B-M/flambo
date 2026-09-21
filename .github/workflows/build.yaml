@@ -41,12 +41,12 @@ env:
   # installing a beta over stable always counts as an update for Android.
   # STABLE_BUILD must keep increasing across stables — Android refuses to
   # install an update whose versionCode is not higher than the installed one.
-  BASE_VERSION: "1.2.1"
-  STABLE_BUILD: "3"
+  BASE_VERSION: "1.3.0"
+  STABLE_BUILD: "4"
   BETA_CODE_OFFSET: "100000"
-  # Codename for the stable release title, e.g. "Tachylite" → "Flambo 1.2.1+3 — Tachylite".
+  # Codename for the stable release title, e.g. "Perlite" → "Flambo 1.3.0+4 — Perlite".
   # Empty for a maintenance release with no codename.
-  RELEASE_TAGLINE: "Tachylite"
+  RELEASE_TAGLINE: "Perlite"
 
 jobs:
   build:
@@ -459,6 +459,8 @@ jobs:
           | **SHA-256** | `${{ steps.meta.outputs.sha }}` |
 
           ## ✨ What's in ${{ needs.build.outputs.version_name }}
+          - **Perlite — expressive polish**: redesigned typography (emphasized W600/W700 headlines, tighter tracking) and tuned tonal surfaces (warmer light/dark backgrounds, `surfaceContainerHigh` sheet), scrollable What's New with `fastSpatialSpec` motion
+          - **Whisper multilingual**: `whisper.cpp` tiny 75 MB via `WhisperJNI` on `Dispatchers.IO` with language picker (95+ langs) — scaffold removed, native `whisper_full` with timestamps
           - **Tachylite — headless automation**: exported `RecordingReceiver` (Key Mapper / Tasker broadcast `ACTION_TOGGLE` / `START` / `STOP`) + `CREATE_SHORTCUT` picker + transparent `NoDisplay` trampoline that never flashes the UI, never enters Recents and never queues on the lock screen (`taskAffinity=""` + `finishAndRemoveTask`)
           - **Android 14+ FGS fix**: background start now catches `ForegroundServiceStartNotAllowedException` / `SecurityException` and unwinds cleanly instead of crashing — no leaked headless recorder without a notification
           - **Library bulk actions**: long-press to multi-select → contextual bar with **Group** (shared tag), **Move** across volumes (copy-fallback, collision-safe), **Delete** to trash; `Empty Trash` with count dialog

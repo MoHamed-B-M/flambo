@@ -1,0 +1,6 @@
+1.3.0 Perlite
+
+- Expressive typography and warmer tonal surfaces, scrollable What's New with fastSpatialSpec motion
+- Settings: expandable Segmented sections with SegmentedGap and increased 28dp corners
+- Transcription: Whisper multilingual picker in playback sheet, engine switch with fallback
+- Fix playback: replay at end, scoped progress, debounced navigation, no stale duration

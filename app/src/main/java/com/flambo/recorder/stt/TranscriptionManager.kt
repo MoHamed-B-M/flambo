@@ -29,7 +29,8 @@ class TranscriptionManager(
     ): FileResult {
         val engine = runCatching { prefs.sttEngineFlow.first() }.getOrDefault("vosk")
         if (engine == "whisper") {
-            val result = whisper.transcribeFile(path, onProgress)
+            val tag = runCatching { prefs.sttLanguageFlow.first() }.getOrDefault("").ifBlank { null }
+            val result = whisper.transcribeFile(path, tag, onProgress)
             return result.fold(
                 onSuccess = { FileResult.Done(it, offline = true) },
                 onFailure = { e ->
@@ -37,22 +38,6 @@ class TranscriptionManager(
                         FileResult.Failed(
                             "Whisper model missing — download ggml-tiny.bin in Settings > Speech-to-text.",
                             needsModelCode = "whisper"
-                        )
-                    } else if (e.message == "WHISPER_SCAFFOLD") {
-                        val tag = runCatching { prefs.sttLanguageFlow.first() }.getOrDefault("")
-                            .ifBlank { Locale.getDefault().toLanguageTag() }
-                        val fallback = vosk.transcribeFile(path, tag, onProgress)
-                        fallback.fold(
-                            onSuccess = { FileResult.Done(it, offline = true) },
-                            onFailure = { fe ->
-                                if (fe is ModelMissingException) {
-                                    val fallbackLabel = VoskModelManager.forTag("en")?.label ?: "English"
-                                    FileResult.Failed(
-                                        "Whisper 95+ languages will be native in the next build. For now your audio was routed to Vosk — download the $fallbackLabel model (40 MB) in Settings > Speech-to-text > Vosk models, then tap Transcribe again. You can also switch Engine back to Vosk for now.",
-                                        needsModelCode = "en"
-                                    )
-                                } else FileResult.Failed(fe.message ?: "Transcription failed.")
-                            }
                         )
                     } else FileResult.Failed(e.message ?: "Whisper failed.")
                 }

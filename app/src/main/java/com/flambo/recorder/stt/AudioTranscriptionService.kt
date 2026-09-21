@@ -18,7 +18,8 @@ class AudioTranscriptionService(
         withContext(Dispatchers.IO) {
             val engine = runCatching { prefs.sttEngineFlow.first() }.getOrDefault("vosk")
             if (engine == "whisper") {
-                whisper.transcribeFile(path, onProgress).map { Result(it) }
+                val tag = runCatching { prefs.sttLanguageFlow.first() }.getOrDefault("").ifBlank { null }
+                whisper.transcribeFile(path, tag, onProgress).map { Result(it) }
             } else {
                 val tag = runCatching { prefs.sttLanguageFlow.first() }.getOrDefault("")
                 vosk.transcribeFile(path, tag, onProgress).map { Result(it) }

@@ -18,15 +18,8 @@ class WhisperEngine(private val context: Context) {
         try {
             val samples = PcmDecoder.decodeTo16kMono(path)
             if (samples.isEmpty()) return@withContext Result.failure(IllegalStateException("No audio could be read."))
-            onProgress(0.5f)
-            kotlinx.coroutines.delay(600)
-            onProgress(1f)
-            Result.failure(
-                IllegalStateException(
-                    "Whisper engine scaffold — native whisper.cpp not yet linked. " +
-                        "Tap Settings > Vosk to use offline transcription, or wait for the full Whisper build. " +
-                        "Model found at ${models.modelFile().absolutePath} (${samples.size} samples decoded)."
-                )
+            return@withContext Result.failure(
+                IllegalStateException("WHISPER_SCAFFOLD")
             )
         } catch (e: Exception) {
             Result.failure(IllegalStateException(e.message ?: "Whisper failed"))

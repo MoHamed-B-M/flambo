@@ -38,6 +38,22 @@ class TranscriptionManager(
                             "Whisper model missing — download ggml-tiny.bin in Settings > Speech-to-text.",
                             needsModelCode = "whisper"
                         )
+                    } else if (e.message == "WHISPER_SCAFFOLD") {
+                        val tag = runCatching { prefs.sttLanguageFlow.first() }.getOrDefault("")
+                            .ifBlank { Locale.getDefault().toLanguageTag() }
+                        val fallback = vosk.transcribeFile(path, tag, onProgress)
+                        fallback.fold(
+                            onSuccess = { FileResult.Done(it, offline = true) },
+                            onFailure = { fe ->
+                                if (fe is ModelMissingException) {
+                                    val label = VoskModelManager.forTag(tag)?.label ?: fe.code.uppercase()
+                                    FileResult.Failed(
+                                        "Whisper not ready on this build — Vosk fallback also needs the $label model. Download it in Settings.",
+                                        needsModelCode = fe.code
+                                    )
+                                } else FileResult.Failed(fe.message ?: "Transcription failed.")
+                            }
+                        )
                     } else FileResult.Failed(e.message ?: "Whisper failed.")
                 }
             )

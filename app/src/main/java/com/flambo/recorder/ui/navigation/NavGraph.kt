@@ -1,6 +1,8 @@
 package com.flambo.recorder.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -13,6 +15,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -125,6 +128,27 @@ fun FlamboNavGraph(
     val homeLayout by app.prefs.homeLayoutFlow.collectAsState(initial = "list")
 
     val updateDownload = remember { UpdateDownloadState() }
+
+    // Remember parent render tree to prevent re-initialization during gesture (movableContentOf preserves composition)
+    val settingsMovableContent = remember {
+        movableContentOf {
+            SettingsScreen(
+                prefs = app.prefs,
+                scope = scope,
+                transcription = app.transcription,
+                updateDownload = updateDownload,
+                onBack = {},
+                onRerunOnboarding = {},
+                onRequestSystemCapture = {},
+                onNavigateRecording = {},
+                onNavigateAppearance = {},
+                onNavigateStt = {},
+                onNavigateStorage = {},
+                onNavigateUpdates = {},
+                onNavigateAbout = {}
+            )
+        }
+    }
 
     val isNavigating = remember { androidx.compose.runtime.mutableStateOf(false) }
     fun debouncedNavigate(route: String) {
@@ -272,32 +296,16 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsRecording.route,
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             val gestureEnabled by app.prefs.gestureEnabledFlow.collectAsState(initial = true)
             SwipeToDismissContainer(
                 onDismiss = { debouncedPop() },
                 enabled = gestureEnabled,
-                background = {
-                    SettingsScreen(
-                        prefs = app.prefs,
-                        scope = scope,
-                        transcription = app.transcription,
-                        updateDownload = updateDownload,
-                        onBack = {},
-                        onRerunOnboarding = {},
-                        onRequestSystemCapture = {},
-                        onNavigateRecording = {},
-                        onNavigateAppearance = {},
-                        onNavigateStt = {},
-                        onNavigateStorage = {},
-                        onNavigateUpdates = {},
-                        onNavigateAbout = {}
-                    )
-                }
+                background = { settingsMovableContent() }
             ) {
                 RecordingSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
             }
@@ -305,32 +313,16 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsAppearance.route,
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             val gestureEnabled by app.prefs.gestureEnabledFlow.collectAsState(initial = true)
             SwipeToDismissContainer(
                 onDismiss = { debouncedPop() },
                 enabled = gestureEnabled,
-                background = {
-                    SettingsScreen(
-                        prefs = app.prefs,
-                        scope = scope,
-                        transcription = app.transcription,
-                        updateDownload = updateDownload,
-                        onBack = {},
-                        onRerunOnboarding = {},
-                        onRequestSystemCapture = {},
-                        onNavigateRecording = {},
-                        onNavigateAppearance = {},
-                        onNavigateStt = {},
-                        onNavigateStorage = {},
-                        onNavigateUpdates = {},
-                        onNavigateAbout = {}
-                    )
-                }
+                background = { settingsMovableContent() }
             ) {
                 AppearanceSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
             }
@@ -338,32 +330,16 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsStt.route,
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             val gestureEnabled by app.prefs.gestureEnabledFlow.collectAsState(initial = true)
             SwipeToDismissContainer(
                 onDismiss = { debouncedPop() },
                 enabled = gestureEnabled,
-                background = {
-                    SettingsScreen(
-                        prefs = app.prefs,
-                        scope = scope,
-                        transcription = app.transcription,
-                        updateDownload = updateDownload,
-                        onBack = {},
-                        onRerunOnboarding = {},
-                        onRequestSystemCapture = {},
-                        onNavigateRecording = {},
-                        onNavigateAppearance = {},
-                        onNavigateStt = {},
-                        onNavigateStorage = {},
-                        onNavigateUpdates = {},
-                        onNavigateAbout = {}
-                    )
-                }
+                background = { settingsMovableContent() }
             ) {
                 SttSettingsScreen(prefs = app.prefs, scope = scope, transcription = app.transcription, onBack = { debouncedPop() })
             }
@@ -371,32 +347,16 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsStorage.route,
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             val gestureEnabled by app.prefs.gestureEnabledFlow.collectAsState(initial = true)
             SwipeToDismissContainer(
                 onDismiss = { debouncedPop() },
                 enabled = gestureEnabled,
-                background = {
-                    SettingsScreen(
-                        prefs = app.prefs,
-                        scope = scope,
-                        transcription = app.transcription,
-                        updateDownload = updateDownload,
-                        onBack = {},
-                        onRerunOnboarding = {},
-                        onRequestSystemCapture = {},
-                        onNavigateRecording = {},
-                        onNavigateAppearance = {},
-                        onNavigateStt = {},
-                        onNavigateStorage = {},
-                        onNavigateUpdates = {},
-                        onNavigateAbout = {}
-                    )
-                }
+                background = { settingsMovableContent() }
             ) {
                 StorageSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
             }
@@ -404,32 +364,16 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsUpdates.route,
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             val gestureEnabled by app.prefs.gestureEnabledFlow.collectAsState(initial = true)
             SwipeToDismissContainer(
                 onDismiss = { debouncedPop() },
                 enabled = gestureEnabled,
-                background = {
-                    SettingsScreen(
-                        prefs = app.prefs,
-                        scope = scope,
-                        transcription = app.transcription,
-                        updateDownload = updateDownload,
-                        onBack = {},
-                        onRerunOnboarding = {},
-                        onRequestSystemCapture = {},
-                        onNavigateRecording = {},
-                        onNavigateAppearance = {},
-                        onNavigateStt = {},
-                        onNavigateStorage = {},
-                        onNavigateUpdates = {},
-                        onNavigateAbout = {}
-                    )
-                }
+                background = { settingsMovableContent() }
             ) {
                 UpdatesSettingsScreen(prefs = app.prefs, scope = scope, updateDownload = updateDownload, onBack = { debouncedPop() })
             }
@@ -437,32 +381,16 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsAbout.route,
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             val gestureEnabled by app.prefs.gestureEnabledFlow.collectAsState(initial = true)
             SwipeToDismissContainer(
                 onDismiss = { debouncedPop() },
                 enabled = gestureEnabled,
-                background = {
-                    SettingsScreen(
-                        prefs = app.prefs,
-                        scope = scope,
-                        transcription = app.transcription,
-                        updateDownload = updateDownload,
-                        onBack = {},
-                        onRerunOnboarding = {},
-                        onRequestSystemCapture = {},
-                        onNavigateRecording = {},
-                        onNavigateAppearance = {},
-                        onNavigateStt = {},
-                        onNavigateStorage = {},
-                        onNavigateUpdates = {},
-                        onNavigateAbout = {}
-                    )
-                }
+                background = { settingsMovableContent() }
             ) {
                 AboutSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() }, onRerunOnboarding = onRerunOnboarding)
             }

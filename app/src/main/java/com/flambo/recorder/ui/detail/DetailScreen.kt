@@ -668,7 +668,6 @@ private fun EnhanceSection(
                 }
                 Spacer(Modifier.height(12.dp))
                 CleanedPlayerCard(playback = playback, filePath = savedEnhancedPath, onShare = onShareEnhanced, onDelete = onDeleteEnhanced)
-            }
             } else {
                 OutlinedButton(
                     onClick = onEnhance,

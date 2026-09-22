@@ -460,7 +460,7 @@ fun HomeScreen(
                         items(uiState.recordings, key = { it.id }) { rec ->
                             RecordingGridTile(
                                 recording = rec,
-                                isPlaying = playback.isPlayingPath(rec.filePath),
+                                isPlaying = playbackState.currentPath == rec.filePath && playbackState.isPlaying,
                                 selected = rec.id in selection,
                                 onClick = {
                                     if (selectionMode) {
@@ -470,7 +470,7 @@ fun HomeScreen(
                                     }
                                 },
                                 onLongClick = { selection = selection + rec.id },
-                                onPlay = { playback.play(rec.filePath) }
+                                onPlay = { if (playbackState.currentPath == rec.filePath && playbackState.isPlaying) playback.pause() else playback.play(rec.filePath) }
                             )
                         }
                     }
@@ -483,7 +483,7 @@ fun HomeScreen(
                         items(uiState.recordings, key = { it.id }) { rec ->
                             RecordingCard(
                                 recording = rec,
-                                isPlaying = playback.isPlayingPath(rec.filePath),
+                                isPlaying = playbackState.currentPath == rec.filePath && playbackState.isPlaying,
                                 onClick = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
@@ -491,7 +491,7 @@ fun HomeScreen(
                                         onOpenDetail(rec.id)
                                     }
                                 },
-                                onPlay = { playback.play(rec.filePath) },
+                                onPlay = { if (playbackState.currentPath == rec.filePath && playbackState.isPlaying) playback.pause() else playback.play(rec.filePath) },
                                 onFavorite = { viewModel.toggleFavorite(rec.id) },
                                 onDelete = { viewModel.softDelete(rec) },
                                 onRename = {

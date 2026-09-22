@@ -119,7 +119,7 @@ fun FlamboNavGraph(
         isNavigating.value = true
         navController.navigate(route) { launchSingleTop = true }
         scope.launch {
-            kotlinx.coroutines.delay(450)
+            delay(180)
             isNavigating.value = false
         }
     }
@@ -128,7 +128,7 @@ fun FlamboNavGraph(
         isNavigating.value = true
         val popped = navController.popBackStack()
         scope.launch {
-            kotlinx.coroutines.delay(450)
+            delay(180)
             isNavigating.value = false
         }
         return popped

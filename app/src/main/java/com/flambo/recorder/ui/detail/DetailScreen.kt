@@ -85,6 +85,8 @@ import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.stt.FileTranscription
 import com.flambo.recorder.stt.VoskModelManager
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
 import com.flambo.recorder.ui.components.StaticWaveform
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
@@ -245,9 +247,14 @@ fun DetailScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     StaticWaveform(
-                        peaks = rec.peakList.ifEmpty { List(40) { 0.35f + (Math.random().toFloat() * 0.5f) } },
+                        peaks = remember(rec.peakList) { rec.peakList.ifEmpty { List(40) { 0.35f + (Math.random().toFloat() * 0.5f) } } },
                         progress = progress,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                clip = true
+                                shape = RoundedCornerShape(16.dp)
+                            }
                     )
 
                     Slider(
@@ -258,7 +265,12 @@ fun DetailScreen(
                                 playback.seekTo(target)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                clip = true
+                                shape = RoundedCornerShape(12.dp)
+                            }
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(formatDuration(positionForUi), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -712,13 +724,21 @@ private fun CleanedPlayerCard(
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(48.dp)
+                    .graphicsLayer {
+                        clip = true
+                        shape = RoundedCornerShape(16.dp)
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                // Simple progress indicator for cleaned track
                 androidx.compose.material3.LinearProgressIndicator(
                     progress = { progress },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            clip = true
+                            shape = RoundedCornerShape(12.dp)
+                        }
                 )
             }
             androidx.compose.material3.Slider(
@@ -729,7 +749,12 @@ private fun CleanedPlayerCard(
                         playback.seekTo(target)
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        clip = true
+                        shape = RoundedCornerShape(12.dp)
+                    }
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(com.flambo.recorder.domain.formatDuration(position), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

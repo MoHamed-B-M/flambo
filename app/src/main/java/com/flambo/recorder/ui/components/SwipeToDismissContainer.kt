@@ -70,11 +70,15 @@ fun SwipeToDismissContainer(
             background()
         }
 
-        // Dimming overlay between parent and child, tied to offsetX
+        // Dimming overlay between parent and child — hardware layer alpha (no background recomposition)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = backdropAlpha.value))
+                .background(Color.Black)
+                .graphicsLayer {
+                    alpha = backdropAlpha.value
+                    clip = false
+                }
         )
 
         // Child overlay with right-swipe only

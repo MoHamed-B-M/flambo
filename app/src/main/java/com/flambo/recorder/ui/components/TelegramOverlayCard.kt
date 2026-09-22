@@ -4,13 +4,19 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -35,10 +41,12 @@ fun TelegramOverlayCard(
     val scale = remember { Animatable(1f) }
     val backdropAlpha = remember { Animatable(0.6f) }
     val corner = remember { Animatable(0f) }
+    var isDismissing by remember { mutableStateOf(false) }
 
     val maxDistancePx = with(density) { 600.dp.toPx() }
-    val dismissDistancePx = with(density) { 150.dp.toPx() }
-    val velocityThresholdPx = with(density) { 1000.dp.toPx() }
+    val dismissDistancePx = with(density) { 180.dp.toPx() }
+    val velocityThresholdPx = with(density) { 900.dp.toPx() }
+    val minDragPx = with(density) { 10.dp.toPx() }
 
     val velocityTracker = remember { VelocityTracker() }
 
@@ -60,15 +68,28 @@ fun TelegramOverlayCard(
                 }
                 .clip(RoundedCornerShape(corner.value.dp))
                 .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = {
-                            velocityTracker.resetTracking()
-                        },
-                        onDrag = { change, dragAmount ->
+                    awaitEachGesture {
+                        if (isDismissing) return@awaitEachGesture
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        velocityTracker.resetTracking()
+                        velocityTracker.addPosition(down.uptimeMillis, down.position)
+                        var pastSlop = false
+
+                        val drag = awaitTouchSlopOrCancellation(down.id) { change, over ->
+                            val d = hypot(over.x.toDouble(), over.y.toDouble()).toFloat()
+                            if (d > minDragPx) pastSlop = true
+                            change.consume()
+                            pastSlop
+                        }
+                        if (drag == null || !pastSlop) return@awaitEachGesture
+
+                        var pointerId = drag.id
+                        drag(drag.id) { change ->
+                            if (isDismissing) return@drag
                             change.consume()
                             velocityTracker.addPosition(change.uptimeMillis, change.position)
-                            val newX = offsetX.value + dragAmount.x
-                            val newY = offsetY.value + dragAmount.y
+                            val newX = offsetX.value + change.position.x - change.previousPosition.x
+                            val newY = offsetY.value + change.position.y - change.previousPosition.y
                             scope.launch {
                                 offsetX.snapTo(newX)
                                 offsetY.snapTo(newY)
@@ -80,41 +101,45 @@ fun TelegramOverlayCard(
                                 corner.snapTo(progress * 24f)
                                 backdropAlpha.snapTo((0.6f * (1f - progress)).coerceIn(0f, 0.6f))
                             }
-                        },
-                        onDragEnd = {
-                            val velocity = velocityTracker.calculateVelocity()
-                            val vel = hypot(velocity.x.toDouble(), velocity.y.toDouble()).toFloat()
-                            val distance = hypot(offsetX.value.toDouble(), offsetY.value.toDouble()).toFloat()
-                            val shouldDismiss = distance > dismissDistancePx || vel > velocityThresholdPx
-                            if (shouldDismiss) {
-                                val targetX = offsetX.value * 3
-                                val targetY = offsetY.value * 3 + with(density) { 800.dp.toPx() } * if (offsetY.value >= 0) 1 else -1
-                                scope.launch {
-                                    launch { offsetX.animateTo(targetX, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                    launch { offsetY.animateTo(targetY, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                    launch { scale.animateTo(0.85f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                    launch { backdropAlpha.animateTo(0f) }
-                                }.invokeOnCompletion { onDismiss() }
-                            } else {
-                                scope.launch {
-                                    launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                    launch { offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                    launch { scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                    launch { corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                    launch { backdropAlpha.animateTo(0.6f) }
-                                }
-                            }
-                        },
-                        onDragCancel = {
+                            if (change.pressed.not()) return@drag
+                        }
+
+                        val distance = hypot(offsetX.value.toDouble(), offsetY.value.toDouble()).toFloat()
+                        if (distance < minDragPx) {
                             scope.launch {
-                                launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                launch { offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                                launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
+                                launch { offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
+                                launch { scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                                launch { corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                                launch { backdropAlpha.animateTo(0.6f) }
+                            }
+                            return@awaitEachGesture
+                        }
+                        val vel = runCatching { velocityTracker.calculateVelocity() }.getOrNull()
+                        val vx = vel?.x ?: 0f
+                        val vy = vel?.y ?: 0f
+                        val speed = hypot(vx.toDouble(), vy.toDouble()).toFloat()
+                        val shouldDismiss = distance > dismissDistancePx || speed > velocityThresholdPx
+                        if (shouldDismiss && !isDismissing) {
+                            isDismissing = true
+                            val targetX = offsetX.value * 3f
+                            val targetY = offsetY.value * 3f + with(density) { 800.dp.toPx() } * if (offsetY.value >= 0) 1 else -1
+                            scope.launch {
+                                launch { offsetX.animateTo(targetX, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
+                                launch { offsetY.animateTo(targetY, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
+                                launch { scale.animateTo(0.85f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                                launch { backdropAlpha.animateTo(0f) }
+                            }.invokeOnCompletion { onDismiss() }
+                        } else {
+                            scope.launch {
+                                launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
+                                launch { offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
                                 launch { scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
                                 launch { corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
                                 launch { backdropAlpha.animateTo(0.6f) }
                             }
                         }
-                    )
+                    }
                 }
         ) {
             content()

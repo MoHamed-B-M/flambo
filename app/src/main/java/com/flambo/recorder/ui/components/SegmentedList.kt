@@ -3,10 +3,15 @@ package com.flambo.recorder.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
 class SegmentedListScope internal constructor() {
     internal val rows = mutableListOf<@Composable () -> Unit>()
@@ -22,15 +27,15 @@ fun SegmentedList(
     content: SegmentedListScope.() -> Unit
 ) {
     val scope = SegmentedListScope().apply(content)
-    androidx.compose.material3.Surface(
-        shape = com.flambo.recorder.ui.theme.ShapeLargeIncreased,
+    Surface(
+        shape = ShapeLargeIncreased,
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier.fillMaxWidth()
     ) {
         Column {
             scope.rows.forEachIndexed { index, row ->
                 if (index > 0) {
-                    androidx.compose.material3.HorizontalDivider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
                     )

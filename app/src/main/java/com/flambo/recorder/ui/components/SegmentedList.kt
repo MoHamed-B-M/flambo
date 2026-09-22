@@ -22,10 +22,21 @@ fun SegmentedList(
     content: SegmentedListScope.() -> Unit
 ) {
     val scope = SegmentedListScope().apply(content)
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+    androidx.compose.material3.Surface(
+        shape = com.flambo.recorder.ui.theme.ShapeLargeIncreased,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.fillMaxWidth()
     ) {
-        scope.rows.forEach { it() }
+        Column {
+            scope.rows.forEachIndexed { index, row ->
+                if (index > 0) {
+                    androidx.compose.material3.HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                    )
+                }
+                row()
+            }
+        }
     }
 }

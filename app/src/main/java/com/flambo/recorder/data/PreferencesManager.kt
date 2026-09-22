@@ -41,6 +41,7 @@ class PreferencesManager(private val context: Context) {
         val HOME_LAYOUT = stringPreferencesKey("home_layout")
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
+        val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -229,8 +230,15 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.data.map { it[Keys.COLOR_SCHEME] ?: "TONAL_SPOT" }
 
     suspend fun setColorScheme(scheme: String) {
-        val valid = setOf("EXPRESSIVE", "TONAL_SPOT", "VIBRANT", "SPRITZ", "RAINBOW", "FRUIT_SALAD", "MONOCHROME")
-        context.dataStore.edit { it[Keys.COLOR_SCHEME] = if (scheme in valid) scheme else "TONAL_SPOT" }
+        val valid = setOf("TONAL_SPOT", "EXPRESSIVE", "VIBRANT", "NEUTRAL", "MONOCHROME", "DYNAMIC", "SPRITZ", "RAINBOW", "FRUIT_SALAD")
+        context.dataStore.edit { it[Keys.COLOR_SCHEME] = if (scheme.uppercase() in valid) scheme.uppercase() else "TONAL_SPOT" }
+    }
+
+    val gestureEnabledFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.GESTURE_ENABLED] ?: true }
+
+    suspend fun setGestureEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.GESTURE_ENABLED] = enabled }
     }
 
     companion object {

@@ -4,19 +4,26 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
-import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -26,123 +33,152 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import kotlin.math.hypot
+import kotlin.math.max
 
 @Composable
 fun TelegramOverlayCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    backgroundContent: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
+    if (!enabled) {
+        Box(modifier = modifier.fillMaxSize()) { content() }
+        return
+    }
+
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
-    val offsetY = remember { Animatable(0f) }
-    val scale = remember { Animatable(1f) }
     val backdropAlpha = remember { Animatable(0.6f) }
-    val corner = remember { Animatable(0f) }
     var isDismissing by remember { mutableStateOf(false) }
 
-    val maxDistancePx = with(density) { 600.dp.toPx() }
-    val dismissDistancePx = with(density) { 180.dp.toPx() }
-    val velocityThresholdPx = with(density) { 900.dp.toPx() }
-    val minDragPx = with(density) { 10.dp.toPx() }
-
+    val dismissDistancePx = with(density) { 100.dp.toPx() }
+    val velocityThresholdPx = with(density) { 400.dp.toPx() }
     val velocityTracker = remember { VelocityTracker() }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = backdropAlpha.value))
+            .background(MaterialTheme.colorScheme.surface)
     ) {
+        val screenWidthPx = with(density) { maxWidth.toPx() }
+
+        // Background home preview behind sheet
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (backgroundContent != null) {
+                backgroundContent()
+            } else {
+                HomePreviewPlaceholder()
+            }
+        }
+
+        // Dimming layer tied to swipe progress
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = backdropAlpha.value))
+        )
+
+        // Foreground sheet with right-swipe only gesture
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = scale.value
-                    scaleY = scale.value
                     translationX = offsetX.value
-                    translationY = offsetY.value
-                    shape = RoundedCornerShape(corner.value.dp)
-                    clip = corner.value > 0f
+                    shape = RoundedCornerShape(0.dp)
+                    clip = false
                 }
-                .clip(RoundedCornerShape(corner.value.dp))
                 .pointerInput(Unit) {
-                    awaitEachGesture {
-                        if (isDismissing) return@awaitEachGesture
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        velocityTracker.resetTracking()
-                        velocityTracker.addPosition(down.uptimeMillis, down.position)
-                        var pastSlop = false
-
-                        val drag = awaitTouchSlopOrCancellation(down.id) { change, over ->
-                            val d = hypot(over.x.toDouble(), over.y.toDouble()).toFloat()
-                            if (d > minDragPx) pastSlop = true
-                            change.consume()
-                            pastSlop
-                        }
-                        if (drag == null || !pastSlop) return@awaitEachGesture
-
-                        var pointerId = drag.id
-                        drag(drag.id) { change ->
-                            if (isDismissing) return@drag
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            velocityTracker.resetTracking()
+                        },
+                        onDragEnd = {
+                            val offset = offsetX.value
+                            val velocity = runCatching { velocityTracker.calculateVelocity().x }.getOrDefault(0f)
+                            val shouldDismiss = offset > dismissDistancePx || velocity > velocityThresholdPx
+                            if (shouldDismiss && !isDismissing) {
+                                isDismissing = true
+                                scope.launch {
+                                    launch { offsetX.animateTo(screenWidthPx, spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)) }
+                                    launch { backdropAlpha.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) }
+                                }.invokeOnCompletion {
+                                    scope.launch { onDismiss() }
+                                }
+                            } else {
+                                scope.launch {
+                                    launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
+                                    launch { backdropAlpha.animateTo(0.6f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch {
+                                launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
+                                launch { backdropAlpha.animateTo(0.6f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                            }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            if (isDismissing) return@detectHorizontalDragGestures
                             change.consume()
                             velocityTracker.addPosition(change.uptimeMillis, change.position)
-                            val newX = offsetX.value + change.position.x - change.previousPosition.x
-                            val newY = offsetY.value + change.position.y - change.previousPosition.y
+                            val newOffset = max(0f, offsetX.value + dragAmount)
                             scope.launch {
-                                offsetX.snapTo(newX)
-                                offsetY.snapTo(newY)
-                            }
-                            val distance = hypot(newX.toDouble(), newY.toDouble()).toFloat()
-                            val progress = (distance / maxDistancePx).coerceIn(0f, 1f)
-                            scope.launch {
-                                scale.snapTo((1f - progress * 0.15f).coerceIn(0.85f, 1f))
-                                corner.snapTo(progress * 24f)
+                                offsetX.snapTo(newOffset)
+                                val progress = (newOffset / screenWidthPx).coerceIn(0f, 1f)
                                 backdropAlpha.snapTo((0.6f * (1f - progress)).coerceIn(0f, 0.6f))
                             }
-                            if (change.pressed.not()) return@drag
                         }
-
-                        val distance = hypot(offsetX.value.toDouble(), offsetY.value.toDouble()).toFloat()
-                        if (distance < minDragPx) {
-                            scope.launch {
-                                launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                launch { offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                launch { scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                launch { corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                launch { backdropAlpha.animateTo(0.6f) }
-                            }
-                            return@awaitEachGesture
-                        }
-                        val vel = runCatching { velocityTracker.calculateVelocity() }.getOrNull()
-                        val vx = vel?.x ?: 0f
-                        val vy = vel?.y ?: 0f
-                        val speed = hypot(vx.toDouble(), vy.toDouble()).toFloat()
-                        val shouldDismiss = distance > dismissDistancePx || speed > velocityThresholdPx
-                        if (shouldDismiss && !isDismissing) {
-                            isDismissing = true
-                            val targetX = offsetX.value * 3f
-                            val targetY = offsetY.value * 3f + with(density) { 800.dp.toPx() } * if (offsetY.value >= 0) 1 else -1
-                            scope.launch {
-                                launch { offsetX.animateTo(targetX, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                launch { offsetY.animateTo(targetY, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                launch { scale.animateTo(0.85f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                launch { backdropAlpha.animateTo(0f) }
-                            }.invokeOnCompletion { onDismiss() }
-                        } else {
-                            scope.launch {
-                                launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                launch { offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) }
-                                launch { scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                launch { corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                                launch { backdropAlpha.animateTo(0.6f) }
-                            }
-                        }
-                    }
+                    )
                 }
         ) {
             content()
         }
+    }
+}
+
+@Composable
+private fun HomePreviewPlaceholder() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxWidth().height(72.dp)
+        ) {
+            Box(modifier = Modifier.padding(16.dp), contentAlignment = Alignment.CenterStart) {
+                Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth(0.55f).height(14.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)))
+                    Box(modifier = Modifier.fillMaxWidth(0.35f).height(10.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
+                }
+            }
+        }
+        repeat(5) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth().height(84.dp)
+            ) {
+                Box(modifier = Modifier.padding(16.dp)) {
+                    Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.fillMaxWidth(0.7f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)))
+                        Box(modifier = Modifier.fillMaxWidth(0.45f).height(8.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)))
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(80.dp))
+        Text(
+            "Home preview • dimmed behind sheet",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
     }
 }

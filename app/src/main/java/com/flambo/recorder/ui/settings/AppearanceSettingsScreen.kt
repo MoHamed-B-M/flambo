@@ -34,8 +34,11 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -58,6 +61,8 @@ import com.flambo.recorder.ui.settings.components.PreferenceSwitchItem
 import com.flambo.recorder.ui.settings.components.PreferenceValueItem
 import com.flambo.recorder.ui.settings.components.SectionHeader
 import com.flambo.recorder.ui.settings.components.SegmentedPreferenceGroup
+import com.flambo.recorder.ui.theme.ColorPaletteGenerator
+import com.flambo.recorder.ui.theme.ColorSchemeStyle
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.ui.theme.ThemeSeeds
 import com.flambo.recorder.ui.theme.themeSeedById
@@ -76,9 +81,12 @@ fun AppearanceSettingsScreen(
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
     val homeLayout by prefs.homeLayoutFlow.collectAsState(initial = "list")
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
+    val colorSchemeStyle by prefs.colorSchemeFlow.collectAsState(initial = "TONAL_SPOT")
+    val gestureEnabled by prefs.gestureEnabledFlow.collectAsState(initial = true)
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
+    var showColorSchemeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -122,6 +130,22 @@ fun AppearanceSettingsScreen(
                             onClick = { showThemeDialog = true }
                         )
                     }
+                    item {
+                        PreferenceValueItem(
+                            icon = Icons.Filled.Palette,
+                            title = "Color Scheme",
+                            value = ColorPaletteGenerator.fromString(colorSchemeStyle).name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() } + " • ${if (darkTheme == "system") "System" else darkTheme}",
+                            subtitle = when (ColorPaletteGenerator.fromString(colorSchemeStyle)) {
+                                ColorSchemeStyle.DYNAMIC -> "Material You • Android 12+"
+                                ColorSchemeStyle.MONOCHROME -> "Greyscale • AMOLED black"
+                                ColorSchemeStyle.VIBRANT -> "High-chroma containers"
+                                ColorSchemeStyle.EXPRESSIVE -> "Expressive accents"
+                                ColorSchemeStyle.NEUTRAL -> "Muted • Low chroma"
+                                ColorSchemeStyle.TONAL_SPOT -> "Seed-tonal • Balanced"
+                            },
+                            onClick = { showColorSchemeDialog = true }
+                        )
+                    }
                 }
             }
 
@@ -134,6 +158,53 @@ fun AppearanceSettingsScreen(
                             title = "Library layout",
                             value = if (homeLayout == "grid") "Grid • compact tap-to-open cards" else "List • full rows with actions",
                             onClick = { showLayoutDialog = true }
+                        )
+                    }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionHeader(title = "Gestures")
+                SegmentedPreferenceGroup {
+                    item {
+                        ListItem(
+                            headlineContent = {
+                                androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Swipe to dismiss", style = MaterialTheme.typography.titleMedium)
+                                    Surface(
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                                        color = androidx.compose.ui.graphics.Color(0xFFFF9800).copy(alpha = 0.15f),
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    ) {
+                                        Text(
+                                            "Under dev • may contain bugs",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = androidx.compose.ui.graphics.Color(0xFFFF9800),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            supportingContent = {
+                                Text(
+                                    if (gestureEnabled) "Right-swipe detail card to go back • 100dp / 400dp/s" else "Gesture disabled — use back arrow",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            leadingContent = {
+                                Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = gestureEnabled,
+                                    onCheckedChange = { scope.launch { prefs.setGestureEnabled(it) } },
+                                    thumbContent = if (gestureEnabled) {
+                                        { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                    } else null
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         )
                     }
                 }
@@ -292,6 +363,82 @@ fun AppearanceSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLayoutDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showColorSchemeDialog) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val isDark = when (darkTheme) {
+            "light" -> false
+            "dark" -> true
+            else -> androidx.compose.foundation.isSystemInDarkTheme()
+        }
+        AlertDialog(
+            onDismissRequest = { showColorSchemeDialog = false },
+            title = { Text("Color Scheme", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Expressive palettes • preview shows Primary • Secondary • Tertiary",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ColorSchemeStyle.entries.forEach { style ->
+                            val selected = style.name == colorSchemeStyle
+                            val seed = themeSeedById(themeSeed)
+                            val scheme = ColorPaletteGenerator.scheme(seed, isDark, style, context, dynamicColor)
+                            val colors = listOf(scheme.primary, scheme.secondary, scheme.tertiary)
+                            Surface(
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    scope.launch { prefs.setColorScheme(style.name) }
+                                    showColorSchemeDialog = false
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+                                        colors.forEach { c ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .clip(CircleShape)
+                                                    .background(c)
+                                                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                                            )
+                                        }
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(style.name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() }, style = MaterialTheme.typography.titleSmall)
+                                        Text(
+                                            when (style) {
+                                                ColorSchemeStyle.DYNAMIC -> "Material You • Android 12+"
+                                                ColorSchemeStyle.MONOCHROME -> "Greyscale • AMOLED"
+                                                ColorSchemeStyle.VIBRANT -> "High chroma"
+                                                ColorSchemeStyle.EXPRESSIVE -> "Expressive • vivid"
+                                                ColorSchemeStyle.NEUTRAL -> "Muted • Low chroma"
+                                                ColorSchemeStyle.TONAL_SPOT -> "Tonal Spot • Balanced"
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showColorSchemeDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
             },
             shape = ShapeLargeIncreased
         )

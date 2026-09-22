@@ -151,7 +151,8 @@ fun DetailScreen(
     val duration = if (isCurrentTrack && playbackState.durationMs > 0) playbackState.durationMs else rec.durationMs
     val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
 
-    TelegramOverlayCard(onDismiss = onBack) {
+    val gestureEnabled by viewModel.gestureEnabled.collectAsState()
+    TelegramOverlayCard(onDismiss = onBack, enabled = gestureEnabled) {
         Scaffold(
             topBar = {
                 TopAppBar(

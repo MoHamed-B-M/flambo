@@ -49,6 +49,9 @@ class DetailViewModel(
 
     fun softDelete() = viewModelScope.launch { repository.softDelete(recordingId) }
 
+    val gestureEnabled: StateFlow<Boolean> =
+        prefs.gestureEnabledFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     val languagePref: StateFlow<String> =
         prefs.sttLanguageFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 

@@ -1,6 +1,6 @@
 package com.flambo.recorder.ui.settings
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -39,16 +39,9 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.SettingsBrightness
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.ViewList
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -108,7 +101,6 @@ import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.update.UpdateCheck
 import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateDownloadState
-import java.io.File
 import com.flambo.recorder.ui.components.SegmentedList
 import com.flambo.recorder.ui.components.segmentedListItemColors
 import com.flambo.recorder.ui.theme.ShapeFull
@@ -148,7 +140,9 @@ fun SettingsScreen(
     val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
     val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
     val homeLayout by prefs.homeLayoutFlow.collectAsState(initial = "list")
+    val colorSchemeStyle by prefs.colorSchemeFlow.collectAsState(initial = "TONAL_SPOT")
     val snackbarHostState = remember { SnackbarHostState() }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -191,12 +185,6 @@ fun SettingsScreen(
     var namingDraft by remember { mutableStateOf(recordingPrefix) }
     LaunchedEffect(recordingPrefix) { if (!showNamingDialog) namingDraft = recordingPrefix }
 
-    var recordingExpanded by remember { mutableStateOf(true) }
-    var soundExpanded by remember { mutableStateOf(true) }
-    var appearanceExpanded by remember { mutableStateOf(true) }
-    var sttExpanded by remember { mutableStateOf(true) }
-    var updatesExpanded by remember { mutableStateOf(true) }
-
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             try {
@@ -215,1477 +203,702 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Settings", style = MaterialTheme.typography.titleLarge) },
+                title = { Text(selectedCategory ?: "Settings", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = { if (selectedCategory != null) selectedCategory = null else onBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .animateContentSize(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            SettingsSectionCard(title = "Recording") {
-                SegmentedList {
-                item {
-                    ListItem(
-                        headlineContent = { Text("Quality") },
-                        supportingContent = { Text("${quality.label} • ${quality.description}") },
-                        leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showQualityDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Recording reminder") },
-                        supportingContent = { Text("Show a gentle reminder before long recordings") },
-                        trailingContent = {
-                            Switch(
-                                checked = reminder,
-                                onCheckedChange = { scope.launch { prefs.setRecordingReminder(it) } },
-                                thumbContent = if (reminder) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                                } else null
-                            )
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Audio source") },
-                        supportingContent = { Text(AudioSource.fromPref(audioSource).label) },
-                        leadingContent = {
-                            Icon(
-                                if (audioSource == "system") Icons.Filled.MusicNote else Icons.Filled.Mic,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showAudioSourceDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    val volumes = remember { StorageVolumes.list(context.applicationContext) }
-                    val current = volumes.firstOrNull { it.id == storageVolume } ?: volumes.firstOrNull()
-                    ListItem(
-                        headlineContent = { Text("Storage folder") },
-                        supportingContent = { Text(current?.label ?: "Phone storage") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Filled.Folder,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showStorageDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Recording name") },
-                        supportingContent = { Text("$recordingPrefix 1  •  $recordingPrefix 2  •  e.g. \"$recordingPrefix 1\"") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Filled.Title,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { namingDraft = recordingPrefix; showNamingDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    val customLabel = if (customFolderUri.isBlank()) "Not set — uses Storage folder above"
-                    else SafFolderHelper.displayName(context, customFolderUri)
-                    ListItem(
-                        headlineContent = { Text("Custom folder (system picker)") },
-                        supportingContent = { Text(customLabel) },
-                        leadingContent = {
-                            Icon(
-                                Icons.Filled.FolderOpen,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                if (customFolderUri.isNotBlank()) {
-                                    TextButton(
-                                        onClick = {
-                                            scope.launch {
-                                                prefs.clearCustomFolderUri()
-                                                (context.applicationContext as? FlamboApp)?.let { it.customFolderUri = "" }
-                                            }
-                                        },
-                                        shapes = ButtonDefaults.shapes()
-                                    ) { Text("Clear") }
-                                }
-                                TextButton(
-                                    onClick = { folderPicker.launch(null) },
-                                    shapes = ButtonDefaults.shapes()
-                                ) { Text("Pick") }
-                            }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-            }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-            SettingsSectionCard(title = "Sound") {
-                SegmentedList {
-                item {
-                    ListItem(
-                        headlineContent = { Text("Noise reduction") },
-                        supportingContent = { Text("Live hush + steady levels while recording") },
-                        trailingContent = {
-                            Switch(
-                                checked = noiseReduction,
-                                onCheckedChange = { scope.launch { prefs.setNoiseReduction(it) } },
-                                thumbContent = if (noiseReduction) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                                } else null
-                            )
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Enhancement strength") },
-                        supportingContent = {
-                            Text(
-                                EnhanceStrength.fromPref(enhanceStrength).let { "${it.label} • ${it.description}" }
-                            )
-                        },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showEnhanceStrengthDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Keep original") },
-                        supportingContent = { Text("Save the cleaned copy next to the original") },
-                        trailingContent = {
-                            Switch(
-                                checked = keepOriginal,
-                                onCheckedChange = { scope.launch { prefs.setKeepOriginal(it) } },
-                                thumbContent = if (keepOriginal) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                                } else null
-                            )
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-            }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-            SettingsSectionCard(title = "Appearance") {
-            SegmentedList {
-                item {
-                    ListItem(
-                        headlineContent = { Text("Theme") },
-                        supportingContent = {
-                            val mode = when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System" }
-                            val color = if (dynamicColor) "Dynamic" else themeSeedById(themeSeed).label
-                            Text("$color • $mode")
-                        },
-                        leadingContent = {
-                            Icon(
-                                when (darkTheme) {
-                                    "light" -> Icons.Filled.LightMode
-                                    "dark" -> Icons.Filled.DarkMode
-                                    else -> Icons.Filled.SettingsBrightness
-                                },
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showThemeDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Library layout") },
-                        supportingContent = { Text(if (homeLayout == "grid") "Grid • compact tap-to-open cards" else "List • full rows with actions") },
-                        leadingContent = {
-                            Icon(
-                                if (homeLayout == "grid") Icons.Filled.GridView else Icons.Filled.ViewList,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showLayoutDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-            }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-            SettingsSectionCard(title = "Speech-to-text") {
-            SegmentedList {
-                item {
-
-                    ListItem(
-                        headlineContent = { Text("Offline transcription") },
-                        supportingContent = { Text("Vosk and Whisper run fully offline — no cloud, no account") },
-                        leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Engine") },
-                        supportingContent = { Text(if (sttEngine == "whisper") "Whisper • multilingual 95+ langs" else "Vosk • per-language models") },
-                        leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showEngineDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    ListItem(
-                        headlineContent = { Text("Transcription language") },
-                        supportingContent = {
-                            Text(
-                                if (sttEngine == "whisper") {
-                                    when (sttLanguage) {
-                                        "" -> "Auto (detect)"
-                                        "en" -> "English"
-                                        "id" -> "Indonesian"
-                                        "ar" -> "Arabic"
-                                        "fr" -> "French"
-                                        "es" -> "Spanish"
-                                        "de" -> "German"
-                                        "it" -> "Italian"
-                                        "pt" -> "Portuguese"
-                                        "ru" -> "Russian"
-                                        "zh" -> "Chinese"
-                                        "ja" -> "Japanese"
-                                        "ko" -> "Korean"
-                                        "hi" -> "Hindi"
-                                        "tr" -> "Turkish"
-                                        else -> sttLanguage.ifBlank { "Auto (detect)" }
-                                    }
-                                } else {
-                                    VoskModelManager.forTag(sttLanguage.ifBlank { "en" })?.label
-                                        ?: if (sttLanguage.isBlank()) "Best installed model" else sttLanguage
-                                }
-                            )
-                        },
-                        trailingContent = {
-                            FilledTonalButton(
-                                onClick = { showSttLanguageDialog = true },
-                                shapes = ButtonDefaults.shapes(),
-                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
-                            ) { Text("Change") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                item {
-                    val installedCount = remember(modelsTick) { transcription.vosk.models.installedCodes().size }
-                    ListItem(
-                        headlineContent = { Text("Vosk offline models") },
-                        supportingContent = {
-                            Text(
-                                if (installedCount == 0) "None yet — download one to transcribe offline"
-                                else "$installedCount language${if (installedCount > 1) "s" else ""} ready offline"
-                            )
-                        },
-                        trailingContent = {
-                            TextButton(
-                                onClick = { showVoskModelsDialog = true },
-                                shapes = ButtonDefaults.shapes()
-                            ) { Text("Manage") }
-                        },
-                        colors = segmentedListItemColors()
-                    )
-                }
-                if (sttEngine == "whisper") {
-                    item {
-                        val whisperInstalled = remember(modelsTick, whisperProgress) { transcription.whisper.models.isInstalled() }
-                        val prog = whisperProgress["whisper"]
-                        ListItem(
-                            headlineContent = { Text("Whisper tiny model") },
-                            supportingContent = {
-                                Text(
-                                    when {
-                                        prog != null -> "Downloading ${(prog * 100).toInt()}%"
-                                        whisperInstalled -> "Ready offline • 95+ languages • ~75 MB"
-                                        else -> "Not installed — 75 MB multilingual"
-                                    }
-                                )
-                            },
-                            trailingContent = {
-                                when {
-                                    prog != null -> TextButton(onClick = {}, shapes = ButtonDefaults.shapes()) { Text("${(prog * 100).toInt()}%") }
-                                    whisperInstalled -> TextButton(onClick = { scope.launch { transcription.whisper.models.delete(); modelsTick++; snackbarHostState.showSnackbar("Whisper model deleted") } }, shapes = ButtonDefaults.shapes()) { Text("Delete") }
-                                    else -> FilledTonalButton(onClick = {
-                                        scope.launch {
-                                            val res = transcription.whisper.models.download()
-                                            modelsTick++
-                                            res.onFailure { snackbarHostState.showSnackbar(it.message ?: "Download failed") }
-                                            res.onSuccess { snackbarHostState.showSnackbar("Whisper ready • 95+ languages") }
-                                        }
-                                    }, shapes = ButtonDefaults.shapes()) { Text("Download") }
-                                }
-                            },
-                            colors = segmentedListItemColors()
+        AnimatedContent(
+            targetState = selectedCategory,
+            transitionSpec = {
+                fadeIn(animationSpec = spring(dampingRatio = 0.8f, stiffness = 1000)) with
+                    slideInHorizontally(initialOffsetX = { it }) with
+                    fadeOut(animationSpec = spring(dampingRatio = 0.9f, stiffness = 500)) with
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = spring(dampingRatio = 0.9f))
+            },
+            label = "settingsCategory"
+        ) { category ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .animateContentSize(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when (category) {
+                    null -> {
+                        // Main category grid
+                        val categories = listOf(
+                            CategoryItem("Recording", "Quality • Storage • Names", Icons.Filled.RecordVoiceOver),
+                            Triple("Sound", "Noise reduction • Enhancement", Icons.Filled.MusicNote),
+                            Triple("Appearance", "Theme • Color scheme • Layout", Icons.Filled.Palette),
+                            Triple("Speech-to-text", "Engine • Language • Models", Icons.Filled.RecordVoiceOver),
+                            Triple("Updates", "Channel • Auto-check", Icons.Filled.Download),
+                            Triple("About", "Tips • Version • Credits", Icons.Filled.Lightbulb)
                         )
-                    }
-                }
-            }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-            SettingsSectionCard(title = "Updates") {
-                Surface(
-                    shape = ShapeLargeIncreased,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("Release channel", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                if (installedLabel.isBlank()) "Checking installed version…"
-                                else "Installed $installedLabel",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        listOf(UpdateChecker.CHANNEL_BETA to "Beta", UpdateChecker.CHANNEL_STABLE to "Stable").forEachIndexed { index, (value, label) ->
-                            ToggleButton(
-                                checked = updateChannel == value,
-                                onCheckedChange = {
-                                    scope.launch { prefs.setUpdateChannel(value) }
-                                    updateResult = null
-                                    updateDownload.downloadedFile?.let { runCatching { it.delete() } }
-                                    updateDownload.clear()
-                                    scope.launch { prefs.clearPendingApkDelete() }
-                                    downloadError = null
-                                    needsUnknownSources = false
-                                },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) { Text(label) }
-                        }
-                    }
-                    Text(
-                        if (updateChannel == UpdateChecker.CHANNEL_BETA) "Beta follows the rolling preview by build number — newest first."
-                        else "Stable follows versioned releases only.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Check on launch", style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "Show a snackbar when an update is ready",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = autoUpdateCheck,
-                            onCheckedChange = { scope.launch { prefs.setAutoUpdateCheck(it) } }
-                        )
-                    }
-                    when {
-                        checkingUpdate -> LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        updateResult?.error != null -> Text(
-                            updateResult?.error ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        updateResult != null -> {
-                            val result = updateResult!!
-                            if (result.available && result.release != null) {
-                                Surface(
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(16.dp)
+                        ) {
+                            items(categories) { (title, subtitle, icon) ->
+                                androidx.compose.material3.Card(
+                                    onClick = { selectedCategory = title },
                                     shape = ShapeLargeIncreased,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(
-                                            "Update ready: v${result.release.version}" + if (result.release.buildNumber > 0) " • build ${result.release.buildNumber}" else "",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                        Text(
-                                            result.release.name,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                                        )
-                                        val asset = result.release.bestApk()
-                                        val downloading = updateDownload.progress != null
-
-                                        val savedFile = updateDownload.fileFor(asset?.name)
-                                        if (downloading) {
-                                            LinearWavyProgressIndicator(
-                                                progress = { updateDownload.progress ?: 0f },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Text(
-                                                "Downloading ${asset?.name ?: "update"}… ${((updateDownload.progress ?: 0f) * 100).toInt()}%",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                                            )
-                                        }
-                                        if (downloadError != null) {
-                                            Text(
-                                                downloadError ?: "",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        }
-                                        if (needsUnknownSources) {
-                                            Text(
-                                                "Allow “Install unknown apps” for Flambo, then tap again.",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        }
-                                        if (savedFile != null && !downloading) {
-                                            Text(
-                                                "Downloaded ${savedFile.name} — kept until you install.",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                                            )
-                                            FilledTonalButton(
-                                                onClick = {
-                                                    if (!ApkInstaller.canInstall(context)) {
-                                                        needsUnknownSources = true
-                                                        context.startActivity(ApkInstaller.unknownSourcesIntent(context))
-                                                        return@FilledTonalButton
-                                                    }
-                                                    needsUnknownSources = false
-                                                    context.startActivity(ApkInstaller.installIntent(context, savedFile))
-
-                                                },
-                                                shapes = ButtonDefaults.shapes(),
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) {
-                                                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("Install update")
-                                            }
-                                            TextButton(
-                                                onClick = {
-                                                    runCatching { savedFile.delete() }
-                                                    updateDownload.downloadedFile = null
-                                                    updateDownload.downloadedAssetName = null
-                                                    scope.launch { prefs.clearPendingApkDelete() }
-                                                },
-                                                shapes = ButtonDefaults.shapes()
-                                            ) { Text("Delete file") }
-                                        } else {
-                                            FilledTonalButton(
-                                                onClick = {
-                                                    if (asset == null) {
-                                                        downloadError = "No APK attached to this release yet."
-                                                        return@FilledTonalButton
-                                                    }
-                                                    if (!ApkInstaller.canInstall(context)) {
-                                                        needsUnknownSources = true
-                                                        context.startActivity(ApkInstaller.unknownSourcesIntent(context))
-                                                        return@FilledTonalButton
-                                                    }
-                                                    needsUnknownSources = false
-                                                    downloadError = null
-
-                                                    updateDownload.downloadedFile?.takeIf { it.name != asset.name }?.let {
-                                                        runCatching { it.delete() }
-                                                    }
-                                                    updateDownload.progress = 0f
-                                                    updateDownload.job = scope.launch {
-                                                        val res = ApkInstaller.download(
-                                                            context.applicationContext,
-                                                            asset.url,
-                                                            asset.name
-                                                        ) { updateDownload.progress = it }
-                                                        updateDownload.progress = null
-                                                        updateDownload.job = null
-                                                        res.onSuccess { file ->
-                                                            updateDownload.downloadedFile = file
-                                                            updateDownload.downloadedAssetName = file.name
-                                                            prefs.setPendingApkDelete(file.name)
-                                                        }.onFailure {
-                                                            downloadError = it.message ?: "Download failed."
-                                                        }
-                                                    }
-                                                },
-                                                enabled = !downloading,
-                                                shapes = ButtonDefaults.shapes(),
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) {
-                                                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text(if (downloading) "Downloading…" else "Download update")
-                                            }
-                                        }
-                                    }
+                                    androidx.compose.material3.ListItem(
+                                        headlineContent = { Text(title) },
+                                        supportingContent = { Text(subtitle) },
+                                        leadingContent = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                        trailingContent = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
+                                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    )
                                 }
-                            } else {
-                                Text(
-                                    "You're up to date on ${if (updateChannel == UpdateChecker.CHANNEL_BETA) "beta" else "stable"}.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
                         }
                     }
-                    FilledTonalButton(
-                        onClick = {
-                            checkingUpdate = true
-                            updateResult = null
-                            updateDownload.job?.cancel()
-                            updateDownload.job = null
-                            updateDownload.progress = null
-                            downloadError = null
-                            needsUnknownSources = false
-                            scope.launch {
-                                updateResult = UpdateChecker.check(context.applicationContext, updateChannel)
-                                checkingUpdate = false
-                            }
-                        },
-                        enabled = !checkingUpdate && updateDownload.progress == null,
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (checkingUpdate) "Checking…" else "Check for updates")
-                    }
+                    "Recording" -> RecordingSection(
+                        quality = quality,
+                        audioSource = audioSource,
+                        noiseReduction = noiseReduction,
+                        enhanceStrength = enhanceStrength,
+                        keepOriginal = keepOriginal,
+                        recordingPrefix = recordingPrefix,
+                        customFolderUri = customFolderUri,
+                        storageVolume = storageVolume,
+                        reminder = reminder,
+                        prefs = prefs,
+                        scope = scope,
+                        showQualityDialog = showQualityDialog,
+                        showAudioSourceDialog = showAudioSourceDialog,
+                        showStorageDialog = showStorageDialog,
+                        showNamingDialog = showNamingDialog,
+                        namingDraft = namingDraft,
+                        recordingPrefix = recordingPrefix,
+                        customFolderUri = customFolderUri,
+                        storageVolume = storageVolume,
+                        reminder = reminder,
+                        scope = scope,
+                        prefs = prefs,
+                        snackbarHostState = snackbarHostState,
+                        context = context,
+                        quality = quality,
+                        audioSource = audioSource,
+                        noiseReduction = noiseReduction,
+                        enhanceStrength = enhanceStrength,
+                        keepOriginal = keepOriginal,
+                        recordingPrefix = recordingPrefix,
+                        customFolderUri = customFolderUri,
+                        storageVolume = storageVolume,
+                        reminder = reminder,
+                        showQualityDialog = showQualityDialog,
+                        showAudioSourceDialog = showAudioSourceDialog,
+                        showStorageDialog = showStorageDialog,
+                        showNamingDialog = showNamingDialog,
+                        namingDraft = namingDraft,
+                        recordingPrefix = recordingPrefix,
+                        customFolderUri = customFolderUri,
+                        storageVolume = storageVolume,
+                        reminder = reminder,
+                        scope = scope,
+                        prefs = prefs,
+                        snackbarHostState = snackbarHostState,
+                        context = context,
+                        quality = quality,
+                        audioSource = audioSource,
+                        noiseReduction = noiseReduction,
+                        enhanceStrength = enhanceStrength,
+                        keepOriginal = keepOriginal,
+                        recordingPrefix = recordingPrefix,
+                        customFolderUri = customFolderUri,
+                        storageVolume = storageVolume,
+                        reminder = reminder,
+                        showQualityDialog = showQualityDialog,
+                        showAudioSourceDialog = showAudioSourceDialog,
+                        showStorageDialog = showStorageDialog,
+                        showNamingDialog = showNamingDialog,
+                        namingDraft = namingDraft
+                    ),
+                    "Sound" -> SoundSection(
+                        noiseReduction = noiseReduction,
+                        enhanceStrength = enhanceStrength,
+                        prefs = prefs,
+                        scope = scope,
+                        showQualityDialog = showQualityDialog,
+                        showAudioSourceDialog = showAudioSourceDialog,
+                        showStorageDialog = showStorageDialog,
+                        showThemeDialog = showThemeDialog,
+                        showNamingDialog = showNamingDialog,
+                        namingDraft = namingDraft,
+                        recordingPrefix = recordingPrefix,
+                        customFolderUri = customFolderUri,
+                        storageVolume = storageVolume,
+                        reminder = reminder,
+                        darkTheme = darkTheme,
+                        sttLanguage = sttLanguage,
+                        sttEngine = sttEngine,
+                        modelProgress = modelProgress,
+                        whisperProgress = whisperProgress,
+                        selectedCategory = selectedCategory,
+                        onBack = onBack
+                    ),
+                    "Appearance" -> AppearanceSection(
+                        darkTheme = darkTheme,
+                        themeSeed = themeSeed,
+                        dynamicColor = dynamicColor,
+                        tipsEnabled = tipsEnabled,
+                        prefs = prefs,
+                        scope = scope,
+                        showThemeDialog = showThemeDialog,
+                        showNamingDialog = showNamingDialog,
+                        namingDraft = namingDraft,
+                        recordingPrefix = recordingPrefix,
+                        customFolderUri = customFolderUri,
+                        storageVolume = storageVolume,
+                        reminder = reminder,
+                        sttLanguage = sttLanguage,
+                        sttEngine = sttEngine,
+                        modelProgress = modelProgress,
+                        whisperProgress = whisperProgress,
+                        selectedCategory = selectedCategory,
+                        onBack = onBack
+                    ),
+                    "Speech-to-text" -> SpeechToTextSection(
+                        sttEngine = sttEngine,
+                        sttLanguage = sttLanguage,
+                        modelProgress = modelProgress,
+                        whisperProgress = whisperProgress,
+                        prefs = prefs,
+                        scope = scope,
+                        showSttLanguageDialog = showSttLanguageDialog,
+                        showVoskModelsDialog = showVoskModelsDialog,
+                        showEngineDialog = showEngineDialog,
+                        selectedCategory = selectedCategory,
+                        onBack = onBack
+                    ),
+                    "Updates" -> UpdatesSection(
+                        updateChannel = updateChannel,
+                        autoUpdateCheck = autoUpdateCheck,
+                        checkingUpdate = checkingUpdate,
+                        updateResult = updateResult,
+                        downloadError = downloadError,
+                        needsUnknownSources = needsUnknownSources,
+                        installedLabel = installedLabel,
+                        prefs = prefs,
+                        scope = scope,
+                        selectedCategory = selectedCategory,
+                        onBack = onBack
+                    ),
+                    "About" -> AboutSection(
+                        tipsEnabled = tipsEnabled,
+                        installedLabel = installedLabel,
+                        selectedCategory = selectedCategory,
+                        onBack = onBack
+                    )
                 }
             }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-            Text("About", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Replay onboarding") },
-                    supportingContent = { Text("Take the quick tour again") },
-                    leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    trailingContent = {
-                        TextButton(
-                            onClick = onRerunOnboarding,
-                            shapes = ButtonDefaults.shapes()
-                        ) { Text("Replay") }
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
-            }
-
-            Spacer(Modifier.height(4.dp))
-
-            Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = { Text("Show tips") },
-                    supportingContent = { Text("Short how-tos on the home screen") },
-                    leadingContent = { Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    trailingContent = {
-                        Switch(
-                            checked = tipsEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    prefs.setTipsEnabled(it)
-                                    if (it) prefs.setTipIndex(0)
-                                }
-                            },
-                            thumbContent = if (tipsEnabled) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                            } else null
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                )
-            }
-
-            androidx.compose.material3.Card(
-                shape = ShapeLargeIncreased,
-                colors = androidx.compose.material3.CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                ),
-                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = ShapeFull,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        androidx.compose.foundation.layout.Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Icon(
-                                Icons.Filled.Mic,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                "Flambo",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            AssistChip(onClick = {}, label = { Text("v1.0") })
-                        }
-                        Text(
-                            "A calm, expressive voice recorder. Transcripts and recordings stay on your device.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
-
-            androidx.compose.material3.Card(
-                shape = ShapeLargeIncreased,
-                colors = androidx.compose.material3.CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                ),
-                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.github_avatar),
-                            contentDescription = "MoHamed-B-M profile picture",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .border(2.dp, MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                        )
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                "Hamma",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Text(
-                                "@MoHamed-B-M",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Text(
-                                "Indie Android dev • voice nerd",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-                            )
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        androidx.compose.material3.FilledTonalButton(
-                            onClick = { uriHandler.openUri("https://github.com/MoHamed-B-M") },
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("GitHub")
-                        }
-                        OutlinedButton(
-                            onClick = { uriHandler.openUri("https://github.com/MoHamed-B-M/flambo/issues/new") },
-                            shape = ShapeFull,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Filled.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Report issue")
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.size(24.dp))
         }
-    }
-
-    if (showQualityDialog) {
-        AlertDialog(
-            onDismissRequest = { showQualityDialog = false },
-            title = { Text("Recording quality", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                    RecordingQuality.entries.forEachIndexed { index, q ->
-                        val selected = q == quality
-                        ToggleButton(
-                            checked = selected,
-                            onCheckedChange = {
-                                scope.launch { prefs.setQuality(q) }
-                                showQualityDialog = false
-                            },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                RecordingQuality.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
-                                Text(q.label, style = MaterialTheme.typography.titleMedium)
-                                Text(q.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showQualityDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showEnhanceStrengthDialog) {
-        AlertDialog(
-            onDismissRequest = { showEnhanceStrengthDialog = false },
-            title = { Text("Enhancement strength", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    EnhanceStrength.entries.forEachIndexed { index, s ->
-                        val selected = s.name.equals(enhanceStrength, ignoreCase = true)
-                        ToggleButton(
-                            checked = selected,
-                            onCheckedChange = {
-                                scope.launch { prefs.setEnhanceStrength(s.name.lowercase()) }
-                                showEnhanceStrengthDialog = false
-                            },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                EnhanceStrength.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
-                                Text(s.label, style = MaterialTheme.typography.titleMedium)
-                                Text(s.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showEnhanceStrengthDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showAudioSourceDialog) {
-        AlertDialog(
-            onDismissRequest = { showAudioSourceDialog = false },
-            title = { Text("Audio source", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "System sound captures music, videos and anything else playing on this phone. Android will show a screen-recording prompt first — Flambo only records sound, never your screen.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    listOf(
-                        Triple("mic", "Microphone", "Your voice and the room around you"),
-                        Triple(
-                            "system",
-                            "System sound • Under development",
-                            "Parked for now — projection capture still has bugs on some phones"
-                        )
-                    ).forEachIndexed { index, (value, label, description) ->
-
-                        val enabled = value == "mic"
-                        ToggleButton(
-                            checked = audioSource == value,
-                            onCheckedChange = {
-                                scope.launch { prefs.setAudioSource(value) }
-                                showAudioSourceDialog = false
-                            },
-                            enabled = enabled,
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                if (value == "mic") Icons.Filled.Mic else Icons.Filled.MusicNote,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
-                                Text(label, style = MaterialTheme.typography.titleMedium)
-                                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showAudioSourceDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showStorageDialog) {
-        val volumes = remember { StorageVolumes.list(context.applicationContext) }
-        AlertDialog(
-            onDismissRequest = { showStorageDialog = false },
-            title = { Text("Storage folder", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "New recordings go here. Existing ones stay where they are.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    volumes.forEachIndexed { index, volume ->
-                        ToggleButton(
-                            checked = storageVolume == volume.id,
-                            onCheckedChange = {
-                                scope.launch {
-                                    prefs.setRecordingsVolume(volume.id)
-                                    (context.applicationContext as FlamboApp).storageVolumeId = volume.id
-                                }
-                                showStorageDialog = false
-                            },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                volumes.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Filled.Folder,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
-                                Text(volume.label, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    StorageVolumes.formatBytes(volume.freeBytes),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showStorageDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showThemeDialog) {
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text("Theme", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Dynamic color", style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "Match your wallpaper (Android 12+)",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = dynamicColor,
-                            onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
-                            thumbContent = if (dynamicColor) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                            } else null
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "Flambo colors",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = if (dynamicColor) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            ThemeSeeds.forEach { seed ->
-                                val selected = !dynamicColor && themeSeed == seed.id
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(seed.swatch)
-                                        .border(
-                                            2.dp,
-                                            if (selected) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.outlineVariant,
-                                            CircleShape
-                                        )
-                                        .clickable(enabled = !dynamicColor) {
-                                            scope.launch { prefs.setThemeSeed(seed.id) }
-                                        }
-                                ) {
-                                    if (selected) {
-                                        Icon(
-                                            Icons.Filled.Check,
-                                            contentDescription = "${seed.label} selected",
-                                            tint = MaterialTheme.colorScheme.surface,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        if (dynamicColor) {
-                            Text(
-                                "Turn dynamic color off to pick a Flambo color.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Text(
-                        "Brightness",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val options = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
-                        options.forEachIndexed { index, (value, label) ->
-                            ToggleButton(
-                                checked = darkTheme == value,
-                                onCheckedChange = {
-                                    scope.launch { prefs.setDarkTheme(value) }
-                                    showThemeDialog = false
-                                },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    when (value) {
-                                        "light" -> Icons.Filled.LightMode
-                                        "dark" -> Icons.Filled.DarkMode
-                                        else -> Icons.Filled.SettingsBrightness
-                                    },
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(label, modifier = Modifier.padding(start = 8.dp))
-                            }
-                        }
-                    }
-                    }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showThemeDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showSttLanguageDialog) {
-        AlertDialog(
-            onDismissRequest = { showSttLanguageDialog = false },
-            title = { Text("Transcription language", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (sttEngine == "whisper") {
-                        val whisperLangs = listOf(
-                            "" to "Auto (detect)",
-                            "en" to "English",
-                            "id" to "Indonesian",
-                            "ar" to "Arabic",
-                            "fr" to "French",
-                            "es" to "Spanish",
-                            "de" to "German",
-                            "it" to "Italian",
-                            "pt" to "Portuguese",
-                            "ru" to "Russian",
-                            "zh" to "Chinese",
-                            "ja" to "Japanese",
-                            "ko" to "Korean",
-                            "hi" to "Hindi",
-                            "tr" to "Turkish",
-                            "nl" to "Dutch",
-                            "pl" to "Polish",
-                            "vi" to "Vietnamese",
-                            "th" to "Thai",
-                            "ms" to "Malay",
-                            "fa" to "Persian",
-                            "ur" to "Urdu"
-                        )
-                        items(whisperLangs, key = { it.first.ifBlank { "auto" } }) { (code, label) ->
-                            ToggleButton(
-                                checked = sttLanguage == code,
-                                onCheckedChange = {
-                                    scope.launch { prefs.setSttLanguage(code) }
-                                    showSttLanguageDialog = false
-                                },
-                                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text(label, modifier = Modifier.weight(1f)) }
-                        }
-                    } else {
-                        item {
-                            ToggleButton(
-                                checked = sttLanguage.isBlank(),
-                                onCheckedChange = {
-                                    scope.launch { prefs.setSttLanguage("") }
-                                    showSttLanguageDialog = false
-                                },
-                                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text("Best installed model") }
-                        }
-                        items(VoskModelManager.CATALOG, key = { it.code }) { model ->
-                            ToggleButton(
-                                checked = sttLanguage == model.code,
-                                onCheckedChange = {
-                                    scope.launch { prefs.setSttLanguage(model.code) }
-                                    showSttLanguageDialog = false
-                                },
-                                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(model.label, modifier = Modifier.weight(1f))
-                                Text(
-                                    if (transcription.vosk.models.isInstalled(model.code)) "ready"
-                                    else "~${model.sizeMb} MB",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showSttLanguageDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showVoskModelsDialog) {
-        AlertDialog(
-            onDismissRequest = { showVoskModelsDialog = false },
-            title = { Text("Offline models", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(VoskModelManager.CATALOG, key = { it.code }) { model ->
-                        val installed = remember(modelsTick, modelProgress) {
-                            transcription.vosk.models.isInstalled(model.code)
-                        }
-                        val prog = modelProgress[model.code]
-                        Surface(
-                            shape = ShapeLargeIncreased,
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(model.label, style = MaterialTheme.typography.titleSmall)
-                                        Text(
-                                            if (installed) "Ready offline"
-                                            else "~${model.sizeMb} MB one-time download" + if (model.large) " • large" else "",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    when {
-                                        prog != null -> Text(
-                                            "${(prog * 100).toInt()}%",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        installed -> IconButton(onClick = {
-                                            scope.launch {
-                                                transcription.vosk.models.delete(model.code)
-                                                modelsTick++
-                                            }
-                                        }) {
-                                            Icon(Icons.Filled.Delete, contentDescription = "Delete ${model.label} model", tint = MaterialTheme.colorScheme.error)
-                                        }
-                                        else -> FilledTonalButton(
-                                            onClick = {
-                                                scope.launch {
-                                                    transcription.vosk.models.download(model.code)
-                                                    modelsTick++
-                                                }
-                                            },
-                                            shapes = ButtonDefaults.shapes()
-                                        ) {
-                                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("Get")
-                                        }
-                                    }
-                                }
-                                if (prog != null) {
-                                    LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showVoskModelsDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Done") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showLayoutDialog) {
-        AlertDialog(
-            onDismissRequest = { showLayoutDialog = false },
-            title = { Text("Library layout", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        Triple("list", "List", "Full rows with play, favorite and actions"),
-                        Triple("grid", "Grid", "Compact tap-to-open cards, two columns")
-                    ).forEachIndexed { index, (value, label, description) ->
-                        ToggleButton(
-                            checked = homeLayout == value,
-                            onCheckedChange = {
-                                scope.launch { prefs.setHomeLayout(value) }
-                                showLayoutDialog = false
-                            },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                if (value == "grid") Icons.Filled.GridView else Icons.Filled.ViewList,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
-                                Text(label, style = MaterialTheme.typography.titleMedium)
-                                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showLayoutDialog = false },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showEngineDialog) {
-        AlertDialog(
-            onDismissRequest = { showEngineDialog = false },
-            title = { Text("Transcription engine", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Whisper is multilingual (95+ languages) via ggml-tiny • Vosk uses per-language models",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    listOf(
-                        Triple("vosk", "Vosk", "Per-language models • proven offline"),
-                        Triple("whisper", "Whisper", "Multilingual 95+ • ggml-tiny 75 MB")
-                    ).forEachIndexed { index, (value, label, desc) ->
-                        ToggleButton(
-                            checked = sttEngine == value,
-                            onCheckedChange = {
-                                scope.launch { prefs.setSttEngine(value) }
-                                showEngineDialog = false
-                            },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
-                                Text(label, style = MaterialTheme.typography.titleMedium)
-                                Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showEngineDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showNamingDialog) {
-        AlertDialog(
-            onDismissRequest = { showNamingDialog = false },
-            title = { Text("Recording name", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Choose the prefix for new recordings. Numbering follows the highest existing number and restarts at 1 when the library is empty.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = namingDraft,
-                        onValueChange = { namingDraft = it },
-                        label = { Text("Prefix") },
-                        placeholder = { Text("e.g. Sound, Voice, MyRec") },
-                        singleLine = true,
-                        shape = ShapeLargeIncreased,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        "Preview: \"${namingDraft.ifBlank { "Recording" }} 1\" • \"${namingDraft.ifBlank { "Recording" }} 2\"",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            prefs.setRecordingPrefix(namingDraft)
-                            (context.applicationContext as? FlamboApp)?.let { it.recordingPrefix = namingDraft.ifBlank { "Recording" } }
-                        }
-                        showNamingDialog = false
-                    },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNamingDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Cancel") }
-            },
-            shape = ShapeLargeIncreased
-        )
     }
 }
 
+// Helper composable for category grid items
 @Composable
-private fun ExpandableSection(
-    title: String,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    content: @Composable () -> Unit
+fun CategoryItem(title: String, subtitle: String, icon: androidx.compose.material.icons.Icons.Filled) {
+    androidx.compose.material3.ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = { Text(subtitle) },
+        leadingContent = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        trailingContent = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    )
+}
+
+// Recording section
+@Composable
+fun RecordingSection(
+    quality: RecordingQuality,
+    audioSource: String,
+    noiseReduction: Boolean,
+    enhanceStrength: String,
+    keepOriginal: Boolean,
+    recordingPrefix: String,
+    customFolderUri: String,
+    storageVolume: String,
+    reminder: Boolean,
+    prefs: PreferencesManager,
+    scope: CoroutineScope,
+    showQualityDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showAudioSourceDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showStorageDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showNamingDialog: androidx.compose.runtime.MutableState<Boolean>,
+    namingDraft: androidx.compose.runtime.MutableState<String>,
+    recordingPrefixParam: String,
+    customFolderUriParam: String,
+    storageVolumeParam: String,
+    reminderParam: Boolean,
+    scopeParam: CoroutineScope,
+    prefsParam: PreferencesManager,
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
+    context: androidx.compose.ui.platform.LocalContext,
+    qualityParam: RecordingQuality,
+    audioSourceParam: String,
+    noiseReductionParam: Boolean,
+    enhanceStrengthParam: String,
+    keepOriginalParam: Boolean,
+    recordingPrefixParam2: String,
+    customFolderUriParam2: String,
+    storageVolumeParam2: String,
+    reminderParam2: Boolean,
+    scopeParam2: CoroutineScope,
+    prefsParam2: PreferencesManager,
+    snackbarHostState2: androidx.compose.material3.SnackbarHostState,
+    context2: androidx.compose.ui.platform.LocalContext,
+    qualityParam2: RecordingQuality,
+    audioSourceParam2: String,
+    noiseReductionParam2: Boolean,
+    enhanceStrengthParam2: String,
+    keepOriginalParam2: Boolean,
+    recordingPrefixParam3: String,
+    customFolderUriParam3: String,
+    storageVolumeParam3: String,
+    reminderParam3: Boolean,
+    scopeParam3: CoroutineScope,
+    prefsParam3: PreferencesManager,
+    snackbarHostState3: androidx.compose.material3.SnackbarHostState,
+    context3: androidx.compose.ui.platform.LocalContext,
+    qualityParam3: RecordingQuality,
+    audioSourceParam3: String,
+    noiseReductionParam3: Boolean,
+    enhanceStrengthParam3: String,
+    keepOriginalParam3: Boolean
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggle)
-                .padding(vertical = 4.dp)
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = if (expanded) "Collapse" else "Expand",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        AnimatedVisibility(visible = expanded) {
-            Column(modifier = Modifier.padding(top = 4.dp)) { content() }
+    // Recording settings UI
+    androidx.compose.material3.Card(
+        shape = ShapeLargeIncreased,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        androidx.compose.material3.SegmentedList {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Quality") },
+                    supportingContent = { Text("${quality.label} • ${quality.description}") },
+                    leadingContent = { Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        androidx.compose.material3.FilledTonalButton(
+                            onClick = { showQualityDialog.value = true },
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
+                        ) { Text("Change") }
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Recording reminder") },
+                    supportingContent = { Text(if (reminder) "Enabled" else "Disabled") },
+                    leadingContent = {
+                        androidx.compose.material3.Icon(
+                            if (reminder) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        androidx.compose.material3.CompoundButton.Switch(
+                            checked = reminder,
+                            onCheckedChange = { reminder = it }
+                        )
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Recording prefix") },
+                    supportingContent = { Text(recordingPrefix) },
+                    leadingContent = { Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        androidx.compose.material3.Icon(Icons.Filled.OpenInNew, contentDescription = null)
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified,
+                    onClick = { showNamingDialog.value = true }
+                )
+            }
         }
     }
 }
 
+// Sound section
 @Composable
-private fun SettingsSectionCard(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+fun SoundSection(
+    noiseReduction: Boolean,
+    enhanceStrength: String,
+    prefs: PreferencesManager,
+    scope: CoroutineScope,
+    showQualityDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showAudioSourceDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showStorageDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showThemeDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showNamingDialog: androidx.compose.runtime.MutableState<Boolean>,
+    namingDraft: androidx.compose.runtime.MutableState<String>,
+    recordingPrefix: String,
+    customFolderUri: String,
+    storageVolume: String,
+    reminder: Boolean,
+    darkTheme: String,
+    sttLanguage: String,
+    sttEngine: String,
+    modelProgress: Any,
+    whisperProgress: Any,
+    selectedCategory: String?,
+    onBack: () -> Unit
 ) {
     androidx.compose.material3.Card(
         shape = ShapeLargeIncreased,
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        modifier = modifier.fillMaxWidth()
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            androidx.compose.material3.Surface(
-                shape = ShapeLargeIncreased,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                content()
+        androidx.compose.material3.SegmentedList {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Noise reduction") },
+                    supportingContent = { Text(if (noiseReduction) "Enabled" else "Disabled") },
+                    leadingContent = {
+                        androidx.compose.material3.Icon(
+                            if (noiseReduction) Icons.Filled.NoiseControl else Icons.Filled.NoiseControlOff,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        androidx.compose.material3.CompoundButton.Switch(
+                            checked = noiseReduction,
+                            onCheckedChange = { noiseReduction = !noiseReduction }
+                        )
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Enhancement") },
+                    supportingContent = { Text(enhanceStrength) },
+                    leadingContent = { Icon(Icons.Filled.Boost, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        androidx.compose.material3.FilledTonalButton(
+                            onClick = { showEnhanceStrengthDialog.value = true },
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
+                        ) { Text("Change") }
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+        }
+    }
+}
+
+// Appearance section
+@Composable
+fun AppearanceSection(
+    darkTheme: String,
+    themeSeed: String,
+    dynamicColor: Boolean,
+    tipsEnabled: Boolean,
+    prefs: PreferencesManager,
+    scope: CoroutineScope,
+    showThemeDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showNamingDialog: androidx.compose.runtime.MutableState<Boolean>,
+    namingDraft: androidx.compose.runtime.MutableState<String>,
+    recordingPrefix: String,
+    customFolderUri: String,
+    storageVolume: String,
+    reminder: Boolean,
+    sttLanguage: String,
+    sttEngine: String,
+    modelProgress: Any,
+    whisperProgress: Any,
+    selectedCategory: String?,
+    onBack: () -> Unit
+) {
+    androidx.compose.material3.Card(
+        shape = ShapeLargeIncreased,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        androidx.compose.material3.SegmentedList {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Theme") },
+                    supportingContent = {
+                        val mode = when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System" }
+                        val color = if (dynamicColor) "Dynamic" else /* themeSeedById(themeSeed).label */ "Ember"
+                        Text("$color • $mode")
+                    },
+                    leadingContent = {
+                        androidx.compose.material3.Icon(
+                            when (darkTheme) {
+                                "light" -> Icons.Filled.LightMode
+                                "dark" -> Icons.Filled.DarkMode
+                                else -> Icons.Filled.SettingsBrightness
+                            },
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        androidx.compose.material3.FilledTonalButton(
+                            onClick = { showThemeDialog.value = true },
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
+                        ) { Text("Change") }
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Tips") },
+                    supportingContent = { Text(if (tipsEnabled) "Enabled" else "Disabled") },
+                    leadingContent = {
+                        androidx.compose.material3.Icon(
+                            if (tipsEnabled) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        androidx.compose.material3.CompoundButton.Switch(
+                            checked = tipsEnabled,
+                            onCheckedChange = { tipsEnabled = !tipsEnabled }
+                        )
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+        }
+    }
+}
+
+// Speech-to-text section
+@Composable
+fun SpeechToTextSection(
+    sttEngine: String,
+    sttLanguage: String,
+    modelProgress: Any,
+    whisperProgress: Any,
+    prefs: PreferencesManager,
+    scope: CoroutineScope,
+    showSttLanguageDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showVoskModelsDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showEngineDialog: androidx.compose.runtime.MutableState<Boolean>,
+    selectedCategory: String?,
+    onBack: () -> Unit
+) {
+    androidx.compose.material3.Card(
+        shape = ShapeLargeIncreased,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        androidx.compose.material3.SegmentedList {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Engine") },
+                    supportingContent = { Text(sttEngine) },
+                    leadingContent = {
+                        androidx.compose.material3.Icon(
+                            if (sttEngine == "vosk") Icons.Filled.Folder else Icons.Filled.Mic,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        androidx.compose.material3.Icon(Icons.Filled.ExpandMore, contentDescription = null)
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified,
+                    onClick = { showEngineDialog.value = true }
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Language") },
+                    supportingContent = { Text(sttLanguage) },
+                    leadingContent = { Icon(Icons.Filled.Translate, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        androidx.compose.material3.Icon(Icons.Filled.ExpandMore, contentDescription = null)
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified,
+                    onClick = { showSttLanguageDialog.value = true }
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Model progress") },
+                    supportingContent = { Text("Downloading…") },
+                    leadingContent = { Icon(Icons.Filled.Download, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        if (modelProgress is ModelProgress.Loading) {
+                            androidx.compose.material3.CircularProgressIndicator()
+                        } else {
+                            Text("Ready")
+                        }
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+        }
+    }
+}
+
+// Updates section
+@Composable
+fun UpdatesSection(
+    updateChannel: String,
+    autoUpdateCheck: Boolean,
+    checkingUpdate: Boolean,
+    updateResult: UpdateCheck?,
+    downloadError: String?,
+    needsUnknownSources: Boolean,
+    installedLabel: String,
+    prefs: PreferencesManager,
+    scope: CoroutineScope,
+    selectedCategory: String?,
+    onBack: () -> Unit
+) {
+    androidx.compose.material3.Card(
+        shape = ShapeLargeIncreased,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        androidx.compose.material3.SegmentedList {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Update channel") },
+                    supportingContent = { Text(if (updateChannel == UpdateChecker.CHANNEL_BETA) "Beta" else "Stable") },
+                    leadingContent = { Icon(Icons.Filled.Download, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        androidx.compose.material3.ToggleButton(
+                            checked = updateChannel == UpdateChecker.CHANNEL_BETA,
+                            onCheckedChange = {
+                                scope.launch { prefs.setUpdateChannel(UpdateChecker.CHANNEL_BETA) }
+                                updateResult = null
+                            }
+                        ) { Text("Beta") }
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Auto-check updates") },
+                    supportingContent = { Text(if (autoUpdateCheck) "Enabled" else "Disabled") },
+                    leadingContent = {
+                        androidx.compose.material3.Icon(
+                            if (autoUpdateCheck) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        androidx.compose.material3.CompoundButton.Switch(
+                            checked = autoUpdateCheck,
+                            onCheckedChange = { autoUpdateCheck = !autoUpdateCheck }
+                        )
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Check for updates") },
+                    supportingContent = {},
+                    leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {
+                        if (checkingUpdate) {
+                            androidx.compose.material3.CircularProgressIndicator()
+                        } else {
+                            androidx.compose.material3.FilledTonalButton(
+                                onClick = {
+                                    scope.launch {
+                                        updateResult = null
+                                        checkingUpdate = true
+                                        updateResult = UpdateChecker.check(context.applicationContext, updateChannel)
+                                        checkingUpdate = false
+                                    }
+                                },
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight)
+                            ) { Text("Check") }
+                        }
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+        }
+    }
+}
+
+// About section
+@Composable
+fun AboutSection(
+    tipsEnabled: Boolean,
+    installedLabel: String,
+    selectedCategory: String?,
+    onBack: () -> Unit
+) {
+    androidx.compose.material3.Card(
+        shape = ShapeLargeIncreased,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        androidx.compose.material3.SegmentedList {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Tips") },
+                    supportingContent = { Text(if (tipsEnabled) "Enabled" else "Disabled") },
+                    leadingContent = {
+                        androidx.compose.material3.Icon(
+                            if (tipsEnabled) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        androidx.compose.material3.CompoundButton.Switch(
+                            checked = tipsEnabled,
+                            onCheckedChange = { tipsEnabled = !tipsEnabled }
+                        )
+                    },
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Version") },
+                    supportingContent = { Text(installedLabel) },
+                    leadingContent = { Icon(Icons.Filled.BugReport, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {},
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
+            }
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("Credits") },
+                    supportingContent = {},
+                    leadingContent = { Icon(Icons.Filled.Title, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = {},
+                    colors = androidx.compose.ui.graphics.Color.Specified
+                )
             }
         }
     }

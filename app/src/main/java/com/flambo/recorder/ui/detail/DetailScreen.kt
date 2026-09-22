@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Forward5
 import androidx.compose.material.icons.filled.Pause
@@ -181,6 +183,11 @@ fun DetailScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { _, dragAmount ->
+                        if (dragAmount > 100) onBack()
+                    }
+                }
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -359,10 +366,10 @@ fun DetailScreen(
                 savedEnhancedPath = rec.enhancedPath,
                 enhanceUi = enhanceUi,
                 strengthLabel = EnhanceStrength.fromPref(enhanceStrength).label,
+                playback = playback,
                 onEnhance = { viewModel.enhance() },
                 onCancel = { viewModel.cancelEnhance() },
                 onDismiss = { viewModel.dismissEnhance() },
-                onPlayEnhanced = { path -> playback.play(path) },
                 onShareEnhanced = { path -> shareAudio(path, "Share cleaned recording") },
                 onDeleteEnhanced = { viewModel.deleteEnhanced() }
             )
@@ -567,10 +574,10 @@ private fun EnhanceSection(
     savedEnhancedPath: String,
     enhanceUi: EnhanceUi,
     strengthLabel: String,
+    playback: com.flambo.recorder.playback.PlaybackController,
     onEnhance: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
-    onPlayEnhanced: (String) -> Unit,
     onShareEnhanced: (String) -> Unit,
     onDeleteEnhanced: () -> Unit
 ) {
@@ -615,37 +622,15 @@ private fun EnhanceSection(
                         )
                         TextButton(onClick = onDismiss) { Text("Dismiss") }
                     }
-                    androidx.compose.foundation.layout.FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        FilledTonalButton(
-                            onClick = { onPlayEnhanced(enhanceUi.path) },
-                            shape = ShapeFull,
-                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Play", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                        }
-                        OutlinedButton(
-                            onClick = { onShareEnhanced(enhanceUi.path) },
-                            shape = ShapeFull,
-                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
-                        ) {
-                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                        }
-                        if (!enhanceUi.replaced) {
-                            TextButton(onClick = onDeleteEnhanced) {
-                                Text("Delete copy", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                            }
-                        }
-                    }
+                    Text(
+                        "Cleaned audio ready — opened in a dedicated player below",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+            Spacer(Modifier.height(12.dp))
+            CleanedPlayerCard(playback = playback, filePath = enhanceUi.path, onShare = onShareEnhanced)
         }
         is EnhanceUi.Error -> {
             Surface(
@@ -674,35 +659,16 @@ private fun EnhanceSection(
                             Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Text("Cleaned copy saved", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                         }
-                        androidx.compose.foundation.layout.FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            FilledTonalButton(
-                                onClick = { onPlayEnhanced(savedEnhancedPath) },
-                                shape = ShapeFull,
-                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding
-                            ) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Play", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                            }
-                            OutlinedButton(
-                                onClick = { onShareEnhanced(savedEnhancedPath) },
-                                shape = ShapeFull,
-                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding
-                            ) {
-                                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                            }
-                            TextButton(onClick = onDeleteEnhanced) {
-                                Text("Delete copy", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                            }
-                        }
+                        Text(
+                            "Tap play to listen in a dedicated player",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                CleanedPlayerCard(playback = playback, filePath = savedEnhancedPath, onShare = onShareEnhanced, onDelete = onDeleteEnhanced)
+            }
             } else {
                 OutlinedButton(
                     onClick = onEnhance,
@@ -712,6 +678,87 @@ private fun EnhanceSection(
                     Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Clean audio • $strengthLabel")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CleanedPlayerCard(
+    playback: com.flambo.recorder.playback.PlaybackController,
+    filePath: String,
+    onShare: (String) -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    val playbackState by playback.state.collectAsState()
+    val isCurrent = playbackState.currentPath == filePath
+    val isPlaying = isCurrent && playbackState.isPlaying
+    val progress = if (isCurrent && playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
+    val duration = if (isCurrent && playbackState.durationMs > 0) playbackState.durationMs else 0L
+    val position = if (isCurrent) playbackState.positionMs else 0L
+
+    androidx.compose.material3.ElevatedCard(
+        shape = com.flambo.recorder.ui.theme.ShapeLargeIncreased,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Text("Cleaned playback", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                IconButton(onClick = { onShare(filePath) }) { Icon(Icons.Filled.Share, contentDescription = "Share cleaned") }
+                if (onDelete != null) {
+                    TextButton(onClick = onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge) }
+                }
+            }
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Simple progress indicator for cleaned track
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            androidx.compose.material3.Slider(
+                value = progress,
+                onValueChange = { p ->
+                    if (isCurrent) {
+                        val target = (p * duration).toLong()
+                        playback.seekTo(target)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(com.flambo.recorder.domain.formatDuration(position), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(com.flambo.recorder.domain.formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FilledTonalButton(
+                    onClick = { if (isPlaying) playback.pause() else playback.play(filePath) },
+                    shape = com.flambo.recorder.ui.theme.ShapeFull,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (isPlaying) "Pause" else "Play", maxLines = 1)
+                }
+                OutlinedButton(
+                    onClick = { onShare(filePath) },
+                    shape = com.flambo.recorder.ui.theme.ShapeFull,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Share", maxLines = 1)
                 }
             }
         }

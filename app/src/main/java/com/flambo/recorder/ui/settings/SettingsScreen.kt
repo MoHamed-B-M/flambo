@@ -191,6 +191,12 @@ fun SettingsScreen(
     var namingDraft by remember { mutableStateOf(recordingPrefix) }
     LaunchedEffect(recordingPrefix) { if (!showNamingDialog) namingDraft = recordingPrefix }
 
+    var recordingExpanded by remember { mutableStateOf(true) }
+    var soundExpanded by remember { mutableStateOf(true) }
+    var appearanceExpanded by remember { mutableStateOf(true) }
+    var sttExpanded by remember { mutableStateOf(true) }
+    var updatesExpanded by remember { mutableStateOf(true) }
+
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             try {
@@ -227,7 +233,7 @@ fun SettingsScreen(
                 .animateContentSize(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text("Recording", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            ExpandableSection(title = "Recording", expanded = recordingExpanded, onToggle = { recordingExpanded = !recordingExpanded }) {
 
             SegmentedList {
                 item {
@@ -366,10 +372,11 @@ fun SettingsScreen(
                     )
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Sound", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 4.dp))
+            ExpandableSection(title = "Sound", expanded = soundExpanded, onToggle = { soundExpanded = !soundExpanded }) {
                 SegmentedList {
                 item {
                     ListItem(
@@ -423,10 +430,11 @@ fun SettingsScreen(
                     )
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            ExpandableSection(title = "Appearance", expanded = appearanceExpanded, onToggle = { appearanceExpanded = !appearanceExpanded }) {
 
             SegmentedList {
                 item {
@@ -482,10 +490,11 @@ fun SettingsScreen(
                     )
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Speech-to-text", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            ExpandableSection(title = "Speech-to-text", expanded = sttExpanded, onToggle = { sttExpanded = !sttExpanded }) {
 
             SegmentedList {
                 item {
@@ -607,10 +616,11 @@ fun SettingsScreen(
                     }
                 }
             }
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text("Updates", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            ExpandableSection(title = "Updates", expanded = updatesExpanded, onToggle = { updatesExpanded = !updatesExpanded }) {
                 Surface(
                     shape = ShapeLargeIncreased,
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -843,6 +853,7 @@ fun SettingsScreen(
                         Text(if (checkingUpdate) "Checking…" else "Check for updates")
                     }
                 }
+            }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)

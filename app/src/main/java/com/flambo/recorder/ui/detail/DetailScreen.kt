@@ -99,7 +99,8 @@ fun DetailScreen(
     viewModel: DetailViewModel,
     playback: PlaybackController,
     onBack: () -> Unit,
-    onDeleted: () -> Unit
+    onDeleted: () -> Unit,
+    backgroundContent: @Composable (() -> Unit)? = null
 ) {
     val recording by viewModel.recording.collectAsState()
     val editTitle by viewModel.editTitle.collectAsState()
@@ -152,7 +153,7 @@ fun DetailScreen(
     val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
 
     val gestureEnabled by viewModel.gestureEnabled.collectAsState()
-    TelegramOverlayCard(onDismiss = onBack, enabled = gestureEnabled) {
+    TelegramOverlayCard(onDismiss = onBack, enabled = gestureEnabled, backgroundContent = backgroundContent) {
         Scaffold(
             topBar = {
                 TopAppBar(

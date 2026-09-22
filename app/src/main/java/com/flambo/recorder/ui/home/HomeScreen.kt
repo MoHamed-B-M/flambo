@@ -263,16 +263,16 @@ fun HomeScreen(
                 actions = {
                     if (selectionMode) {
                         IconButton(onClick = { groupText = ""; showGroupDialog = true }) {
-                            Icon(Icons.Filled.Group, contentDescription = "Group")
+                            Icon(Icons.Rounded.Group, contentDescription = "Group")
                         }
                         IconButton(onClick = { showMoveDialog = true }) {
-                            Icon(Icons.Filled.DriveFileMove, contentDescription = "Move")
+                            Icon(Icons.Rounded.DriveFileMove, contentDescription = "Move")
                         }
                         IconButton(onClick = { showBulkDeleteConfirm = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                            Icon(Icons.Rounded.Delete, contentDescription = "Delete")
                         }
                         IconButton(onClick = { selection = emptySet() }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Clear selection")
+                            Icon(Icons.Rounded.Close, contentDescription = "Clear selection")
                         }
                     } else {
                         IconButton(onClick = {
@@ -283,7 +283,7 @@ fun HomeScreen(
                                 }
                             }
                         }) {
-                            Icon(Icons.Filled.Info, contentDescription = "What's new")
+                            Icon(Icons.Rounded.Info, contentDescription = "What's new")
                         }
                         IconButton(
                             onClick = {
@@ -293,10 +293,10 @@ fun HomeScreen(
                             },
                             enabled = !recorderState.isRecording
                         ) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Trash")
+                            Icon(Icons.Rounded.Delete, contentDescription = "Trash")
                         }
                         IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                            Icon(Icons.Rounded.Settings, contentDescription = "Settings")
                         }
                     }
                 },
@@ -325,7 +325,7 @@ fun HomeScreen(
                     modifier = Modifier.heightIn(min = ButtonDefaults.LargeContainerHeight)
                 ) {
                     Icon(
-                        Icons.Filled.Mic,
+                        Icons.Rounded.Mic,
                         contentDescription = null,
                         modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
                     )
@@ -349,7 +349,7 @@ fun HomeScreen(
                 value = uiState.query,
                 onValueChange = viewModel::onQueryChange,
                 placeholder = { Text("Search recordings") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 trailingIcon = {
                     if (uiState.query.isNotEmpty()) {
                         TextButton(onClick = viewModel::clearQuery) { Text("Clear") }
@@ -713,7 +713,7 @@ private fun ActiveRecordingPanel(
                         )
                 ) {}
                 Icon(
-                    imageVector = Icons.Filled.Mic,
+                    imageVector = Icons.Rounded.Mic,
                     contentDescription = null,
                     tint = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(16.dp)
@@ -753,7 +753,7 @@ private fun ActiveRecordingPanel(
                     contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
                 ) {
                     Icon(
-                        imageVector = if (isPaused) Icons.Filled.Mic else Icons.Filled.Pause,
+                        imageVector = if (isPaused) Icons.Rounded.Mic else Icons.Rounded.Pause,
                         contentDescription = null,
                         modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
                     )
@@ -766,7 +766,7 @@ private fun ActiveRecordingPanel(
                     modifier = Modifier.weight(1f),
                     contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
                 ) {
-                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight)))
+                    Icon(Icons.Rounded.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight)))
                     Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
                     Text("Stop & save", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
                 }
@@ -789,7 +789,7 @@ private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
             modifier = Modifier.size(96.dp)
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Icon(Icons.Rounded.Mic, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -804,7 +804,7 @@ private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(20.dp))
         FilledTonalButton(onClick = onRecord, shape = ShapeFull) {
-            Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.size(8.dp))
             Text("Start recording")
         }

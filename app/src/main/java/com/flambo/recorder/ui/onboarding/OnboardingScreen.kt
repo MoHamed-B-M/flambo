@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 
 private val pages = listOf(
     Triple(
-        Icons.Filled.Mic,
+        Icons.Rounded.Mic,
         "Tap record. That's it.",
         "One tap starts capturing. Pause and resume freely — Flambo keeps a single clean timeline, even with the screen off."
     ) to @Composable { MaterialTheme.colorScheme.primaryContainer },
@@ -62,7 +62,7 @@ private val pages = listOf(
         "Turn any recording into text on your device with offline transcription. Copy it, share it, search it later."
     ) to @Composable { MaterialTheme.colorScheme.secondaryContainer },
     Triple(
-        Icons.Filled.Shield,
+        Icons.Rounded.Shield,
         "Private by design.",
         "Everything lives on your phone — recordings, transcripts, favorites. No account, no cloud, no surprises."
     ) to @Composable { MaterialTheme.colorScheme.tertiaryContainer },
@@ -229,7 +229,7 @@ fun OnboardingScreen(
                         shapes = ButtonDefaults.shapes(),
                         contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight)
                     ) {
-                        Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             if (micGranted) "Start recording" else "Allow mic to continue",
@@ -271,7 +271,7 @@ private fun PermissionPageContent(
                 .background(MaterialTheme.colorScheme.tertiaryContainer)
         ) {
             Icon(
-                Icons.Filled.Mic,
+                Icons.Rounded.Mic,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(72.dp)
@@ -293,7 +293,7 @@ private fun PermissionPageContent(
         )
         Spacer(Modifier.height(20.dp))
         PermissionRow(
-            icon = Icons.Filled.Mic,
+            icon = Icons.Rounded.Mic,
             title = "Microphone",
             body = "Record your voice and the room",
             granted = micGranted,
@@ -302,7 +302,7 @@ private fun PermissionPageContent(
         if (showNotificationsRow) {
             Spacer(Modifier.height(12.dp))
             PermissionRow(
-                icon = Icons.Filled.Notifications,
+                icon = Icons.Rounded.Notifications,
                 title = "Notifications",
                 body = "Recording timer and update alerts",
                 granted = notifGranted,

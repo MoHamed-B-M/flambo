@@ -233,9 +233,8 @@ fun SettingsScreen(
                 .animateContentSize(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            ExpandableSection(title = "Recording", expanded = recordingExpanded, onToggle = { recordingExpanded = !recordingExpanded }) {
-
-            SegmentedList {
+            SettingsSectionCard(title = "Recording") {
+                SegmentedList {
                 item {
                     ListItem(
                         headlineContent = { Text("Quality") },
@@ -261,7 +260,7 @@ fun SettingsScreen(
                                 checked = reminder,
                                 onCheckedChange = { scope.launch { prefs.setRecordingReminder(it) } },
                                 thumbContent = if (reminder) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
                                 } else null
                             )
                         },
@@ -274,7 +273,7 @@ fun SettingsScreen(
                         supportingContent = { Text(AudioSource.fromPref(audioSource).label) },
                         leadingContent = {
                             Icon(
-                                if (audioSource == "system") Icons.Filled.MusicNote else Icons.Filled.Mic,
+                                if (audioSource == "system") Icons.Rounded.MusicNote else Icons.Rounded.Mic,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -298,7 +297,7 @@ fun SettingsScreen(
                         supportingContent = { Text(current?.label ?: "Phone storage") },
                         leadingContent = {
                             Icon(
-                                Icons.Filled.Folder,
+                                Icons.Rounded.Folder,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -320,7 +319,7 @@ fun SettingsScreen(
                         supportingContent = { Text("$recordingPrefix 1  •  $recordingPrefix 2  •  e.g. \"$recordingPrefix 1\"") },
                         leadingContent = {
                             Icon(
-                                Icons.Filled.Title,
+                                Icons.Rounded.Title,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -344,7 +343,7 @@ fun SettingsScreen(
                         supportingContent = { Text(customLabel) },
                         leadingContent = {
                             Icon(
-                                Icons.Filled.FolderOpen,
+                                Icons.Rounded.FolderOpen,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -376,7 +375,7 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            ExpandableSection(title = "Sound", expanded = soundExpanded, onToggle = { soundExpanded = !soundExpanded }) {
+            SettingsSectionCard(title = "Sound") {
                 SegmentedList {
                 item {
                     ListItem(
@@ -387,7 +386,7 @@ fun SettingsScreen(
                                 checked = noiseReduction,
                                 onCheckedChange = { scope.launch { prefs.setNoiseReduction(it) } },
                                 thumbContent = if (noiseReduction) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
                                 } else null
                             )
                         },
@@ -422,7 +421,7 @@ fun SettingsScreen(
                                 checked = keepOriginal,
                                 onCheckedChange = { scope.launch { prefs.setKeepOriginal(it) } },
                                 thumbContent = if (keepOriginal) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
                                 } else null
                             )
                         },
@@ -434,8 +433,7 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            ExpandableSection(title = "Appearance", expanded = appearanceExpanded, onToggle = { appearanceExpanded = !appearanceExpanded }) {
-
+            SettingsSectionCard(title = "Appearance") {
             SegmentedList {
                 item {
                     ListItem(
@@ -448,9 +446,9 @@ fun SettingsScreen(
                         leadingContent = {
                             Icon(
                                 when (darkTheme) {
-                                    "light" -> Icons.Filled.LightMode
-                                    "dark" -> Icons.Filled.DarkMode
-                                    else -> Icons.Filled.SettingsBrightness
+                                    "light" -> Icons.Rounded.LightMode
+                                    "dark" -> Icons.Rounded.DarkMode
+                                    else -> Icons.Rounded.SettingsBrightness
                                 },
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
@@ -473,7 +471,7 @@ fun SettingsScreen(
                         supportingContent = { Text(if (homeLayout == "grid") "Grid • compact tap-to-open cards" else "List • full rows with actions") },
                         leadingContent = {
                             Icon(
-                                if (homeLayout == "grid") Icons.Filled.GridView else Icons.Filled.ViewList,
+                                if (homeLayout == "grid") Icons.Rounded.GridView else Icons.Rounded.ViewList,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -494,8 +492,7 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            ExpandableSection(title = "Speech-to-text", expanded = sttExpanded, onToggle = { sttExpanded = !sttExpanded }) {
-
+            SettingsSectionCard(title = "Speech-to-text") {
             SegmentedList {
                 item {
 
@@ -620,7 +617,7 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            ExpandableSection(title = "Updates", expanded = updatesExpanded, onToggle = { updatesExpanded = !updatesExpanded }) {
+            SettingsSectionCard(title = "Updates") {
                 Surface(
                     shape = ShapeLargeIncreased,
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -761,7 +758,7 @@ fun SettingsScreen(
                                                 shapes = ButtonDefaults.shapes(),
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                                 Spacer(Modifier.width(8.dp))
                                                 Text("Install update")
                                             }
@@ -814,7 +811,7 @@ fun SettingsScreen(
                                                 shapes = ButtonDefaults.shapes(),
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                                 Spacer(Modifier.width(8.dp))
                                                 Text(if (downloading) "Downloading…" else "Download update")
                                             }
@@ -848,7 +845,7 @@ fun SettingsScreen(
                         shapes = ButtonDefaults.shapes(),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(if (checkingUpdate) "Checking…" else "Check for updates")
                     }
@@ -868,7 +865,7 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Replay onboarding") },
                     supportingContent = { Text("Take the quick tour again") },
-                    leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    leadingContent = { Icon(Icons.Rounded.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         TextButton(
                             onClick = onRerunOnboarding,
@@ -889,7 +886,7 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Show tips") },
                     supportingContent = { Text("Short how-tos on the home screen") },
-                    leadingContent = { Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    leadingContent = { Icon(Icons.Rounded.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         Switch(
                             checked = tipsEnabled,
@@ -900,7 +897,7 @@ fun SettingsScreen(
                                 }
                             },
                             thumbContent = if (tipsEnabled) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
                             } else null
                         )
                     },
@@ -931,7 +928,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             Icon(
-                                Icons.Filled.Mic,
+                                Icons.Rounded.Mic,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(28.dp)
@@ -1012,7 +1009,7 @@ fun SettingsScreen(
                             shape = ShapeFull,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Filled.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Report issue")
                         }
@@ -1137,7 +1134,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                if (value == "mic") Icons.Filled.Mic else Icons.Filled.MusicNote,
+                                if (value == "mic") Icons.Rounded.Mic else Icons.Rounded.MusicNote,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -1189,7 +1186,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                Icons.Filled.Folder,
+                                Icons.Rounded.Folder,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -1226,7 +1223,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                        Icon(Icons.Rounded.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Dynamic color", style = MaterialTheme.typography.titleSmall)
                             Text(
@@ -1239,7 +1236,7 @@ fun SettingsScreen(
                             checked = dynamicColor,
                             onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
                             thumbContent = if (dynamicColor) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                                { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
                             } else null
                         )
                     }
@@ -1274,7 +1271,7 @@ fun SettingsScreen(
                                 ) {
                                     if (selected) {
                                         Icon(
-                                            Icons.Filled.Check,
+                                            Icons.Rounded.Check,
                                             contentDescription = "${seed.label} selected",
                                             tint = MaterialTheme.colorScheme.surface,
                                             modifier = Modifier.size(20.dp)
@@ -1317,9 +1314,9 @@ fun SettingsScreen(
                             ) {
                                 Icon(
                                     when (value) {
-                                        "light" -> Icons.Filled.LightMode
-                                        "dark" -> Icons.Filled.DarkMode
-                                        else -> Icons.Filled.SettingsBrightness
+                                        "light" -> Icons.Rounded.LightMode
+                                        "dark" -> Icons.Rounded.DarkMode
+                                        else -> Icons.Rounded.SettingsBrightness
                                     },
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
@@ -1471,7 +1468,7 @@ fun SettingsScreen(
                                                 modelsTick++
                                             }
                                         }) {
-                                            Icon(Icons.Filled.Delete, contentDescription = "Delete ${model.label} model", tint = MaterialTheme.colorScheme.error)
+                                            Icon(Icons.Rounded.Delete, contentDescription = "Delete ${model.label} model", tint = MaterialTheme.colorScheme.error)
                                         }
                                         else -> FilledTonalButton(
                                             onClick = {
@@ -1482,7 +1479,7 @@ fun SettingsScreen(
                                             },
                                             shapes = ButtonDefaults.shapes()
                                         ) {
-                                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(Modifier.width(8.dp))
                                             Text("Get")
                                         }
@@ -1529,7 +1526,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                if (value == "grid") Icons.Filled.GridView else Icons.Filled.ViewList,
+                                if (value == "grid") Icons.Rounded.GridView else Icons.Rounded.ViewList,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -1658,7 +1655,7 @@ private fun ExpandableSection(
         ) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 contentDescription = if (expanded) "Collapse" else "Expand",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
@@ -1666,6 +1663,30 @@ private fun ExpandableSection(
         }
         AnimatedVisibility(visible = expanded) {
             Column(modifier = Modifier.padding(top = 4.dp)) { content() }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    androidx.compose.material3.Card(
+        shape = ShapeLargeIncreased,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            androidx.compose.material3.Surface(
+                shape = ShapeLargeIncreased,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                content()
+            }
         }
     }
 }

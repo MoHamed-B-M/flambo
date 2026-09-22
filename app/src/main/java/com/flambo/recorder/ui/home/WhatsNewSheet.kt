@@ -84,7 +84,7 @@ fun WhatsNewSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
-                    Icons.Filled.Star,
+                    Icons.Rounded.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)

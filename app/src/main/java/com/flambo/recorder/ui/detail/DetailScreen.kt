@@ -161,16 +161,16 @@ fun DetailScreen(
                 actions = {
                     IconButton(onClick = { viewModel.toggleFavorite() }) {
                         Icon(
-                            imageVector = if (rec.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            imageVector = if (rec.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             contentDescription = "Favorite",
                             tint = if (rec.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = { shareAudio(rec.filePath, "Share recording") }) {
-                        Icon(Icons.Rounded.Share, contentDescription = "Share")
+                        Icon(Icons.Filled.Share, contentDescription = "Share")
                     }
                     IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Rounded.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -277,7 +277,7 @@ fun DetailScreen(
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {
-                            Icon(Icons.Rounded.Replay5, contentDescription = "Back 5s")
+                            Icon(Icons.Filled.Replay5, contentDescription = "Back 5s")
                         }
 
                         androidx.compose.material3.FloatingActionButton(
@@ -291,7 +291,7 @@ fun DetailScreen(
                             modifier = Modifier.size(64.dp)
                         ) {
                             Icon(
-                                imageVector = if (isThisPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                imageVector = if (isThisPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                                 contentDescription = if (isThisPlaying) "Pause" else "Play",
                                 modifier = Modifier.size(32.dp)
                             )
@@ -302,7 +302,7 @@ fun DetailScreen(
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {
-                            Icon(Icons.Rounded.Forward5, contentDescription = "Forward 10s")
+                            Icon(Icons.Filled.Forward5, contentDescription = "Forward 10s")
                         }
                     }
 
@@ -376,7 +376,7 @@ fun DetailScreen(
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 FilledTonalButton(onClick = { showDeleteConfirm = true }, shape = ShapeFull, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Move to trash")
                 }
@@ -705,7 +705,7 @@ private fun CleanedPlayerCard(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Text("Cleaned playback", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                IconButton(onClick = { onShare(filePath) }) { Icon(Icons.Rounded.Share, contentDescription = "Share cleaned") }
+                IconButton(onClick = { onShare(filePath) }) { Icon(Icons.Filled.Share, contentDescription = "Share cleaned") }
                 if (onDelete != null) {
                     TextButton(onClick = onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge) }
                 }
@@ -746,7 +746,7 @@ private fun CleanedPlayerCard(
                     shape = com.flambo.recorder.ui.theme.ShapeFull,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(if (isPlaying) "Pause" else "Play", maxLines = 1)
                 }
@@ -755,7 +755,7 @@ private fun CleanedPlayerCard(
                     shape = com.flambo.recorder.ui.theme.ShapeFull,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Share", maxLines = 1)
                 }
@@ -792,7 +792,7 @@ private fun TranscriptCard(
                 if (!saved) {
                     TextButton(onClick = onDiscard) { Text("Discard", maxLines = 1) }
                     FilledTonalButton(onClick = { onSave(text) }, shape = ShapeFull, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
-                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Save", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                     }
@@ -815,7 +815,7 @@ private fun TranscriptCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        if (justCopied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
+                        if (justCopied) Icons.Filled.Check else Icons.Filled.ContentCopy,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -828,12 +828,12 @@ private fun TranscriptCard(
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 androidx.compose.material3.IconButton(onClick = { onEdit(text) }) {
-                    Icon(Icons.Rounded.Edit, contentDescription = "Edit transcript")
+                    Icon(Icons.Filled.Edit, contentDescription = "Edit transcript")
                 }
             }
         }
@@ -1014,7 +1014,7 @@ private fun TranscribeSheet(
                             },
                             shape = ShapeFull
                         ) {
-                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Get")
                         }
@@ -1032,7 +1032,7 @@ private fun TranscribeSheet(
                             },
                             shape = ShapeFull
                         ) {
-                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Get")
                         }

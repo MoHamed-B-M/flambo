@@ -85,7 +85,7 @@ fun RecordingCard(
         ) {
             if (selected) {
                 Icon(
-                    imageVector = Icons.Rounded.CheckCircle,
+                    imageVector = Icons.Filled.CheckCircle,
                     contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -99,7 +99,7 @@ fun RecordingCard(
                 onClick = onPlay
             ) {
                 Icon(
-                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (isPlaying) "Pause" else "Play",
                     modifier = Modifier.padding(12.dp),
                     tint = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
@@ -117,7 +117,7 @@ fun RecordingCard(
                     )
                     if (recording.isFavorite) {
                         Icon(
-                            imageVector = Icons.Rounded.Favorite,
+                            imageVector = Icons.Filled.Favorite,
                             contentDescription = "Favorite",
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -160,7 +160,7 @@ fun RecordingCard(
 
             IconButton(onClick = onFavorite) {
                 Icon(
-                    imageVector = if (recording.isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
+                    imageVector = if (recording.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = "Favorite",
                     tint = if (recording.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -168,7 +168,7 @@ fun RecordingCard(
 
             androidx.compose.foundation.layout.Box {
                 IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "More")
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More")
                 }
                 DropdownMenu(
                     expanded = showMenu,
@@ -193,7 +193,7 @@ fun RecordingCard(
                             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                             Text("Rename", modifier = Modifier.weight(1f))
                         }
@@ -210,7 +210,7 @@ fun RecordingCard(
                             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                             Text("Delete", modifier = Modifier.weight(1f))
                         }
@@ -262,7 +262,7 @@ fun RecordingGridTile(
                     onClick = onPlay
                 ) {
                     Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
                         modifier = Modifier.padding(10.dp),
                         tint = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
@@ -270,14 +270,14 @@ fun RecordingGridTile(
                 }
                 if (selected) {
                     Icon(
-                        imageVector = Icons.Rounded.CheckCircle,
+                        imageVector = Icons.Filled.CheckCircle,
                         contentDescription = "Selected",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 } else if (recording.isFavorite) {
                     Icon(
-                        imageVector = Icons.Rounded.Favorite,
+                        imageVector = Icons.Filled.Favorite,
                         contentDescription = "Favorite",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)

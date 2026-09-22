@@ -2,12 +2,14 @@ package com.flambo.recorder.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -16,6 +18,7 @@ fun FlamboTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     seedId: String = "ember",
+    colorSchemeStyle: String = "TONAL_SPOT",
     expressive: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -26,8 +29,7 @@ fun FlamboTheme(
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> seed.dark
-        else -> seed.light
+        else -> schemeColorScheme(seed.swatch, darkTheme, colorSchemeStyle)
     }
 
     if (expressive) {
@@ -45,5 +47,13 @@ fun FlamboTheme(
             shapes = FlamboShapes,
             content = content
         )
+    }
+}
+
+fun schemeColorScheme(seed: Color, darkTheme: Boolean, style: String): ColorScheme {
+    val s = ThemeSeeds.find { it.swatch == seed } ?: ThemeSeeds.first()
+    return when (style.uppercase()) {
+        "EXPRESSIVE", "VIBRANT", "SPRITZ", "RAINBOW", "FRUIT_SALAD", "MONOCHROME" -> if (darkTheme) s.dark else s.light
+        else -> if (darkTheme) s.dark else s.light
     }
 }

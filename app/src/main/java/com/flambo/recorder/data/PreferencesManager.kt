@@ -40,6 +40,7 @@ class PreferencesManager(private val context: Context) {
         val RECORDING_PREFIX = stringPreferencesKey("recording_prefix")
         val HOME_LAYOUT = stringPreferencesKey("home_layout")
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
+        val COLOR_SCHEME = stringPreferencesKey("color_scheme")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -222,6 +223,14 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun clearCustomFolderUri() {
         context.dataStore.edit { it.remove(Keys.CUSTOM_FOLDER_URI) }
+    }
+
+    val colorSchemeFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.COLOR_SCHEME] ?: "TONAL_SPOT" }
+
+    suspend fun setColorScheme(scheme: String) {
+        val valid = setOf("EXPRESSIVE", "TONAL_SPOT", "VIBRANT", "SPRITZ", "RAINBOW", "FRUIT_SALAD", "MONOCHROME")
+        context.dataStore.edit { it[Keys.COLOR_SCHEME] = if (scheme in valid) scheme else "TONAL_SPOT" }
     }
 
     companion object {

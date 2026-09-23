@@ -1,8 +1,13 @@
 package com.flambo.recorder.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,8 +19,10 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,6 +62,7 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,6 +119,25 @@ fun AppearanceSettingsScreen(
     val gestureScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val velocityTracker = remember { VelocityTracker() }
+    var showSwipeTip by remember { mutableStateOf(false) }
+    var prevGestureEnabled by remember { mutableStateOf(gestureEnabled) }
+    val tipOffset = remember { Animatable(0f) }
+    LaunchedEffect(gestureEnabled) {
+        if (gestureEnabled && !prevGestureEnabled) {
+            showSwipeTip = true
+            tipOffset.snapTo(0f)
+            repeat(2) {
+                tipOffset.animateTo(with(density) { 32.dp.toPx() }, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                kotlinx.coroutines.delay(250)
+                tipOffset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                kotlinx.coroutines.delay(500)
+            }
+        } else if (!gestureEnabled) {
+            showSwipeTip = false
+            tipOffset.snapTo(0f)
+        }
+        prevGestureEnabled = gestureEnabled
+    }
     PredictiveBackHandler(enabled = gestureEnabled) { progress ->
         try {
             progress.collect { event ->
@@ -304,6 +331,54 @@ fun AppearanceSettingsScreen(
                             },
                             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showSwipeTip,
+                enter = fadeIn() + scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)),
+                exit = fadeOut()
+            ) {
+                Surface(
+                    shape = ShapeLargeIncreased,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Text("Try it out", style = MaterialTheme.typography.titleSmall)
+                            }
+                            TextButton(onClick = { showSwipeTip = false }) { Text("Got it") }
+                        }
+                        Text("Swipe any card to the right to go back — just like this:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                .padding(8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text("← swipe", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .height(48.dp)
+                                    .graphicsLayer { translationX = tipOffset.value }
+                            ) {
+                                Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                                    Text("Playback", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                }
+                            }
+                        }
                     }
                 }
             }

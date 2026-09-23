@@ -1,11 +1,16 @@
 package com.flambo.recorder.data
 
+import android.content.Context
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class RecordingRepository(
     private val dao: RecordingDao,
-    private val dirProvider: () -> File
+    private val dirProvider: () -> File,
+    private val appContext: Context? = null,
+    private val customFolderUriProvider: (suspend () -> String)? = null
 ) {
     fun observeRecordings(): Flow<List<Recording>> = dao.observeAll()
     fun observeTrash(): Flow<List<Recording>> = dao.observeTrash()
@@ -50,7 +55,7 @@ class RecordingRepository(
         return tagged
     }
 
-    suspend fun moveToDirectory(ids: Collection<Long>, targetDir: File): Int {
+    suspend fun moveToDirectory(ids: Collection<Long>, targetDir: File): Int = withContext(Dispatchers.IO) {
         runCatching { targetDir.mkdirs() }
         var moved = 0
         ids.forEach { id ->
@@ -63,7 +68,7 @@ class RecordingRepository(
             dao.update(rec.copy(filePath = newMain.absolutePath, enhancedPath = newEnhanced))
             moved++
         }
-        return moved
+        moved
     }
 
     private fun moveFile(src: File, targetDir: File): File? {
@@ -93,18 +98,34 @@ class RecordingRepository(
         getById(id)?.let { dao.update(it.copy(isTrashed = false, trashedAt = null)) }
     }
 
-    suspend fun deletePermanently(id: Long) {
-        val rec = getById(id)
-        rec?.let {
-
-            try { File(it.filePath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
-            try { File(it.enhancedPath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
-            dao.deletePermanently(id)
-        }
+    private suspend fun deleteSafCopy(fileName: String) {
+        val ctx = appContext ?: return
+        val uri = try { customFolderUriProvider?.invoke() } catch (_: Exception) { null } ?: return
+        if (uri.isBlank()) return
+        try {
+            if (!SafFolderHelper.isTreeUriValid(ctx, uri)) return
+            SafFolderHelper.deleteFile(ctx, uri, fileName)
+        } catch (_: Exception) {}
     }
 
-    suspend fun emptyTrash() {
-        dao.getTrash().forEach { deletePermanently(it.id) }
+    suspend fun deletePermanently(id: Long) = withContext(Dispatchers.IO) {
+        val rec = getById(id) ?: return@withContext
+        // Delete primary files
+        try { File(rec.filePath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
+        try { File(rec.enhancedPath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
+        // Delete SAF copies if custom folder set
+        try {
+            val name = File(rec.filePath).name
+            if (name.isNotBlank()) deleteSafCopy(name)
+            val enhName = File(rec.enhancedPath).name
+            if (enhName.isNotBlank() && enhName != name) deleteSafCopy(enhName)
+        } catch (_: Exception) {}
+        dao.deletePermanently(id)
+    }
+
+    suspend fun emptyTrash() = withContext(Dispatchers.IO) {
+        val trash = dao.getTrash()
+        trash.forEach { deletePermanently(it.id) }
     }
 
     suspend fun activeTitles(): List<String> = dao.activeTitles()
@@ -113,9 +134,13 @@ class RecordingRepository(
         dao.updateEnhancedPath(id, path)
     }
 
-    suspend fun clearEnhanced(id: Long) {
+    suspend fun clearEnhanced(id: Long) = withContext(Dispatchers.IO) {
         getById(id)?.let {
             try { File(it.enhancedPath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
+            try {
+                val enhName = File(it.enhancedPath).name
+                if (enhName.isNotBlank()) deleteSafCopy(enhName)
+            } catch (_: Exception) {}
         }
         dao.updateEnhancedPath(id, "")
     }
@@ -134,14 +159,19 @@ class RecordingRepository(
         }
     }
 
-    suspend fun purgeOldTrash(days: Int = 7) {
+    suspend fun purgeOldTrash(days: Int = 7) = withContext(Dispatchers.IO) {
         val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
-        val purged = dao.purgeOldTrash(cutoff)
-
-        if (purged > 0) {
-
+        val old = dao.getTrash().filter { (it.trashedAt ?: 0L) < cutoff }
+        old.forEach { rec ->
+            try { File(rec.filePath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
+            try { File(rec.enhancedPath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
+            try {
+                val name = File(rec.filePath).name
+                if (name.isNotBlank()) deleteSafCopy(name)
+            } catch (_: Exception) {}
         }
+        dao.purgeOldTrash(cutoff)
     }
 
-    fun recordingsDir(): File = dirProvider().apply { if (!exists()) mkdirs() }
+    fun recordingsDir(): File = dirProvider().apply { if (!exists()) runCatching { mkdirs() } }
 }

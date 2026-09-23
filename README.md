@@ -34,9 +34,13 @@
 
 ## Screenshots
 
-| Home | Recording | Playback | Settings |
-|---|---|---|---|
-| ![Home](screenshots/home.jpg) | ![Recording](screenshots/recording.jpg) | ![Playback](screenshots/playback.jpg) | ![Settings](screenshots/settings.jpg) |
+| Home | Recording | Playback |
+|---|---|---|
+| ![Home](screenshots/home.jpg) | ![Recording](screenshots/recording.jpg) | ![Playback](screenshots/playback.jpg) |
+
+| Settings | About | Trash |
+|---|---|---|
+| ![Settings](screenshots/settings.jpg) | ![About](screenshots/about.jpg) | ![Trash](screenshots/trash.jpg) |
 
 ## Get the app
 

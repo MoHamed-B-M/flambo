@@ -65,11 +65,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import androidx.compose.ui.layout.ContentScale
+import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.flambo.recorder.BuildConfig
 import com.flambo.recorder.R
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.ui.settings.components.SectionHeader
@@ -260,7 +260,15 @@ fun AboutSettingsScreen(
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Flambo", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                            val versionLabel = remember { "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})" }
+                            val context = LocalContext.current
+                            val versionLabel = remember {
+                                try {
+                                    val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                                    val vName = pInfo.versionName ?: "1.4.0"
+                                    val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pInfo.longVersionCode else pInfo.versionCode.toLong()
+                                    "v$vName ($vCode)"
+                                } catch (_: Exception) { "v1.4.0" }
+                            }
                             AssistChip(onClick = {}, label = { Text(versionLabel) })
                         }
                         Text("A calm, expressive voice recorder. Transcripts and recordings stay on your device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)

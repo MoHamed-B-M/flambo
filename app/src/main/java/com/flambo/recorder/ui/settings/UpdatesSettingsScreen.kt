@@ -24,6 +24,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,6 +54,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import kotlin.math.max
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -105,7 +111,10 @@ fun UpdatesSettingsScreen(
     val scale = remember { Animatable(1f) }
     val corner = remember { Animatable(0f) }
     val alpha = remember { Animatable(1f) }
+    val offsetX = remember { Animatable(0f) }
     val gestureScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val velocityTracker = remember { VelocityTracker() }
     PredictiveBackHandler(enabled = gestureEnabled) { progress ->
         try {
             progress.collect { event ->
@@ -128,6 +137,7 @@ fun UpdatesSettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer {
+                translationX = offsetX.value
                 scaleX = scale.value
                 scaleY = scale.value
                 this.alpha = alpha.value
@@ -135,6 +145,50 @@ fun UpdatesSettingsScreen(
                 clip = corner.value > 0f
             }
             .clip(RoundedCornerShape(corner.value.dp))
+            .pointerInput(gestureEnabled) {
+                if (!gestureEnabled) return@pointerInput
+                detectHorizontalDragGestures(
+                    onDragStart = { velocityTracker.resetTracking() },
+                    onDragEnd = {
+                        val offset = offsetX.value
+                        val velocity = runCatching { velocityTracker.calculateVelocity().x }.getOrDefault(0f)
+                        val dismissDistance = with(density) { 100.dp.toPx() }
+                        val velocityThreshold = with(density) { 400.dp.toPx() }
+                        val shouldDismiss = offset > dismissDistance || velocity > velocityThreshold
+                        if (shouldDismiss) {
+                            gestureScope.launch { offsetX.animateTo(with(density) { 1080.dp.toPx() }, spring(stiffness = Spring.StiffnessMedium)) }
+                            gestureScope.launch { kotlinx.coroutines.delay(80); if (offsetX.value >= with(density) { 1080.dp.toPx() } * 0.5f) onBack() }
+                        } else {
+                            gestureScope.launch {
+                                offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow))
+                                scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                                corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                                alpha.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        gestureScope.launch {
+                            offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow))
+                            scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                            corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                            alpha.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                        }
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        velocityTracker.addPosition(change.uptimeMillis, change.position)
+                        val newOffset = max(0f, offsetX.value + dragAmount)
+                        gestureScope.launch {
+                            offsetX.snapTo(newOffset)
+                            val progress = (newOffset / with(density) { 1080.dp.toPx() }).coerceIn(0f, 1f)
+                            scale.snapTo((1f - progress * 0.05f).coerceIn(0.95f, 1f))
+                            corner.snapTo(progress * 24f)
+                            alpha.snapTo((1f - progress * 0.15f).coerceIn(0.85f, 1f))
+                        }
+                    }
+                )
+            }
     ) {
         Scaffold(
         topBar = {

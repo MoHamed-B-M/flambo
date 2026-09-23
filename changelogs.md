@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.4.0] - 2026-09-23
+## [1.4.0] — Pumice - 2026-09-23
 
 A small but meaningful update focused on making your recordings easier to manage and your daily use a bit smoother.
 

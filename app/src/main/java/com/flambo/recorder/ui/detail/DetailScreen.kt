@@ -23,9 +23,14 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
-import com.flambo.recorder.ui.components.TelegramOverlayCard
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.filled.Edit
+import kotlinx.coroutines.CancellationException
 import androidx.compose.material.icons.filled.Forward5
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -85,8 +90,6 @@ import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.stt.FileTranscription
 import com.flambo.recorder.stt.VoskModelManager
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.graphicsLayer
 import com.flambo.recorder.ui.components.StaticWaveform
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
@@ -101,8 +104,7 @@ fun DetailScreen(
     viewModel: DetailViewModel,
     playback: PlaybackController,
     onBack: () -> Unit,
-    onDeleted: () -> Unit,
-    backgroundContent: @Composable (() -> Unit)? = null
+    onDeleted: () -> Unit
 ) {
     val recording by viewModel.recording.collectAsState()
     val editTitle by viewModel.editTitle.collectAsState()
@@ -155,7 +157,39 @@ fun DetailScreen(
     val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
 
     val gestureEnabled by viewModel.gestureEnabled.collectAsState()
-    TelegramOverlayCard(onDismiss = onBack, enabled = gestureEnabled, backgroundContent = backgroundContent) {
+    val scale = remember { Animatable(1f) }
+    val corner = remember { Animatable(0f) }
+    val alpha = remember { Animatable(1f) }
+    val gestureScope = rememberCoroutineScope()
+    PredictiveBackHandler(enabled = gestureEnabled) { progress ->
+        try {
+            progress.collect { event ->
+                val p = event.progress
+                scale.snapTo((1f - p * 0.05f).coerceIn(0.95f, 1f))
+                corner.snapTo(p * 24f)
+                alpha.snapTo((1f - p * 0.15f).coerceIn(0.85f, 1f))
+            }
+            onBack()
+        } catch (e: CancellationException) {
+            gestureScope.launch {
+                scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                alpha.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+            }
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                this.alpha = alpha.value
+                shape = RoundedCornerShape(corner.value.dp)
+                clip = corner.value > 0f
+            }
+            .clip(RoundedCornerShape(corner.value.dp))
+    ) {
         Scaffold(
             topBar = {
                 TopAppBar(

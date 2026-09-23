@@ -27,6 +27,10 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -47,10 +51,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.stt.TranscriptionManager
 import com.flambo.recorder.stt.VoskModelManager
@@ -79,7 +88,43 @@ fun SttSettingsScreen(
     var showEngineDialog by remember { mutableStateOf(false) }
     var modelsTick by remember { mutableStateOf(0) }
 
-    Scaffold(
+
+    val gestureEnabled by prefs.gestureEnabledFlow.collectAsState(initial = true)
+    val scale = remember { Animatable(1f) }
+    val corner = remember { Animatable(0f) }
+    val alpha = remember { Animatable(1f) }
+    val gestureScope = rememberCoroutineScope()
+    PredictiveBackHandler(enabled = gestureEnabled) { progress ->
+        try {
+            progress.collect { event ->
+                val p = event.progress
+                scale.snapTo((1f - p * 0.05f).coerceIn(0.95f, 1f))
+                corner.snapTo(p * 24f)
+                alpha.snapTo((1f - p * 0.15f).coerceIn(0.85f, 1f))
+            }
+            onBack()
+        } catch (e: CancellationException) {
+            gestureScope.launch {
+                scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                corner.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                alpha.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                this.alpha = alpha.value
+                shape = RoundedCornerShape(corner.value.dp)
+                clip = corner.value > 0f
+            }
+            .clip(RoundedCornerShape(corner.value.dp))
+    ) {
+        Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -203,6 +248,7 @@ fun SttSettingsScreen(
                 }
             }
         }
+    }
     }
 
     if (showEngineDialog) {

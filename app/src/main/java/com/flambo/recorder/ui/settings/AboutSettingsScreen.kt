@@ -65,9 +65,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.flambo.recorder.BuildConfig
 import com.flambo.recorder.R
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.ui.settings.components.SectionHeader
@@ -258,7 +260,8 @@ fun AboutSettingsScreen(
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Flambo", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                            AssistChip(onClick = {}, label = { Text("v1.0") })
+                            val versionLabel = remember { "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})" }
+                            AssistChip(onClick = {}, label = { Text(versionLabel) })
                         }
                         Text("A calm, expressive voice recorder. Transcripts and recordings stay on your device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     }

@@ -43,4 +43,19 @@ object SafFolderHelper {
             DocumentFile.fromTreeUri(context, uri)?.canWrite() == true || persisted
         } catch (_: Exception) { false }
     }
+
+    fun deleteFile(context: Context, treeUriString: String, displayName: String): Boolean {
+        if (treeUriString.isBlank() || displayName.isBlank()) return false
+        return try {
+            val treeUri = Uri.parse(treeUriString)
+            val dir = DocumentFile.fromTreeUri(context, treeUri) ?: return false
+            // Try direct find
+            var target = dir.findFile(displayName)
+            // Fallback: list and match (some providers need listing)
+            if (target == null) {
+                target = dir.listFiles().firstOrNull { it.name == displayName }
+            }
+            target?.delete() == true
+        } catch (_: Exception) { false }
+    }
 }

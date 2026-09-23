@@ -27,7 +27,9 @@ class FlamboApp : Application() {
     val repository by lazy {
         RecordingRepository(
             dao = database.recordingDao(),
-            dirProvider = { recordingsDir() }
+            dirProvider = { recordingsDir() },
+            appContext = this,
+            customFolderUriProvider = { prefs.customFolderUri() }
         )
     }
     val prefs by lazy { PreferencesManager(this) }
@@ -48,6 +50,10 @@ class FlamboApp : Application() {
             val pending = runCatching { prefs.pendingApkDelete() }.getOrNull()
             runCatching { ApkInstaller.cleanupStale(this@FlamboApp, pending) }
             if (pending != null) runCatching { prefs.clearPendingApkDelete() }
+        }
+        // Auto-purge trashed recordings older than 7 days (deletes both primary and SAF copies)
+        appScope.launch {
+            runCatching { repository.purgeOldTrash(7) }
         }
     }
 }

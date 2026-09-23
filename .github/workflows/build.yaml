@@ -264,6 +264,15 @@ jobs:
             Flambo-*.apk.sha256
           retention-days: 7
 
+      - name: Upload build directory (auto-expire)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: app/build
+          retention-days: 7
+          if-no-files-found: warn
+
   # ---------------------------------------------------------------------------
   # Beta preview: rolling prerelease that is overwritten on every push
   # New push => old preview APK/link is replaced automatically.

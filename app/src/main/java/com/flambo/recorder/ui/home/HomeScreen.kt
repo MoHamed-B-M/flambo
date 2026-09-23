@@ -91,7 +91,6 @@ import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.RecordingController
 import com.flambo.recorder.ui.components.AppTips
-import com.flambo.recorder.ui.components.MiniPlayer
 import com.flambo.recorder.ui.components.TipCard
 import kotlinx.coroutines.launch
 import com.flambo.recorder.ui.components.RecordingCard
@@ -390,20 +389,7 @@ fun HomeScreen(
                 )
             }
 
-            AnimatedVisibility(visible = !recorderState.isRecording && playbackState.isPlaying) {
-                val currentTitle = uiState.recordings.find { playback.isPlayingPath(it.filePath) }?.title ?: "Playing"
-                MiniPlayer(
-                    title = currentTitle,
-                    isPlaying = playbackState.isPlaying,
-                    positionMs = playbackState.positionMs,
-                    onPlayPause = { playback.toggle() },
-                    onClose = { playback.stop() },
-                    onClick = {
-                        uiState.recordings.find { playback.isPlayingPath(it.filePath) }?.let { onOpenDetail(it.id) }
-                    },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
+
 
             if (uiState.showTrash) {
                 Row(
@@ -460,7 +446,7 @@ fun HomeScreen(
                         items(uiState.recordings, key = { it.id }) { rec ->
                             RecordingGridTile(
                                 recording = rec,
-                                isPlaying = playbackState.currentPath == rec.filePath && playbackState.isPlaying,
+                                playback = playback,
                                 selected = rec.id in selection,
                                 onClick = {
                                     if (selectionMode) {
@@ -469,8 +455,7 @@ fun HomeScreen(
                                         onOpenDetail(rec.id)
                                     }
                                 },
-                                onLongClick = { selection = selection + rec.id },
-                                onPlay = { if (playbackState.currentPath == rec.filePath && playbackState.isPlaying) playback.pause() else playback.play(rec.filePath) }
+                                onLongClick = { selection = selection + rec.id }
                             )
                         }
                     }
@@ -483,7 +468,7 @@ fun HomeScreen(
                         items(uiState.recordings, key = { it.id }) { rec ->
                             RecordingCard(
                                 recording = rec,
-                                isPlaying = playbackState.currentPath == rec.filePath && playbackState.isPlaying,
+                                playback = playback,
                                 onClick = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
@@ -491,7 +476,6 @@ fun HomeScreen(
                                         onOpenDetail(rec.id)
                                     }
                                 },
-                                onPlay = { if (playbackState.currentPath == rec.filePath && playbackState.isPlaying) playback.pause() else playback.play(rec.filePath) },
                                 onFavorite = { viewModel.toggleFavorite(rec.id) },
                                 onDelete = { viewModel.softDelete(rec) },
                                 onRename = {

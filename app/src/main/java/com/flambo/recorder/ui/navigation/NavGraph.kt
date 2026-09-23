@@ -1,6 +1,8 @@
 package com.flambo.recorder.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -13,6 +15,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -35,12 +38,24 @@ import com.flambo.recorder.ui.detail.DetailScreen
 import com.flambo.recorder.ui.detail.DetailViewModel
 import com.flambo.recorder.ui.home.HomeScreen
 import com.flambo.recorder.ui.home.HomeViewModel
+import com.flambo.recorder.ui.settings.AboutSettingsScreen
+import com.flambo.recorder.ui.settings.AppearanceSettingsScreen
+import com.flambo.recorder.ui.settings.RecordingSettingsScreen
 import com.flambo.recorder.ui.settings.SettingsScreen
+import com.flambo.recorder.ui.settings.StorageSettingsScreen
+import com.flambo.recorder.ui.settings.SttSettingsScreen
+import com.flambo.recorder.ui.settings.UpdatesSettingsScreen
 import com.flambo.recorder.update.UpdateDownloadState
 
 sealed class Dest(val route: String) {
     data object Home : Dest("home")
     data object Settings : Dest("settings")
+    data object SettingsRecording : Dest("settings/recording")
+    data object SettingsAppearance : Dest("settings/appearance")
+    data object SettingsStt : Dest("settings/stt")
+    data object SettingsStorage : Dest("settings/storage")
+    data object SettingsUpdates : Dest("settings/updates")
+    data object SettingsAbout : Dest("settings/about")
     data object Detail : Dest("detail/{id}") {
         fun create(id: Long) = "detail/$id"
     }
@@ -156,7 +171,8 @@ fun FlamboNavGraph(
                     }
                 }
             }
-            val vm: HomeViewModel = viewModel(factory = factory)
+            val activity = LocalContext.current as androidx.activity.ComponentActivity
+            val vm: HomeViewModel = viewModel(factory = factory, viewModelStoreOwner = activity)
             HomeScreen(
                 viewModel = vm,
                 recorder = app.recorder,
@@ -176,10 +192,10 @@ fun FlamboNavGraph(
         composable(
             route = Dest.Detail.route,
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable
             val factory = remember(id) {
@@ -201,20 +217,10 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.Settings.route,
-
-            enterTransition = {
-                slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = expressiveSpringOffset) +
-                    fadeIn(spring(dampingRatio = 0.8f)) + scaleIn(initialScale = 0.97f, animationSpec = expressiveSpring)
-            },
-            exitTransition = {
-                slideOutHorizontally(targetOffsetX = { it / 4 }, animationSpec = expressiveSpringOffset) +
-                    fadeOut(spring(dampingRatio = 0.9f))
-            },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = {
-                slideOutHorizontally(targetOffsetX = { it / 3 }, animationSpec = expressiveSpringOffset) +
-                    fadeOut(spring(dampingRatio = 0.9f)) + scaleOut(targetScale = 0.97f)
-            }
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
             SettingsScreen(
                 prefs = app.prefs,
@@ -223,8 +229,74 @@ fun FlamboNavGraph(
                 updateDownload = updateDownload,
                 onBack = { debouncedPop() },
                 onRerunOnboarding = onRerunOnboarding,
-                onRequestSystemCapture = onRequestSystemCapture
+                onRequestSystemCapture = onRequestSystemCapture,
+                onNavigateRecording = { debouncedNavigate(Dest.SettingsRecording.route) },
+                onNavigateAppearance = { debouncedNavigate(Dest.SettingsAppearance.route) },
+                onNavigateStt = { debouncedNavigate(Dest.SettingsStt.route) },
+                onNavigateStorage = { debouncedNavigate(Dest.SettingsStorage.route) },
+                onNavigateUpdates = { debouncedNavigate(Dest.SettingsUpdates.route) },
+                onNavigateAbout = { debouncedNavigate(Dest.SettingsAbout.route) }
             )
+        }
+
+        composable(
+            route = Dest.SettingsRecording.route,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            RecordingSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
+        }
+
+        composable(
+            route = Dest.SettingsAppearance.route,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            AppearanceSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
+        }
+
+        composable(
+            route = Dest.SettingsStt.route,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            SttSettingsScreen(prefs = app.prefs, scope = scope, transcription = app.transcription, onBack = { debouncedPop() })
+        }
+
+        composable(
+            route = Dest.SettingsStorage.route,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            StorageSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
+        }
+
+        composable(
+            route = Dest.SettingsUpdates.route,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            UpdatesSettingsScreen(prefs = app.prefs, scope = scope, updateDownload = updateDownload, onBack = { debouncedPop() })
+        }
+
+        composable(
+            route = Dest.SettingsAbout.route,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            AboutSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() }, onRerunOnboarding = onRerunOnboarding)
         }
     }
 }

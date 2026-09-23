@@ -248,9 +248,19 @@ class RecordingController(
                 scope.launch(Dispatchers.IO) {
                     val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
                     val title = generateTitle()
+                    var actualFile = file
+                    try {
+                        val safeName = sanitizeFileName(title)
+                        val target = getUniqueFile(file.parentFile ?: repository.recordingsDir(), safeName, file.extension)
+                        if (target.absolutePath != file.absolutePath) {
+                            actualFile = if (file.renameTo(target)) target else {
+                                file.copyTo(target, overwrite = true); runCatching { file.delete() }; target
+                            }
+                        }
+                    } catch (_: Exception) {}
                     val rec = Recording(
                         title = title,
-                        filePath = file.absolutePath,
+                        filePath = actualFile.absolutePath,
                         durationMs = res.durationMs,
                         createdAt = System.currentTimeMillis(),
                         amplitudePeaks = peaksStr,
@@ -258,7 +268,7 @@ class RecordingController(
                     )
                     val id = repository.insert(rec)
 
-                    copyToCustomFolderIfNeeded(file)
+                    copyToCustomFolderIfNeeded(actualFile)
                     withContext(Dispatchers.Main) {
                         onSaved?.invoke(rec.copy(id = id))
                     }
@@ -287,16 +297,26 @@ class RecordingController(
             scope.launch(Dispatchers.IO) {
                 val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
                 val title = generateTitle()
+                var actualFile = file
+                try {
+                    val safeName = sanitizeFileName(title)
+                    val target = getUniqueFile(file.parentFile ?: repository.recordingsDir(), safeName, file.extension)
+                    if (target.absolutePath != file.absolutePath) {
+                        actualFile = if (file.renameTo(target)) target else {
+                            file.copyTo(target, overwrite = true); runCatching { file.delete() }; target
+                        }
+                    }
+                } catch (_: Exception) {}
                 val rec = Recording(
                     title = title,
-                    filePath = file.absolutePath,
+                    filePath = actualFile.absolutePath,
                     durationMs = elapsed,
                     createdAt = System.currentTimeMillis(),
                     amplitudePeaks = peaksStr,
                     quality = s.quality.name
                 )
                 val id = repository.insert(rec)
-                copyToCustomFolderIfNeeded(file)
+                copyToCustomFolderIfNeeded(actualFile)
                 withContext(Dispatchers.Main) {
                     onSaved?.invoke(rec.copy(id = id))
                 }
@@ -402,6 +422,20 @@ class RecordingController(
             val count = (System.currentTimeMillis() % 1000).toInt()
             "Recording ${count.toString().padStart(3, '0')}"
         }
+    }
+
+    private fun sanitizeFileName(title: String): String {
+        val sanitized = title.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim().take(80).ifBlank { "Recording" }
+        return sanitized
+    }
+
+    private fun getUniqueFile(dir: File, baseName: String, ext: String): File {
+        val safeExt = ext.let { if (it.isBlank()) "" else ".$it" }
+        var candidate = File(dir, baseName + safeExt)
+        if (!candidate.exists()) return candidate
+        var i = 2
+        while (File(dir, "$baseName ($i)$safeExt").exists()) i++
+        return File(dir, "$baseName ($i)$safeExt")
     }
 
     private suspend fun copyToCustomFolderIfNeeded(file: File) {

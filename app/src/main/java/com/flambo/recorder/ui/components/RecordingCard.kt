@@ -1,7 +1,6 @@
 package com.flambo.recorder.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,15 +46,15 @@ import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.domain.formatDuration
 import com.flambo.recorder.domain.formatRelativeTime
+import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RecordingCard(
     recording: Recording,
-    isPlaying: Boolean,
+    playback: PlaybackController,
     onClick: () -> Unit,
-    onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onDelete: () -> Unit,
     onRename: () -> Unit,
@@ -63,6 +63,17 @@ fun RecordingCard(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val playbackState by playback.state.collectAsState()
+    val isCurrent = playbackState.currentPath == recording.filePath
+    val isPlaying = isCurrent && playbackState.isPlaying
+    val progress = if (isCurrent && playbackState.durationMs > 0) {
+        (playbackState.positionMs.toFloat() / playbackState.durationMs.toFloat()).coerceIn(0f, 1f)
+    } else 0f
+    val displayedDuration = when {
+        isCurrent && playbackState.durationMs > 0 && playbackState.isPlaying -> "${formatDuration(playbackState.positionMs)} / ${formatDuration(playbackState.durationMs)}"
+        isCurrent && playbackState.durationMs > 0 -> "${formatDuration(playbackState.positionMs)} / ${formatDuration(playbackState.durationMs)}"
+        else -> formatDuration(recording.durationMs)
+    }
 
     Card(
         modifier = modifier
@@ -72,6 +83,7 @@ fun RecordingCard(
         shape = ShapeLargeIncreased,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
+            else if (isCurrent) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
             else MaterialTheme.colorScheme.surfaceContainer
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -94,15 +106,18 @@ fun RecordingCard(
 
             Surface(
                 shape = ShapeLargeIncreased,
-                color = if (isPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+                color = if (isPlaying) MaterialTheme.colorScheme.primary else if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier.size(48.dp),
-                onClick = onPlay
+                onClick = {
+                    if (isPlaying) playback.pause()
+                    else playback.play(recording.filePath)
+                }
             ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (isPlaying) "Pause" else "Play",
                     modifier = Modifier.padding(12.dp),
-                    tint = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                    tint = if (isPlaying) MaterialTheme.colorScheme.onPrimary else if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
 
@@ -126,9 +141,9 @@ fun RecordingCard(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = formatDuration(recording.durationMs),
+                        text = displayedDuration,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text("•", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                     Text(
@@ -142,7 +157,7 @@ fun RecordingCard(
                 if (recording.peakList.isNotEmpty()) {
                     StaticWaveform(
                         peaks = recording.peakList,
-                        progress = if (isPlaying) 0.35f else 0f,
+                        progress = progress,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                 }
@@ -225,13 +240,16 @@ fun RecordingCard(
 @Composable
 fun RecordingGridTile(
     recording: Recording,
-    isPlaying: Boolean,
+    playback: PlaybackController,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
-    onPlay: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val playbackState by playback.state.collectAsState()
+    val isCurrent = playbackState.currentPath == recording.filePath
+    val isPlaying = isCurrent && playbackState.isPlaying
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -240,6 +258,7 @@ fun RecordingGridTile(
         shape = ShapeLargeIncreased,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
+            else if (isCurrent) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
             else MaterialTheme.colorScheme.surfaceContainer
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -257,15 +276,18 @@ fun RecordingGridTile(
             ) {
                 Surface(
                     shape = ShapeLargeIncreased,
-                    color = if (isPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+                    color = if (isPlaying) MaterialTheme.colorScheme.primary else if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
                     modifier = Modifier.size(44.dp),
-                    onClick = onPlay
+                    onClick = {
+                        if (isPlaying) playback.pause()
+                        else playback.play(recording.filePath)
+                    }
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
                         modifier = Modifier.padding(10.dp),
-                        tint = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                        tint = if (isPlaying) MaterialTheme.colorScheme.onPrimary else if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
                 if (selected) {
@@ -291,13 +313,26 @@ fun RecordingGridTile(
                 overflow = TextOverflow.Ellipsis,
                 minLines = 2
             )
+            val gridDuration = if (isCurrent && playbackState.durationMs > 0) {
+                "${formatDuration(playbackState.positionMs)} / ${formatDuration(playbackState.durationMs)}"
+            } else formatDuration(recording.durationMs)
             Text(
-                text = "${formatDuration(recording.durationMs)} • ${formatRelativeTime(recording.createdAt)}",
+                text = "$gridDuration • ${formatRelativeTime(recording.createdAt)}",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (recording.peakList.isNotEmpty()) {
+                val gridProgress = if (isCurrent && playbackState.durationMs > 0) {
+                    (playbackState.positionMs.toFloat() / playbackState.durationMs.toFloat()).coerceIn(0f, 1f)
+                } else 0f
+                StaticWaveform(
+                    peaks = recording.peakList,
+                    progress = gridProgress,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
 }

@@ -96,6 +96,7 @@ import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.domain.RecordingQuality
 import com.flambo.recorder.domain.formatDuration
+import com.flambo.recorder.domain.formatRelativeTime
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.RecordingController
@@ -456,7 +457,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
 
             if (tipsEnabled && !recorderState.isRecording) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]

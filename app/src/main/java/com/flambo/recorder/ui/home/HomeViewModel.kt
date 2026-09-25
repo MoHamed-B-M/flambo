@@ -45,23 +45,25 @@ class HomeViewModel(
         .mapLatest { list -> repository.findMissingIds(list) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    val uiState: StateFlow<HomeUiState> = combine(
+    private val baseUiState: StateFlow<HomeUiState> = combine(
         recordingsFlow,
         queryFlow,
         showTrashFlow,
         lastDeletedFlow,
-        repository.observeTrash(),
-        missingIdsFlow
-    ) { recordings, query, showTrash, lastDeleted, trash, missingIds ->
+        repository.observeTrash()
+    ) { recordings, query, showTrash, lastDeleted, trash ->
         HomeUiState(
             recordings = recordings,
             query = query,
             isSearchActive = query.isNotEmpty(),
             showTrash = showTrash,
             trash = trash,
-            lastDeleted = lastDeleted,
-            missingIds = missingIds
+            lastDeleted = lastDeleted
         )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
+
+    val uiState: StateFlow<HomeUiState> = combine(baseUiState, missingIdsFlow) { state, missingIds ->
+        state.copy(missingIds = missingIds)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
     fun onQueryChange(value: String) { queryFlow.value = value }

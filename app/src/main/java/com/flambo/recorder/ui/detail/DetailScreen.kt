@@ -164,6 +164,9 @@ fun DetailScreen(
     val progress = if (isCurrentTrack && playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
     val duration = if (isCurrentTrack && playbackState.durationMs > 0) playbackState.durationMs else rec.durationMs
     val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
+    val fileMissing = remember(rec.filePath) {
+        !com.flambo.recorder.data.AudioFileStore.exists(context, rec.filePath)
+    }
 
     val gestureEnabled by viewModel.gestureEnabled.collectAsState()
     val scale = remember { Animatable(1f) }
@@ -290,9 +293,6 @@ fun DetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val fileMissing = remember(rec.filePath) {
-                !com.flambo.recorder.data.AudioFileStore.exists(context, rec.filePath)
-            }
             if (fileMissing) {
                 Surface(
                     shape = ShapeLargeIncreased,

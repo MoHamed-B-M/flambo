@@ -41,12 +41,12 @@ env:
   # installing a beta over stable always counts as an update for Android.
   # STABLE_BUILD must keep increasing across stables — Android refuses to
   # install an update whose versionCode is not higher than the installed one.
-  BASE_VERSION: "1.4.0"
-  STABLE_BUILD: "5"
+  BASE_VERSION: "1.5.0"
+  STABLE_BUILD: "6"
   BETA_CODE_OFFSET: "100000"
-  # Codename for the stable release title, e.g. "Pumice" → "Flambo 1.4.0+5 — Pumice".
+  # Codename for the stable release title, e.g. "Rhyolite" → "Flambo 1.5.0+6 — Rhyolite".
   # Empty for a maintenance release with no codename.
-  RELEASE_TAGLINE: "Pumice"
+  RELEASE_TAGLINE: "Rhyolite"
 
 jobs:
   build:
@@ -270,7 +270,7 @@ jobs:
         with:
           name: build
           path: app/build
-          retention-days: 7
+          retention-days: 5
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
@@ -499,8 +499,8 @@ jobs:
           EOF
           if [[ -f changelogs.md ]]; then
             echo "" >> release_notes.md
-            # Extract 1.4.0 section (up to next ## [x)
-            sed -n '/## \[1.4.0/,/## \[/p' changelogs.md | head -n -1 >> release_notes.md
+            # Extract 1.5.0 section (up to next ## [x)
+            sed -n '/## \[1.5.0/,/## \[/p' changelogs.md | head -n -1 >> release_notes.md
             echo "" >> release_notes.md
           fi
           echo "" >> release_notes.md

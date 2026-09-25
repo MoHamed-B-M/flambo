@@ -39,6 +39,54 @@ data class WhatsNewItem(val title: String, val body: String)
 
 object ReleaseNotes {
 
+    /**
+     * Single source of truth: the `changelogs.md` maintained at the repo root,
+     * synced into `assets/` at build time. No code changes needed per release —
+     * just update the changelog and both the sheet and the GitHub release notes
+     * pick it up automatically.
+     */
+    suspend fun loadWhatsNew(context: Context): List<WhatsNewItem>? = withContext(Dispatchers.IO) {
+        loadFromAssets(context) ?: fetchWhatsNew()
+    }
+
+    private fun loadFromAssets(context: Context): List<WhatsNewItem>? {
+        return try {
+            context.assets.open("changelogs.md").bufferedReader().use { reader ->
+                parseChangelogLatest(reader.readText()).takeIf { it.isNotEmpty() }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Parses bullets of the newest `## [x.y.z]` section: `- **Title** — body`. */
+    fun parseChangelogLatest(text: String): List<WhatsNewItem> {
+        val items = mutableListOf<WhatsNewItem>()
+        var inLatest = false
+        var seenFirst = false
+        for (raw in text.lines()) {
+            val line = raw.trim()
+            if (line.startsWith("## [")) {
+                if (!seenFirst) {
+                    seenFirst = true
+                    inLatest = true
+                } else break
+                continue
+            }
+            if (!inLatest || !line.startsWith("- ")) continue
+            var entry = line.removePrefix("- ").trim()
+            val titleMatch = Regex("^\\*\\*(.+?)\\*\\*\\s*").find(entry)
+            val title = titleMatch?.groupValues?.get(1)?.trim().orEmpty()
+            if (titleMatch != null) entry = entry.substring(titleMatch.range.last + 1).trim()
+            entry = entry.removePrefix("—").removePrefix("–").removePrefix("-").removePrefix(":").trim()
+            val body = entry.replace("**", "").replace("`", "").trim()
+            if (title.isBlank() && body.isBlank()) continue
+            items += WhatsNewItem(title, body)
+            if (items.size >= 14) break
+        }
+        return items
+    }
+
     suspend fun fetchWhatsNew(): List<WhatsNewItem>? = withContext(Dispatchers.IO) {
         try {
             val conn = (URL("$API/latest").openConnection() as HttpURLConnection).apply {

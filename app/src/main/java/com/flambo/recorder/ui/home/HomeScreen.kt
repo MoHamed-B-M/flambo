@@ -192,7 +192,7 @@ fun HomeScreen(
         val lastSeen = prefs.lastSeenVersionCode()
         if (lastSeen != 0L && code > lastSeen) {
             whatsNewVersion = version
-            whatsNewItems = ReleaseNotes.fetchWhatsNew()
+            whatsNewItems = ReleaseNotes.loadWhatsNew(context)
         }
         prefs.setLastSeenVersionCode(code)
     }
@@ -285,7 +285,7 @@ fun HomeScreen(
                             installedVersion?.let {
                                 whatsNewVersion = it
                                 if (whatsNewItems == null) {
-                                    scope.launch { whatsNewItems = ReleaseNotes.fetchWhatsNew() }
+                                    scope.launch { whatsNewItems = ReleaseNotes.loadWhatsNew(context) }
                                 }
                             }
                         }) {

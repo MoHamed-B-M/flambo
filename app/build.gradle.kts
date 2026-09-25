@@ -89,6 +89,16 @@ android {
 
 kotlin { jvmToolchain(21) }
 
+// Single source of truth for in-app What's New: copy the repo-root
+// changelogs.md into assets at build time so ReleaseNotes can parse it
+// offline. The generated file is gitignored (see .gitignore).
+tasks.register<Copy>("syncChangelogAsset") {
+    from(rootDir.resolve("changelogs.md"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+}
+
+tasks.named("preBuild") { dependsOn("syncChangelogAsset") }
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime)

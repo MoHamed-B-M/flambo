@@ -37,3 +37,6 @@ screenshotsissue/
 .agents/
 skills-lock.json
 
+# Generated at build time from the repo-root changelogs.md (see syncChangelogAsset)
+app/src/main/assets/changelogs.md
+

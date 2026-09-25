@@ -28,31 +28,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.update.WhatsNewItem
 
 private val fallbackHighlights = listOf(
-    WhatsNewItem("Whisper", "Multilingual offline transcription via whisper.cpp — ggml-tiny 75 MB, 95+ languages, language picker in Settings and playback sheet."),
-    WhatsNewItem("Transcription engine", "Switch between Vosk (per-language) and Whisper (tiny multilingual) — fallback to Vosk English while Whisper builds."),
-    WhatsNewItem("Playback fix", "Replay at end seeks to 0, progress scoped by track, debounced navigation — no stale duration or background leakage."),
-    WhatsNewItem("Tachylite", "Headless Key Mapper / Tasker automation — broadcast receiver + shortcut picker + NoDisplay trampoline that never flashes the UI or queues on the lock screen."),
-    WhatsNewItem("FGS fix", "Android 14+ background start no longer crashes — safely unwinds when the system denies the foreground service."),
-    WhatsNewItem("Bulk actions", "Long-press to select many → Group (shared tag), Move across volumes, Delete to trash; Empty Trash with count dialog."),
-    WhatsNewItem("Library layout", "List or Grid (2-column compact tiles) — toggle in Settings → Appearance."),
-    WhatsNewItem("Smarter naming", "Next recording is MAX + 1 of the current prefix; empty library restarts at 1."),
-    WhatsNewItem("Persistent update", "Download survives closing Settings and process death — kept until Install; auto-deletes after install."),
-    WhatsNewItem("Shortcuts", "Start / Pause recording from launcher icon or hardware keys via Key Mapper."),
-    WhatsNewItem("Onboarding", "First-launch tour blocks until microphone permission is granted."),
-    WhatsNewItem("Settings buttons", "All 'Change' buttons use filled tonal style with animated shapes."),
-    WhatsNewItem("Universal APK", "New universal APK alongside per-ABI splits — installs on any device."),
-    WhatsNewItem("Recording names", "Custom prefix with auto-incrementing numbers."),
-    WhatsNewItem("Export folder", "Pick any folder via the system picker, or use phone / SD-card storage."),
-    WhatsNewItem("Faster startup", "No splash screen, no launch permission prompt — straight into your library."),
-    WhatsNewItem("Record", "One-tap recording with live waveform, pause and resume."),
-    WhatsNewItem("Enhance", "Clean audio hush and leveling, fully offline."),
-    WhatsNewItem("Transcribe", "Downloadable language models, searchable transcripts."),
-    WhatsNewItem("Personalize", "Theme seeds, dynamic color, storage folder choice.")
+    WhatsNewItem("Recording details", "See file location, size, date and duration from Playback."),
+    WhatsNewItem("Swipe tip", "A short bounce shows how swipe-to-dismiss works."),
+    WhatsNewItem("Inline playback", "Play right inside each card — no pop-up player."),
+    WhatsNewItem("App icons", "Pick Default, Outline Navy, Duo Teal or Solid Black."),
+    WhatsNewItem("Progress bar", "Choose a Slider, Linear or Wavy seek bar."),
+    WhatsNewItem("Save location", "Save new recordings straight to your picked folder."),
+    WhatsNewItem("File names", "Saved files now match their titles."),
+    WhatsNewItem("Trash cleanup", "Deleted files are removed from everywhere."),
+    WhatsNewItem("Transcribe offline", "Turn speech into text without internet."),
+    WhatsNewItem("Clean audio", "One-tap noise cleanup."),
+    WhatsNewItem("Update page", "The update button opens the update screen directly.")
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -117,8 +109,10 @@ fun WhatsNewSheet(
                         }
                         Text(
                             item.body,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

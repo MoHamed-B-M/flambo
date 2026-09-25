@@ -101,6 +101,7 @@ import com.flambo.recorder.audio.EnhanceStrength
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.stt.FileTranscription
 import com.flambo.recorder.stt.VoskModelManager
+import com.flambo.recorder.ui.components.PlaybackProgressBar
 import com.flambo.recorder.ui.components.StaticWaveform
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
@@ -169,6 +170,7 @@ fun DetailScreen(
     }
 
     val gestureEnabled by viewModel.gestureEnabled.collectAsState()
+    val progressStyle by viewModel.progressStyle.collectAsState()
     val scale = remember { Animatable(1f) }
     val corner = remember { Animatable(0f) }
     val alpha = remember { Animatable(1f) }
@@ -427,21 +429,17 @@ fun DetailScreen(
                             }
                     )
 
-                    Slider(
-                        value = progress,
+                    PlaybackProgressBar(
+                        progress = progress,
                         enabled = !fileMissing,
-                        onValueChange = { p ->
+                        style = progressStyle,
+                        onSeek = { p ->
                             if (isCurrentTrack) {
                                 val target = (p * duration).toLong()
                                 playback.seekTo(target)
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer {
-                                clip = true
-                                shape = RoundedCornerShape(12.dp)
-                            }
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(formatDuration(positionForUi), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -557,7 +555,8 @@ fun DetailScreen(
                 onDismiss = { viewModel.dismissEnhance() },
                 onShareEnhanced = { path -> shareAudio(path, "Share cleaned recording") },
                 onDeleteEnhanced = { viewModel.deleteEnhanced() },
-                fileMissing = fileMissing
+                fileMissing = fileMissing,
+                progressStyle = progressStyle
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -769,7 +768,8 @@ private fun EnhanceSection(
     onDismiss: () -> Unit,
     onShareEnhanced: (String) -> Unit,
     onDeleteEnhanced: () -> Unit,
-    fileMissing: Boolean = false
+    fileMissing: Boolean = false,
+    progressStyle: String = "slider"
 ) {
     when (enhanceUi) {
         is EnhanceUi.Working -> {
@@ -820,7 +820,7 @@ private fun EnhanceSection(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            CleanedPlayerCard(playback = playback, filePath = enhanceUi.path, onShare = onShareEnhanced)
+            CleanedPlayerCard(playback = playback, filePath = enhanceUi.path, onShare = onShareEnhanced, progressStyle = progressStyle)
         }
         is EnhanceUi.Error -> {
             Surface(
@@ -857,7 +857,7 @@ private fun EnhanceSection(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                CleanedPlayerCard(playback = playback, filePath = savedEnhancedPath, onShare = onShareEnhanced, onDelete = onDeleteEnhanced)
+                CleanedPlayerCard(playback = playback, filePath = savedEnhancedPath, onShare = onShareEnhanced, onDelete = onDeleteEnhanced, progressStyle = progressStyle)
             } else {
                 OutlinedButton(
                     onClick = onEnhance,
@@ -879,7 +879,8 @@ private fun CleanedPlayerCard(
     playback: com.flambo.recorder.playback.PlaybackController,
     filePath: String,
     onShare: (String) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    progressStyle: String = "slider"
 ) {
     val playbackState by playback.state.collectAsState()
     val isCurrent = playbackState.currentPath == filePath
@@ -921,20 +922,16 @@ private fun CleanedPlayerCard(
                         }
                 )
             }
-            androidx.compose.material3.Slider(
-                value = progress,
-                onValueChange = { p ->
+            PlaybackProgressBar(
+                progress = progress,
+                style = progressStyle,
+                onSeek = { p ->
                     if (isCurrent) {
                         val target = (p * duration).toLong()
                         playback.seekTo(target)
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        clip = true
-                        shape = RoundedCornerShape(12.dp)
-                    }
+                modifier = Modifier.fillMaxWidth()
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(com.flambo.recorder.domain.formatDuration(position), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

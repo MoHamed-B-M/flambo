@@ -56,6 +56,9 @@ class DetailViewModel(
     val gestureEnabled: StateFlow<Boolean> =
         prefs.gestureEnabledFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val progressStyle: StateFlow<String> =
+        prefs.progressStyleFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "slider")
+
     val languagePref: StateFlow<String> =
         prefs.sttLanguageFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 

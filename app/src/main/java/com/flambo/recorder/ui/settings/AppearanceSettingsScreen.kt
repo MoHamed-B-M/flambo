@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.AlertDialog
@@ -83,6 +84,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.PreferencesManager
+import com.flambo.recorder.ui.components.PlaybackProgressBar
+import com.flambo.recorder.ui.components.ProgressBarStyle
 import com.flambo.recorder.ui.settings.components.PreferenceSwitchItem
 import com.flambo.recorder.ui.settings.components.PreferenceValueItem
 import com.flambo.recorder.ui.settings.components.SectionHeader
@@ -111,11 +114,13 @@ fun AppearanceSettingsScreen(
     val colorSchemeStyle by prefs.colorSchemeFlow.collectAsState(initial = "TONAL_SPOT")
     val gestureEnabled by prefs.gestureEnabledFlow.collectAsState(initial = true)
     val appIcon by prefs.appIconFlow.collectAsState(initial = AppIconManager.ICON_DEFAULT)
+    val progressStyle by prefs.progressStyleFlow.collectAsState(initial = ProgressBarStyle.SLIDER)
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
     var showColorSchemeDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
+    var showProgressBarDialog by remember { mutableStateOf(false) }
 
     val scale = remember { Animatable(1f) }
     val corner = remember { Animatable(0f) }
@@ -274,6 +279,15 @@ fun AppearanceSettingsScreen(
                                 ColorSchemeStyle.TONAL_SPOT -> "Seed-tonal • Balanced"
                             },
                             onClick = { showColorSchemeDialog = true }
+                        )
+                    }
+                    item {
+                        PreferenceValueItem(
+                            icon = Icons.Filled.PlayArrow,
+                            title = "Progress bar",
+                            value = ProgressBarStyle.label(progressStyle),
+                            subtitle = "Playback seek bar style",
+                            onClick = { showProgressBarDialog = true }
                         )
                     }
                 }
@@ -610,6 +624,57 @@ fun AppearanceSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAppIconDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showProgressBarDialog) {
+        AlertDialog(
+            onDismissRequest = { showProgressBarDialog = false },
+            title = { Text("Progress bar", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Seek bar style used in Playback. Bars seek on tap.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    listOf(
+                        Triple(ProgressBarStyle.SLIDER, "Slider", "Default • draggable thumb"),
+                        Triple(ProgressBarStyle.LINEAR, "Linear", "Flat bar • tap to seek"),
+                        Triple(ProgressBarStyle.WAVY, "Wavy", "Expressive wave • tap to seek")
+                    ).forEachIndexed { index, (value, label, description) ->
+                        ToggleButton(
+                            checked = progressStyle == value,
+                            onCheckedChange = {
+                                scope.launch { prefs.setProgressStyle(value) }
+                                showProgressBarDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                2 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 8.dp, bottom = 8.dp)) {
+                                Text(label, style = MaterialTheme.typography.titleMedium)
+                                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                PlaybackProgressBar(
+                                    progress = 0.4f,
+                                    onSeek = {},
+                                    enabled = false,
+                                    style = value,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showProgressBarDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
             },
             shape = ShapeLargeIncreased
         )

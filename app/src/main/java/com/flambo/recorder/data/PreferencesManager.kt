@@ -44,6 +44,7 @@ class PreferencesManager(private val context: Context) {
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
         val APP_ICON = stringPreferencesKey("app_icon")
+        val PROGRESS_STYLE = stringPreferencesKey("progress_style")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -261,6 +262,17 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setAppIcon(id: String) {
         context.dataStore.edit { it[Keys.APP_ICON] = id }
+    }
+
+    val progressStyleFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.PROGRESS_STYLE] ?: "slider" }
+
+    suspend fun progressStyle(): String =
+        context.dataStore.data.map { it[Keys.PROGRESS_STYLE] ?: "slider" }.first()
+
+    suspend fun setProgressStyle(style: String) {
+        val valid = setOf("slider", "linear", "wavy")
+        context.dataStore.edit { it[Keys.PROGRESS_STYLE] = if (style in valid) style else "slider" }
     }
 
     companion object {

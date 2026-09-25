@@ -595,10 +595,16 @@ fun AppearanceSettingsScreen(
                             checked = appIcon == option.id,
                             onCheckedChange = {
                                 scope.launch {
-                                    runCatching {
+                                    val ok = runCatching {
                                         prefs.setAppIcon(option.id)
                                         AppIconManager.apply(context, option.id)
-                                    }
+                                    }.getOrDefault(false)
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        if (ok) "Launcher icon set to ${option.label} — restart your launcher if the old icon is still showing"
+                                        else "Couldn't switch icon — please try again",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
                                 }
                                 showAppIconDialog = false
                             },

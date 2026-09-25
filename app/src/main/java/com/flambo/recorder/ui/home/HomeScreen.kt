@@ -12,6 +12,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,8 +55,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBarScaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -75,6 +78,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.update.ReleaseNotes
@@ -179,6 +183,9 @@ fun HomeScreen(
     var groupText by remember { mutableStateOf("") }
 
     BackHandler(enabled = selectionMode) { selection = emptySet() }
+    var searchExpanded by remember { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    BackHandler(enabled = searchExpanded && !selectionMode) { searchExpanded = false }
     var whatsNewVersion by remember { mutableStateOf<String?>(null) }
     var installedVersion by remember { mutableStateOf<String?>(null) }
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
@@ -345,28 +352,100 @@ fun HomeScreen(
         containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
 
-        Column(
+        SearchBarScaffold(
+            topBar = {
+                DockedSearchBar(
+                    inputField = {
+                        SearchBarDefaults.inputField(
+                            query = uiState.query,
+                            onQueryChange = viewModel::onQueryChange,
+                            onSearch = {
+                                keyboard?.hide()
+                                searchExpanded = false
+                            },
+                            expanded = searchExpanded,
+                            onExpandedChange = { searchExpanded = it },
+                            placeholder = { Text("Search recordings") },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                            trailingIcon = {
+                                if (uiState.query.isNotEmpty()) {
+                                    IconButton(onClick = viewModel::clearQuery) {
+                                        Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                    }
+                                }
+                            }
+                        )
+                    },
+                    expanded = searchExpanded,
+                    onExpandedChange = { searchExpanded = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp)
+                ) {
+                    if (uiState.query.isBlank()) {
+                        Text(
+                            "Type to search your recordings",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    } else if (uiState.recordings.isEmpty()) {
+                        Text(
+                            "No recordings match",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    } else {
+                        uiState.recordings.take(8).forEach { rec ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        searchExpanded = false
+                                        keyboard?.hide()
+                                        onOpenDetail(rec.id)
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Search,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = rec.title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${formatDuration(rec.durationMs)} • ${formatRelativeTime(rec.createdAt)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+        ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
-
-            androidx.compose.material3.OutlinedTextField(
-                value = uiState.query,
-                onValueChange = viewModel::onQueryChange,
-                placeholder = { Text("Search recordings") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (uiState.query.isNotEmpty()) {
-                        TextButton(onClick = viewModel::clearQuery) { Text("Clear") }
-                    }
-                },
-                shape = ShapeFull,
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
 
             if (tipsEnabled && !recorderState.isRecording) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]

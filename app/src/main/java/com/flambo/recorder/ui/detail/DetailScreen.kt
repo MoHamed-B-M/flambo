@@ -902,26 +902,6 @@ private fun CleanedPlayerCard(
                     TextButton(onClick = onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge) }
                 }
             }
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .graphicsLayer {
-                        clip = true
-                        shape = RoundedCornerShape(16.dp)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.material3.LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer {
-                            clip = true
-                            shape = RoundedCornerShape(12.dp)
-                        }
-                )
-            }
             PlaybackProgressBar(
                 progress = progress,
                 style = progressStyle,

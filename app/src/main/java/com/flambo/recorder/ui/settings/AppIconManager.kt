@@ -16,6 +16,7 @@ object AppIconManager {
     const val ICON_DEFAULT = "default"
     const val ICON_OUTLINE = "outline"
     const val ICON_DUO = "duo"
+    const val ICON_SOLID = "solid"
 
     data class Option(
         val id: String,
@@ -43,6 +44,12 @@ object AppIconManager {
             "Duo Teal",
             "Filled mic • black and teal on pink",
             com.flambo.recorder.R.drawable.app_icon_preview_duo
+        ),
+        Option(
+            ICON_SOLID,
+            "Solid Black",
+            "Classic mic • solid black on pink",
+            com.flambo.recorder.R.drawable.app_icon_preview_solid
         )
     )
 
@@ -57,6 +64,9 @@ object AppIconManager {
         if (pm.getComponentEnabledSetting(ComponentName(pkg, "$pkg.LauncherIconDuo")) ==
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         ) return ICON_DUO
+        if (pm.getComponentEnabledSetting(ComponentName(pkg, "$pkg.LauncherIconSolid")) ==
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        ) return ICON_SOLID
         return ICON_DEFAULT
     }
 
@@ -67,6 +77,7 @@ object AppIconManager {
         val pkg = context.packageName
         setAlias(pm, pkg, "LauncherIconOutline", id == ICON_OUTLINE)
         setAlias(pm, pkg, "LauncherIconDuo", id == ICON_DUO)
+        setAlias(pm, pkg, "LauncherIconSolid", id == ICON_SOLID)
         return true
     }
 

@@ -30,10 +30,11 @@
             android:label="@string/app_name"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Flambo">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            <!-- No LAUNCHER filter here on purpose: the launcher entry lives
+                 on exactly one of the activity-aliases below, so switching
+                 icons replaces the icon instead of adding a second app.
+                 MainActivity stays enabled for explicit intents (shortcuts,
+                 Key Mapper / Tasker, automation). -->
             <!-- Fired by launcher shortcuts and by automation apps
                  (e.g. Key Mapper hardware-key bindings). -->
             <intent-filter>
@@ -49,9 +50,27 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <!-- Alternate launcher icons (Appearance → App icon). Disabled by
-             default; AppIconManager toggles exactly one of them on. Shortcuts
-             metadata is repeated so long-press actions work on every icon. -->
+        <!-- Launcher icons (Appearance → App icon). Exactly one alias is
+             enabled at a time — AppIconManager switches between them, so the
+             launcher shows a single Flambo icon. Shortcuts metadata is
+             repeated so long-press actions work on every icon. -->
+        <activity-alias
+            android:name=".LauncherIconDefault"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
         <activity-alias
             android:name=".LauncherIconOutline"
             android:targetActivity=".MainActivity"

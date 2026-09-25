@@ -9,7 +9,10 @@ import android.content.pm.PackageManager
  *
  * Android has no API to recolor a launcher icon at runtime, so each style
  * is a pre-rendered adaptive-icon set toggled with [PackageManager].
- * `MainActivity` itself always stays enabled; exactly one alias is on.
+ * `MainActivity` holds no LAUNCHER filter — exactly one alias is enabled,
+ * so switching replaces the icon instead of adding a second app entry.
+ * `MainActivity` itself always stays enabled for explicit intents
+ * (shortcuts, Key Mapper / Tasker).
  */
 object AppIconManager {
 
@@ -57,18 +60,20 @@ object AppIconManager {
 
     fun isValid(id: String): Boolean = options().any { it.id == id }
 
+    private fun isAliasOn(pm: PackageManager, pkg: String, alias: String): Boolean {
+        val state = pm.getComponentEnabledSetting(ComponentName(pkg, "$pkg.$alias"))
+        if (state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return true
+        if (state == PackageManager.COMPONENT_ENABLED_STATE_DISABLED) return false
+        // COMPONENT_ENABLED_STATE_DEFAULT: fall back to the manifest value.
+        return alias == "LauncherIconDefault"
+    }
+
     fun current(context: Context): String {
         val pm = context.packageManager
         val pkg = context.packageName
-        if (pm.getComponentEnabledSetting(ComponentName(pkg, "$pkg.LauncherIconOutline")) ==
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        ) return ICON_OUTLINE
-        if (pm.getComponentEnabledSetting(ComponentName(pkg, "$pkg.LauncherIconDuo")) ==
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        ) return ICON_DUO
-        if (pm.getComponentEnabledSetting(ComponentName(pkg, "$pkg.LauncherIconSolid")) ==
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        ) return ICON_SOLID
+        if (isAliasOn(pm, pkg, "LauncherIconOutline")) return ICON_OUTLINE
+        if (isAliasOn(pm, pkg, "LauncherIconDuo")) return ICON_DUO
+        if (isAliasOn(pm, pkg, "LauncherIconSolid")) return ICON_SOLID
         return ICON_DEFAULT
     }
 
@@ -78,20 +83,35 @@ object AppIconManager {
         return try {
             val pm = context.packageManager
             val pkg = context.packageName
-            setAlias(pm, pkg, "LauncherIconOutline", id == ICON_OUTLINE)
-            setAlias(pm, pkg, "LauncherIconDuo", id == ICON_DUO)
-            setAlias(pm, pkg, "LauncherIconSolid", id == ICON_SOLID)
+            // Enable the target first so the launcher never briefly shows zero icons.
+            setAlias(pm, pkg, targetAlias(id), true)
+            for (alias in ALL_ALIASES) {
+                if (alias != targetAlias(id)) setAlias(pm, pkg, alias, false)
+            }
             true
         } catch (_: Exception) {
             false
         }
     }
 
+    private fun targetAlias(id: String): String = when (id) {
+        ICON_OUTLINE -> "LauncherIconOutline"
+        ICON_DUO -> "LauncherIconDuo"
+        ICON_SOLID -> "LauncherIconSolid"
+        else -> "LauncherIconDefault"
+    }
+
+    private val ALL_ALIASES = listOf(
+        "LauncherIconDefault",
+        "LauncherIconOutline",
+        "LauncherIconDuo",
+        "LauncherIconSolid"
+    )
+
     private fun setAlias(pm: PackageManager, pkg: String, alias: String, enabled: Boolean) {
         val cn = ComponentName(pkg, "$pkg.$alias")
         // Skip no-op writes: every setComponentEnabledSetting call rebroadcasts
         // a package-changed event, which churns launchers for no reason.
-        // Manifest default for all aliases is disabled, so DEFAULT counts as off.
         val want = if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
         if (pm.getComponentEnabledSetting(cn) == want) return

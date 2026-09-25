@@ -55,11 +55,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SearchBarScaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -352,37 +357,52 @@ fun HomeScreen(
         containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
 
-        SearchBarScaffold(
-            topBar = {
-                DockedSearchBar(
-                    inputField = {
-                        SearchBarDefaults.inputField(
-                            query = uiState.query,
-                            onQueryChange = viewModel::onQueryChange,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            DockedSearchBar(
+                inputField = {
+                    TextField(
+                        value = uiState.query,
+                        onValueChange = viewModel::onQueryChange,
+                        placeholder = { Text("Search recordings") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (uiState.query.isNotEmpty()) {
+                                IconButton(onClick = viewModel::clearQuery) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
                             onSearch = {
                                 keyboard?.hide()
                                 searchExpanded = false
-                            },
-                            expanded = searchExpanded,
-                            onExpandedChange = { searchExpanded = it },
-                            placeholder = { Text("Search recordings") },
-                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                            trailingIcon = {
-                                if (uiState.query.isNotEmpty()) {
-                                    IconButton(onClick = viewModel::clearQuery) {
-                                        Icon(Icons.Filled.Close, contentDescription = "Clear")
-                                    }
-                                }
                             }
-                        )
-                    },
-                    expanded = searchExpanded,
-                    onExpandedChange = { searchExpanded = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp)
-                ) {
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { if (it.isFocused) searchExpanded = true }
+                    )
+                },
+                expanded = searchExpanded,
+                onExpandedChange = { searchExpanded = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp)
+            ) {
                     if (uiState.query.isBlank()) {
                         Text(
                             "Type to search your recordings",
@@ -436,16 +456,7 @@ fun HomeScreen(
                         }
                     }
                 }
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
+            }
 
             if (tipsEnabled && !recorderState.isRecording) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]

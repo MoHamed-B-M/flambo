@@ -217,6 +217,13 @@ fun HomeScreen(
         if (r == SnackbarResult.ActionPerformed) onOpenSettings()
     }
 
+    val playbackError by playback.error.collectAsState()
+    LaunchedEffect(playbackError) {
+        val err = playbackError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(err, withDismissAction = true)
+        playback.clearError()
+    }
+
     LaunchedEffect(uiState.lastDeleted) {
         val deleted = uiState.lastDeleted ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
@@ -448,6 +455,7 @@ fun HomeScreen(
                                 recording = rec,
                                 playback = playback,
                                 selected = rec.id in selection,
+                                fileMissing = rec.id in uiState.missingIds,
                                 onClick = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
@@ -469,6 +477,7 @@ fun HomeScreen(
                             RecordingCard(
                                 recording = rec,
                                 playback = playback,
+                                fileMissing = rec.id in uiState.missingIds,
                                 onClick = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id

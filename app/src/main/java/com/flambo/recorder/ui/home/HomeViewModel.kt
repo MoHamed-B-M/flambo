@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -20,7 +21,9 @@ data class HomeUiState(
     val isSearchActive: Boolean = false,
     val showTrash: Boolean = false,
     val trash: List<Recording> = emptyList(),
-    val lastDeleted: Recording? = null
+    val lastDeleted: Recording? = null,
+    /** IDs whose audio file is gone from disk/SAF (e.g. deleted in a file manager). */
+    val missingIds: Set<Long> = emptySet()
 )
 
 class HomeViewModel(
@@ -37,20 +40,27 @@ class HomeViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val recordingsFlow = queryFlow.flatMapLatest { q -> repository.search(q) }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val missingIdsFlow = recordingsFlow
+        .mapLatest { list -> repository.findMissingIds(list) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
     val uiState: StateFlow<HomeUiState> = combine(
         recordingsFlow,
         queryFlow,
         showTrashFlow,
         lastDeletedFlow,
-        repository.observeTrash()
-    ) { recordings, query, showTrash, lastDeleted, trash ->
+        repository.observeTrash(),
+        missingIdsFlow
+    ) { recordings, query, showTrash, lastDeleted, trash, missingIds ->
         HomeUiState(
             recordings = recordings,
             query = query,
             isSearchActive = query.isNotEmpty(),
             showTrash = showTrash,
             trash = trash,
-            lastDeleted = lastDeleted
+            lastDeleted = lastDeleted,
+            missingIds = missingIds
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

@@ -40,8 +40,10 @@ class PreferencesManager(private val context: Context) {
         val RECORDING_PREFIX = stringPreferencesKey("recording_prefix")
         val HOME_LAYOUT = stringPreferencesKey("home_layout")
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
+        val SAVE_TO_CUSTOM_FOLDER = booleanPreferencesKey("save_to_custom_folder")
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
+        val APP_ICON = stringPreferencesKey("app_icon")
     }
 
     val qualityFlow: Flow<RecordingQuality> =
@@ -226,6 +228,16 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it.remove(Keys.CUSTOM_FOLDER_URI) }
     }
 
+    val saveToCustomFolderFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.SAVE_TO_CUSTOM_FOLDER] ?: false }
+
+    suspend fun saveToCustomFolder(): Boolean =
+        context.dataStore.data.map { it[Keys.SAVE_TO_CUSTOM_FOLDER] ?: false }.first()
+
+    suspend fun setSaveToCustomFolder(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SAVE_TO_CUSTOM_FOLDER] = enabled }
+    }
+
     val colorSchemeFlow: Flow<String> =
         context.dataStore.data.map { it[Keys.COLOR_SCHEME] ?: "TONAL_SPOT" }
 
@@ -239,6 +251,16 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setGestureEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.GESTURE_ENABLED] = enabled }
+    }
+
+    val appIconFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.APP_ICON] ?: "default" }
+
+    suspend fun appIcon(): String =
+        context.dataStore.data.map { it[Keys.APP_ICON] ?: "default" }.first()
+
+    suspend fun setAppIcon(id: String) {
+        context.dataStore.edit { it[Keys.APP_ICON] = id }
     }
 
     companion object {

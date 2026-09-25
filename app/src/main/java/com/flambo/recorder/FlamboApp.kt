@@ -7,6 +7,7 @@ import com.flambo.recorder.data.RecordingRepository
 import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.record.RecordingController
 import com.flambo.recorder.stt.TranscriptionManager
+import com.flambo.recorder.ui.settings.AppIconManager
 import com.flambo.recorder.update.ApkInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,7 @@ class FlamboApp : Application() {
     @Volatile var storageVolumeId: String = StorageVolumes.ID_DEFAULT
     @Volatile var recordingPrefix: String = "Recording"
     @Volatile var customFolderUri: String = ""
+    @Volatile var saveToCustomFolder: Boolean = false
 
     fun recordingsDir(): File = StorageVolumes.resolveDir(this, storageVolumeId)
 
@@ -44,6 +46,7 @@ class FlamboApp : Application() {
             storageVolumeId = runCatching { prefs.recordingsVolume() }.getOrDefault(StorageVolumes.ID_DEFAULT)
             recordingPrefix = runCatching { prefs.recordingPrefix() }.getOrDefault("Recording")
             customFolderUri = runCatching { prefs.customFolderUri() }.getOrDefault("")
+            saveToCustomFolder = runCatching { prefs.saveToCustomFolder() }.getOrDefault(false)
         }
 
         appScope.launch {
@@ -54,6 +57,11 @@ class FlamboApp : Application() {
         // Auto-purge trashed recordings older than 7 days (deletes both primary and SAF copies)
         appScope.launch {
             runCatching { repository.purgeOldTrash(7) }
+        }
+        // Re-apply the chosen launcher icon (component state persists, this guards fresh installs).
+        appScope.launch {
+            val icon = runCatching { prefs.appIcon() }.getOrDefault(AppIconManager.ICON_DEFAULT)
+            runCatching { AppIconManager.apply(this@FlamboApp, icon) }
         }
     }
 }

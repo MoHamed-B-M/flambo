@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,7 +76,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import androidx.compose.ui.unit.dp
@@ -107,10 +110,12 @@ fun AppearanceSettingsScreen(
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
     val colorSchemeStyle by prefs.colorSchemeFlow.collectAsState(initial = "TONAL_SPOT")
     val gestureEnabled by prefs.gestureEnabledFlow.collectAsState(initial = true)
+    val appIcon by prefs.appIconFlow.collectAsState(initial = AppIconManager.ICON_DEFAULT)
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
     var showColorSchemeDialog by remember { mutableStateOf(false) }
+    var showAppIconDialog by remember { mutableStateOf(false) }
 
     val scale = remember { Animatable(1f) }
     val corner = remember { Animatable(0f) }
@@ -283,6 +288,23 @@ fun AppearanceSettingsScreen(
                             title = "Library layout",
                             value = if (homeLayout == "grid") "Grid • compact tap-to-open cards" else "List • full rows with actions",
                             onClick = { showLayoutDialog = true }
+                        )
+                    }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionHeader(title = "App icon")
+                SegmentedPreferenceGroup {
+                    item {
+                        val current = AppIconManager.options().firstOrNull { it.id == appIcon }
+                            ?: AppIconManager.options().first()
+                        PreferenceValueItem(
+                            icon = Icons.Filled.Palette,
+                            title = "Launcher icon",
+                            value = current.label,
+                            subtitle = "Color and style • launcher refreshes in a moment",
+                            onClick = { showAppIconDialog = true }
                         )
                     }
                 }
@@ -537,6 +559,57 @@ fun AppearanceSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLayoutDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showAppIconDialog) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { showAppIconDialog = false },
+            title = { Text("Launcher icon", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Pick a color and style. Your launcher refreshes in a moment.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    AppIconManager.options().forEachIndexed { index, option ->
+                        ToggleButton(
+                            checked = appIcon == option.id,
+                            onCheckedChange = {
+                                scope.launch {
+                                    prefs.setAppIcon(option.id)
+                                    AppIconManager.apply(context, option.id)
+                                }
+                                showAppIconDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                AppIconManager.options().lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Image(
+                                painter = painterResource(id = option.previewRes),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
+                                Text(option.label, style = MaterialTheme.typography.titleMedium)
+                                Text(option.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAppIconDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
             },
             shape = ShapeLargeIncreased
         )

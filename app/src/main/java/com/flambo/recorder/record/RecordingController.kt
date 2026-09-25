@@ -246,32 +246,13 @@ class RecordingController(
             stopForegroundService()
             if (file != null && file.exists()) {
                 scope.launch(Dispatchers.IO) {
-                    val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
-                    val title = generateTitle()
-                    var actualFile = file
-                    try {
-                        val safeName = sanitizeFileName(title)
-                        val target = getUniqueFile(file.parentFile ?: repository.recordingsDir(), safeName, file.extension)
-                        if (target.absolutePath != file.absolutePath) {
-                            actualFile = if (file.renameTo(target)) target else {
-                                file.copyTo(target, overwrite = true); runCatching { file.delete() }; target
-                            }
-                        }
-                    } catch (_: Exception) {}
-                    val rec = Recording(
-                        title = title,
-                        filePath = actualFile.absolutePath,
+                    finalizeRecording(
+                        tempFile = file,
+                        peaks = peaks,
                         durationMs = res.durationMs,
-                        createdAt = System.currentTimeMillis(),
-                        amplitudePeaks = peaksStr,
-                        quality = s.quality.name
+                        qualityName = s.quality.name,
+                        onSaved = onSaved
                     )
-                    val id = repository.insert(rec)
-
-                    copyToCustomFolderIfNeeded(actualFile)
-                    withContext(Dispatchers.Main) {
-                        onSaved?.invoke(rec.copy(id = id))
-                    }
                 }
             }
             return
@@ -295,31 +276,13 @@ class RecordingController(
 
         if (file != null && file.exists() && file.length() > 0) {
             scope.launch(Dispatchers.IO) {
-                val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
-                val title = generateTitle()
-                var actualFile = file
-                try {
-                    val safeName = sanitizeFileName(title)
-                    val target = getUniqueFile(file.parentFile ?: repository.recordingsDir(), safeName, file.extension)
-                    if (target.absolutePath != file.absolutePath) {
-                        actualFile = if (file.renameTo(target)) target else {
-                            file.copyTo(target, overwrite = true); runCatching { file.delete() }; target
-                        }
-                    }
-                } catch (_: Exception) {}
-                val rec = Recording(
-                    title = title,
-                    filePath = actualFile.absolutePath,
+                finalizeRecording(
+                    tempFile = file,
+                    peaks = peaks,
                     durationMs = elapsed,
-                    createdAt = System.currentTimeMillis(),
-                    amplitudePeaks = peaksStr,
-                    quality = s.quality.name
+                    qualityName = s.quality.name,
+                    onSaved = onSaved
                 )
-                val id = repository.insert(rec)
-                copyToCustomFolderIfNeeded(actualFile)
-                withContext(Dispatchers.Main) {
-                    onSaved?.invoke(rec.copy(id = id))
-                }
             }
         } else {
             try { file?.delete() } catch (_: Exception) {}
@@ -436,6 +399,74 @@ class RecordingController(
         var i = 2
         while (File(dir, "$baseName ($i)$safeExt").exists()) i++
         return File(dir, "$baseName ($i)$safeExt")
+    }
+
+    /**
+     * Renames the temp take to the generated title, then either stores it in
+     * the picked system folder directly (single source of truth) or keeps it
+     * in the app folder plus an export copy — never both silently.
+     */
+    private suspend fun finalizeRecording(
+        tempFile: File,
+        peaks: List<Float>,
+        durationMs: Long,
+        qualityName: String,
+        onSaved: ((Recording) -> Unit)?
+    ) {
+        val peaksStr = peaks.takeLast(120).joinToString(",") { String.format("%.3f", it) }
+        val title = generateTitle()
+        var actualFile = tempFile
+        try {
+            val safeName = sanitizeFileName(title)
+            val target = getUniqueFile(tempFile.parentFile ?: repository.recordingsDir(), safeName, tempFile.extension)
+            if (target.absolutePath != tempFile.absolutePath) {
+                actualFile = if (tempFile.renameTo(target)) target else {
+                    tempFile.copyTo(target, overwrite = true); runCatching { tempFile.delete() }; target
+                }
+            }
+        } catch (_: Exception) {}
+        var finalPath = actualFile.absolutePath
+        // System folder as the save location: move the take into the picked
+        // tree so the file manager and the library show the same file.
+        val movedToTree = moveToSaveFolderIfEnabled(actualFile)
+        if (movedToTree != null) finalPath = movedToTree
+        val rec = Recording(
+            title = title,
+            filePath = finalPath,
+            durationMs = durationMs,
+            createdAt = System.currentTimeMillis(),
+            amplitudePeaks = peaksStr,
+            quality = qualityName
+        )
+        val id = repository.insert(rec)
+        if (!com.flambo.recorder.data.AudioFileStore.isContentUri(finalPath)) {
+            copyToCustomFolderIfNeeded(actualFile)
+        }
+        withContext(Dispatchers.Main) {
+            onSaved?.invoke(rec.copy(id = id))
+        }
+    }
+
+    /** Returns the new document URI string when the take was moved into the picked folder. */
+    private suspend fun moveToSaveFolderIfEnabled(file: File): String? {
+        return try {
+            val app = appContext as? FlamboApp ?: return null
+            val enabled = try { app.prefs.saveToCustomFolder() } catch (_: Exception) { app.saveToCustomFolder }
+            if (!enabled) return null
+            val uri = try { app.prefs.customFolderUri() } catch (_: Exception) { app.customFolderUri }
+            if (uri.isBlank()) return null
+            if (!SafFolderHelper.isTreeUriValid(appContext, uri)) return null
+            val mime = when (file.extension.lowercase()) {
+                "wav" -> "audio/wav"
+                "m4a" -> "audio/mp4"
+                else -> "audio/*"
+            }
+            val docUri = com.flambo.recorder.data.AudioFileStore.copyFileToTree(appContext, uri, file, mime) ?: return null
+            runCatching { file.delete() }
+            docUri.toString()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private suspend fun copyToCustomFolderIfNeeded(file: File) {

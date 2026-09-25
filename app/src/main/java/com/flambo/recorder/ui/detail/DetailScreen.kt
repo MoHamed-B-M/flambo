@@ -106,8 +106,6 @@ import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.data.StorageVolumes
 import android.content.Intent
-import androidx.core.content.FileProvider
-import java.io.File
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -130,9 +128,7 @@ fun DetailScreen(
 
     fun shareAudio(path: String, chooserTitle: String) {
         try {
-            val file = File(path)
-            if (!file.exists()) return
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            val uri = com.flambo.recorder.data.AudioFileStore.playableUri(context, path) ?: return
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "audio/*"
                 putExtra(Intent.EXTRA_STREAM, uri)
@@ -274,7 +270,7 @@ fun DetailScreen(
                                 tint = if (rec.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = { shareAudio(rec.filePath, "Share recording") }) {
+                        IconButton(onClick = { shareAudio(rec.filePath, "Share recording") }, enabled = !fileMissing) {
                             Icon(Icons.Filled.Share, contentDescription = "Share")
                         }
                         IconButton(onClick = { showDeleteConfirm = true }) {
@@ -294,10 +290,29 @@ fun DetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            val fileMissing = remember(rec.filePath) {
+                !com.flambo.recorder.data.AudioFileStore.exists(context, rec.filePath)
+            }
+            if (fileMissing) {
+                Surface(
+                    shape = ShapeLargeIncreased,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Audio file not found", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Text(
+                            "This recording was deleted outside the app (e.g. in a file manager). Playback, sharing, transcription and enhancement are unavailable — delete this entry or restore the file to fix it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
             AnimatedVisibility(visible = showDetailsCard) {
-                val detailsFile = remember(rec.filePath) { File(rec.filePath) }
-                val fileSize = remember(detailsFile) { if (detailsFile.exists()) detailsFile.length() else 0L }
-                val fileDir = remember(detailsFile) { detailsFile.parent ?: "—" }
+                val detailsName = remember(rec.filePath) { com.flambo.recorder.data.AudioFileStore.displayName(context, rec.filePath).ifBlank { "—" } }
+                val fileSize = remember(rec.filePath) { com.flambo.recorder.data.AudioFileStore.length(context, rec.filePath) }
+                val fileDir = remember(rec.filePath) { com.flambo.recorder.data.AudioFileStore.locationLabel(context, rec.filePath).ifBlank { "—" } }
                 Surface(
                     shape = ShapeLargeIncreased,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -319,7 +334,7 @@ fun DetailScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(fileDir, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-                                Text(detailsFile.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                Text(detailsName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -414,6 +429,7 @@ fun DetailScreen(
 
                     Slider(
                         value = progress,
+                        enabled = !fileMissing,
                         onValueChange = { p ->
                             if (isCurrentTrack) {
                                 val target = (p * duration).toLong()
@@ -439,6 +455,7 @@ fun DetailScreen(
                     ) {
                         FilledTonalIconButton(
                             onClick = { if (isCurrentTrack) playback.skip(-5000) },
+                            enabled = isCurrentTrack && !fileMissing,
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {
@@ -447,6 +464,7 @@ fun DetailScreen(
 
                         androidx.compose.material3.FloatingActionButton(
                             onClick = {
+                                if (fileMissing) return@FloatingActionButton
                                 if (isThisPlaying) playback.pause()
                                 else playback.play(rec.filePath)
                             },
@@ -464,6 +482,7 @@ fun DetailScreen(
 
                         FilledTonalIconButton(
                             onClick = { if (isCurrentTrack) playback.skip(10000) },
+                            enabled = isCurrentTrack && !fileMissing,
                             modifier = Modifier.size(48.dp),
                             shape = ShapeFull
                         ) {
@@ -723,6 +742,7 @@ private fun TranscriptSection(
             } else {
                 OutlinedButton(
                     onClick = onTranscribe,
+                    enabled = !fileMissing,
                     shape = ShapeFull,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -837,6 +857,7 @@ private fun EnhanceSection(
             } else {
                 OutlinedButton(
                     onClick = onEnhance,
+                    enabled = !fileMissing,
                     shape = ShapeFull,
                     modifier = Modifier.fillMaxWidth()
                 ) {

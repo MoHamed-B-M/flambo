@@ -202,7 +202,7 @@ fun FlamboNavGraph(
                 object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        return DetailViewModel(app.repository, id, app.transcription, app.prefs) as T
+                        return DetailViewModel(app.repository, id, app.transcription, app.prefs, app.applicationContext) as T
                     }
                 }
             }

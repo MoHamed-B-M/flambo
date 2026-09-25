@@ -2,8 +2,10 @@ package com.flambo.recorder.playback
 
 import android.content.Context
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.flambo.recorder.data.AudioFileStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,7 +34,18 @@ class PlaybackController(private val context: Context) {
     private var currentPath: String? = null
     private val scope = CoroutineScope(Dispatchers.Main)
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
+    fun clearError() { _error.value = null }
+
     fun play(path: String) {
+        if (path.isBlank()) return
+        if (!AudioFileStore.exists(context, path)) {
+            _error.value = "Audio file not found — it may have been deleted outside the app."
+            return
+        }
+        clearError()
 
         if (currentPath == path && player != null) {
             val p = player!!
@@ -68,6 +81,12 @@ class PlaybackController(private val context: Context) {
                     _state.value = _state.value.copy(isPlaying = false, positionMs = _state.value.durationMs, currentPath = currentPath)
                     ticker?.cancel()
                 }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                _error.value = "Couldn't play this recording — the audio file may be missing or damaged."
+                ticker?.cancel()
+                _state.value = _state.value.copy(isPlaying = false)
             }
         })
         startTicker()
@@ -131,12 +150,14 @@ class PlaybackController(private val context: Context) {
             while (isActive) {
                 val p = player
                 if (p != null) {
-                    _state.value = _state.value.copy(
+                    val next = _state.value.copy(
                         positionMs = p.currentPosition.coerceAtLeast(0),
                         durationMs = p.duration.coerceAtLeast(0).takeIf { it != androidx.media3.common.C.TIME_UNSET } ?: _state.value.durationMs,
                         isPlaying = p.isPlaying,
                         currentPath = currentPath
                     )
+                    // Emit only on change: a paused player otherwise recomposes every tick.
+                    if (next != _state.value) _state.value = next
                 }
                 delay(120)
             }

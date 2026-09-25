@@ -60,7 +60,8 @@ fun RecordingCard(
     onRename: () -> Unit,
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fileMissing: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val playbackState by playback.state.collectAsState()
@@ -140,11 +141,19 @@ fun RecordingCard(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = displayedDuration,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (fileMissing) {
+                        Text(
+                            text = "File missing",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        Text(
+                            text = displayedDuration,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Text("•", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                     Text(
                         text = formatRelativeTime(recording.createdAt),
@@ -244,7 +253,8 @@ fun RecordingGridTile(
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fileMissing: Boolean = false
 ) {
     val playbackState by playback.state.collectAsState()
     val isCurrent = playbackState.currentPath == recording.filePath
@@ -317,9 +327,9 @@ fun RecordingGridTile(
                 "${formatDuration(playbackState.positionMs)} / ${formatDuration(playbackState.durationMs)}"
             } else formatDuration(recording.durationMs)
             Text(
-                text = "$gridDuration • ${formatRelativeTime(recording.createdAt)}",
+                text = if (fileMissing) "File missing" else "$gridDuration • ${formatRelativeTime(recording.createdAt)}",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (fileMissing) MaterialTheme.colorScheme.error else if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

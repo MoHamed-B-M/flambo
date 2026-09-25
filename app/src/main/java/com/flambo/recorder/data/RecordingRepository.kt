@@ -60,6 +60,8 @@ class RecordingRepository(
         var moved = 0
         ids.forEach { id ->
             val rec = getById(id) ?: return@forEach
+            // SAF-hosted recordings (content://) can't move via File APIs; count them as skipped.
+            if (AudioFileStore.isContentUri(rec.filePath)) return@forEach
             val newMain = moveFile(File(rec.filePath), targetDir) ?: return@forEach
             var newEnhanced = rec.enhancedPath
             if (newEnhanced.isNotBlank()) {
@@ -108,17 +110,31 @@ class RecordingRepository(
         } catch (_: Exception) {}
     }
 
+    private fun deleteAudio(path: String) {
+        val ctx = appContext
+        try {
+            if (ctx != null) AudioFileStore.delete(ctx, path)
+            else if (path.isNotBlank() && !AudioFileStore.isContentUri(path)) {
+                File(path).takeIf { it.exists() }?.delete()
+            }
+        } catch (_: Exception) {}
+    }
+
     suspend fun deletePermanently(id: Long) = withContext(Dispatchers.IO) {
         val rec = getById(id) ?: return@withContext
-        // Delete primary files
-        try { File(rec.filePath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
-        try { File(rec.enhancedPath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
-        // Delete SAF copies if custom folder set
+        // Delete primary files (File or SAF document)
+        deleteAudio(rec.filePath)
+        deleteAudio(rec.enhancedPath)
+        // Delete SAF export-copies if custom folder set (primaries are already gone above).
         try {
-            val name = File(rec.filePath).name
-            if (name.isNotBlank()) deleteSafCopy(name)
-            val enhName = File(rec.enhancedPath).name
-            if (enhName.isNotBlank() && enhName != name) deleteSafCopy(enhName)
+            if (!AudioFileStore.isContentUri(rec.filePath)) {
+                val name = File(rec.filePath).name
+                if (name.isNotBlank()) deleteSafCopy(name)
+            }
+            if (!AudioFileStore.isContentUri(rec.enhancedPath)) {
+                val enhName = File(rec.enhancedPath).name
+                if (enhName.isNotBlank()) deleteSafCopy(enhName)
+            }
         } catch (_: Exception) {}
         dao.deletePermanently(id)
     }
@@ -136,10 +152,12 @@ class RecordingRepository(
 
     suspend fun clearEnhanced(id: Long) = withContext(Dispatchers.IO) {
         getById(id)?.let {
-            try { File(it.enhancedPath).takeIf { f -> f.exists() }?.delete() } catch (_: Exception) {}
+            deleteAudio(it.enhancedPath)
             try {
-                val enhName = File(it.enhancedPath).name
-                if (enhName.isNotBlank()) deleteSafCopy(enhName)
+                if (!AudioFileStore.isContentUri(it.enhancedPath)) {
+                    val enhName = File(it.enhancedPath).name
+                    if (enhName.isNotBlank()) deleteSafCopy(enhName)
+                }
             } catch (_: Exception) {}
         }
         dao.updateEnhancedPath(id, "")
@@ -163,14 +181,24 @@ class RecordingRepository(
         val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
         val old = dao.getTrash().filter { (it.trashedAt ?: 0L) < cutoff }
         old.forEach { rec ->
-            try { File(rec.filePath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
-            try { File(rec.enhancedPath).takeIf { it.exists() }?.delete() } catch (_: Exception) {}
+            deleteAudio(rec.filePath)
+            deleteAudio(rec.enhancedPath)
             try {
-                val name = File(rec.filePath).name
-                if (name.isNotBlank()) deleteSafCopy(name)
+                if (!AudioFileStore.isContentUri(rec.filePath)) {
+                    val name = File(rec.filePath).name
+                    if (name.isNotBlank()) deleteSafCopy(name)
+                }
             } catch (_: Exception) {}
         }
         dao.purgeOldTrash(cutoff)
+    }
+
+    /** IDs whose primary audio is gone from both disk and SAF (e.g. deleted in a file manager). */
+    suspend fun findMissingIds(recordings: List<Recording>): Set<Long> = withContext(Dispatchers.IO) {
+        val ctx = appContext ?: return@withContext recordings
+            .filter { it.filePath.isNotBlank() && !File(it.filePath).exists() }
+            .map { it.id }.toSet()
+        recordings.filter { !AudioFileStore.exists(ctx, it.filePath) }.map { it.id }.toSet()
     }
 
     fun recordingsDir(): File = dirProvider().apply { if (!exists()) runCatching { mkdirs() } }

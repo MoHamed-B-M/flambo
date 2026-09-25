@@ -543,7 +543,8 @@ fun DetailScreen(
                 },
                 onEdit = { text -> showTranscriptEditor = text },
                 onSave = { text -> viewModel.saveTranscript(text) },
-                onClearSaved = { viewModel.clearSavedTranscript() }
+                onClearSaved = { viewModel.clearSavedTranscript() },
+                fileMissing = fileMissing
             )
 
             EnhanceSection(
@@ -555,7 +556,8 @@ fun DetailScreen(
                 onCancel = { viewModel.cancelEnhance() },
                 onDismiss = { viewModel.dismissEnhance() },
                 onShareEnhanced = { path -> shareAudio(path, "Share cleaned recording") },
-                onDeleteEnhanced = { viewModel.deleteEnhanced() }
+                onDeleteEnhanced = { viewModel.deleteEnhanced() },
+                fileMissing = fileMissing
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -665,7 +667,8 @@ private fun TranscriptSection(
     onShareText: (String) -> Unit,
     onEdit: (String) -> Unit,
     onSave: (String) -> Unit,
-    onClearSaved: () -> Unit
+    onClearSaved: () -> Unit,
+    fileMissing: Boolean = false
 ) {
     when (transcriptionUi) {
         is FileTranscription.Working -> {
@@ -765,7 +768,8 @@ private fun EnhanceSection(
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
     onShareEnhanced: (String) -> Unit,
-    onDeleteEnhanced: () -> Unit
+    onDeleteEnhanced: () -> Unit,
+    fileMissing: Boolean = false
 ) {
     when (enhanceUi) {
         is EnhanceUi.Working -> {

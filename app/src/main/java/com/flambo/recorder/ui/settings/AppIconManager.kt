@@ -31,7 +31,9 @@ object AppIconManager {
             ICON_DEFAULT,
             "Default",
             "Ember mic • warm pink",
-            com.flambo.recorder.R.mipmap.ic_launcher
+            // Raster preview on purpose: R.mipmap.ic_launcher resolves to the
+            // adaptive-icon XML on API 26+, which painterResource can't render.
+            com.flambo.recorder.R.drawable.app_icon_preview_default
         ),
         Option(
             ICON_OUTLINE,

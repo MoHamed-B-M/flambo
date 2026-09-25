@@ -595,8 +595,10 @@ fun AppearanceSettingsScreen(
                             checked = appIcon == option.id,
                             onCheckedChange = {
                                 scope.launch {
-                                    prefs.setAppIcon(option.id)
-                                    AppIconManager.apply(context, option.id)
+                                    runCatching {
+                                        prefs.setAppIcon(option.id)
+                                        AppIconManager.apply(context, option.id)
+                                    }
                                 }
                                 showAppIconDialog = false
                             },

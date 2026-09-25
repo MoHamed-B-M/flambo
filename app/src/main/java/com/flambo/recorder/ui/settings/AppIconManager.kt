@@ -73,22 +73,26 @@ object AppIconManager {
     /** Applies [id]; returns false when the id is unknown. Launcher refreshes within seconds. */
     fun apply(context: Context, id: String): Boolean {
         if (!isValid(id)) return false
-        val pm = context.packageManager
-        val pkg = context.packageName
-        setAlias(pm, pkg, "LauncherIconOutline", id == ICON_OUTLINE)
-        setAlias(pm, pkg, "LauncherIconDuo", id == ICON_DUO)
-        setAlias(pm, pkg, "LauncherIconSolid", id == ICON_SOLID)
-        return true
+        return try {
+            val pm = context.packageManager
+            val pkg = context.packageName
+            setAlias(pm, pkg, "LauncherIconOutline", id == ICON_OUTLINE)
+            setAlias(pm, pkg, "LauncherIconDuo", id == ICON_DUO)
+            setAlias(pm, pkg, "LauncherIconSolid", id == ICON_SOLID)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun setAlias(pm: PackageManager, pkg: String, alias: String, enabled: Boolean) {
-        runCatching {
-            pm.setComponentEnabledSetting(
-                ComponentName(pkg, "$pkg.$alias"),
-                if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                PackageManager.DONT_KILL_APP
-            )
-        }
+        val cn = ComponentName(pkg, "$pkg.$alias")
+        // Skip no-op writes: every setComponentEnabledSetting call rebroadcasts
+        // a package-changed event, which churns launchers for no reason.
+        // Manifest default for all aliases is disabled, so DEFAULT counts as off.
+        val want = if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        if (pm.getComponentEnabledSetting(cn) == want) return
+        pm.setComponentEnabledSetting(cn, want, PackageManager.DONT_KILL_APP)
     }
 }

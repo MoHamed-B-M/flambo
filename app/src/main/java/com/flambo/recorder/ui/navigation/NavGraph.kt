@@ -175,12 +175,17 @@ fun FlamboNavGraph(
         ) {
         composable(
             route = Dest.Home.route,
-            enterTransition = { expressivePopEnter() },
-            // When the card morph is active the grid tile stays on screen as the
-            // shared overlay — sliding home away would fight it, so home
-            // gently fades and settles while the card takes over.
+            // Returning from detail under the morph: no slide/fade, the
+            // minimizing card owns the motion back into place.
+            enterTransition = {
+                if (app.cardExpandAnim && initialState.destination.route == Dest.Detail.route) EnterTransition.None
+                else expressivePopEnter()
+            },
+            // When the card morph is active it is the only animation running:
+            // home stays put with no fade so the card's slow growth carries
+            // the whole transition. Otherwise the expressive exit.
             exitTransition = {
-                if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) fadeOut(animationSpec = fastFadeSpring)
+                if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) ExitTransition.None
                 else expressiveExit()
             }
         ) {
@@ -217,13 +222,13 @@ fun FlamboNavGraph(
         composable(
             route = Dest.Detail.route,
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
-            // When the card morph is active it owns the motion: the page beneath
-            // calmly fades and settles on springs (transform + alpha only,
-            // GPU-cheap) while the card maximizes/minimizes. Otherwise slides.
-            enterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            // When the card morph is active it owns the motion entirely: route
+            // transitions are None (no fake fades), the slow bounds morph is
+            // the single animation. Otherwise classic slides.
+            enterTransition = { if (app.cardExpandAnim) EnterTransition.None else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { if (app.cardExpandAnim) ExitTransition.None else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { if (app.cardExpandAnim) EnterTransition.None else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { if (app.cardExpandAnim) ExitTransition.None else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) { backStackEntry ->
             val animScope = this
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable

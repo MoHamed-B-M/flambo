@@ -64,14 +64,17 @@ object FlamboMotion {
         stiffness = Spring.StiffnessMediumLow
     )
 
-    // Maximize/minimize card morph with catalog-style direction awareness:
-    // the card fills the page on a soft stretchy spring and snaps back into
-    // place on a stiff spring.
+    // Maximize/minimize card morph with catalog-style direction awareness.
+    // Maximize runs on a slow soft spring (~120 stiffness, ~0.8s settle) so
+    // the card visibly grows step by step until it fills the page; minimize
+    // returns on a stiffer clean spring. No bounce: extra oscillation costs
+    // frames and reads as fake motion. Route transitions stay None under the
+    // morph so this is the only animation running (light on the GPU).
     val CardMorphBoundsTransform = BoundsTransform { initial, target ->
         if (target.width * target.height >= initial.width * initial.height) {
-            spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+            spring(dampingRatio = 0.9f, stiffness = 120f)
         } else {
-            spring(dampingRatio = 1f, stiffness = 600f)
+            spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
         }
     }
 

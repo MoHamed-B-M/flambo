@@ -46,7 +46,7 @@ env:
   BETA_CODE_OFFSET: "100000"
   # Codename for the stable release title, e.g. "Rhyolite" → "Flambo 1.5.0+6 — Rhyolite".
   # Empty for a maintenance release with no codename.
-  RELEASE_TAGLINE: "Scoria"
+  RELEASE_TAGLINE: "Dacite"
 
 jobs:
   build:

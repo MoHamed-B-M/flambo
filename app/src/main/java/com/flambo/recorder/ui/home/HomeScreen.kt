@@ -1079,18 +1079,26 @@ private fun ActiveRecordingPanel(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 2.dp,
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(28.dp),
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.weight(1f))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
-                        .size(10.dp)
+                        .size(12.dp)
                         .background(
                             color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
                             shape = ShapeFull
@@ -1100,12 +1108,12 @@ private fun ActiveRecordingPanel(
                     imageVector = Icons.Filled.Mic,
                     contentDescription = null,
                     tint = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = (if (isPaused) "Paused" else "Recording") +
                         if (source == AudioSource.SYSTEM) " • System sound" else "",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error
                 )
             }
@@ -1117,7 +1125,7 @@ private fun ActiveRecordingPanel(
             ) { time ->
                 Text(
                     text = time,
-                    style = MaterialTheme.typography.displayMedium,
+                    style = MaterialTheme.typography.displayLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -1126,36 +1134,42 @@ private fun ActiveRecordingPanel(
                 amplitudes = peaks,
                 currentAmplitude = amplitude,
                 isPaused = isPaused,
+                height = 128.dp,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 FilledTonalButton(
                     onClick = onPauseResume,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.weight(1f),
-                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
+                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight)
                 ) {
                     Icon(
                         imageVector = if (isPaused) Icons.Filled.Mic else Icons.Filled.Pause,
                         contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
+                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
                     )
-                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
-                    Text(if (isPaused) "Resume" else "Pause", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
+                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
+                    Text(if (isPaused) "Resume" else "Pause", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
                 }
                 Button(
                     onClick = onStop,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.weight(1f),
-                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
+                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight)
                 ) {
-                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight)))
-                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
-                    Text("Stop & save", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
+                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight)))
+                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
+                    Text("Stop & save", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
                 }
             }
             TextButton(onClick = onCancel) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+            }
+            Spacer(Modifier.weight(1f))
         }
     }
 }

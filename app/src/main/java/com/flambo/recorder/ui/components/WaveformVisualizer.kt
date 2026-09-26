@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
@@ -22,7 +23,8 @@ fun WaveformVisualizer(
     isPaused: Boolean,
     modifier: Modifier = Modifier,
     barColor: Color = MaterialTheme.colorScheme.primary,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    height: Dp = 88.dp
 ) {
     val animatedAmp by animateFloatAsState(
         targetValue = if (isPaused) 0.08f else currentAmplitude.coerceIn(0f, 1f),
@@ -32,7 +34,7 @@ fun WaveformVisualizer(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(88.dp)
+            .height(height)
     ) {
         val width = size.width
         val height = size.height

@@ -24,6 +24,9 @@ A playback and motion update. Transport controls become one connected group, and
 - The card morph runs slower and step-by-step, with no fades fighting it; swipe-to-dismiss parks while the morph is on.
 - The search bar is back to default Material colors.
 - What's New now pops after the intro finishes instead of underneath it.
+- The header, search bar and Record button duck while scrolling and slide back 2s after you stop.
+- Dynamic color now applies to every palette style, not just Dynamic.
+- Fixed an occasional crash when swiping back from playback.
 
 ### Demos
 

@@ -197,6 +197,9 @@ fun HomeScreen(
     var searchExpanded by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     BackHandler(enabled = searchExpanded && !selectionMode) { searchExpanded = false }
+    LaunchedEffect(recorderState.isRecording) {
+        if (recorderState.isRecording) searchExpanded = false
+    }
     var whatsNewVersion by remember { mutableStateOf<String?>(null) }
     var installedVersion by remember { mutableStateOf<String?>(null) }
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
@@ -362,6 +365,8 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // While recording, only the recording card stays visible.
+            if (!recorderState.isRecording) {
             DockedSearchBar(
                 colors = SearchBarDefaults.colors(containerColor = Color.Transparent),
                 shadowElevation = 4.dp,
@@ -458,6 +463,7 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
 
             if (tipsEnabled && !recorderState.isRecording) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]
@@ -489,6 +495,7 @@ fun HomeScreen(
 
 
 
+            if (!recorderState.isRecording) {
             if (uiState.showTrash) {
                 Row(
                     modifier = Modifier
@@ -600,6 +607,7 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

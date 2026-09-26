@@ -96,12 +96,14 @@ import com.flambo.recorder.ui.settings.components.PreferenceValueItem
 import com.flambo.recorder.ui.settings.components.SectionHeader
 import com.flambo.recorder.ui.settings.components.SegmentedPreferenceGroup
 import com.flambo.recorder.ui.theme.ColorPaletteGenerator
+import com.flambo.recorder.ui.theme.AppThemeStyle
 import com.flambo.recorder.ui.theme.CUSTOM_DEFAULTS
 import com.flambo.recorder.ui.theme.CUSTOM_ROLES
 import com.flambo.recorder.ui.theme.CUSTOM_SWATCHES
 import com.flambo.recorder.ui.theme.ColorSchemeStyle
 import com.flambo.recorder.ui.theme.argbToHex
 import com.flambo.recorder.ui.theme.parseColorHex
+import com.flambo.recorder.ui.theme.swatch
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.ui.theme.themeSeedById
 import kotlinx.coroutines.CancellationException

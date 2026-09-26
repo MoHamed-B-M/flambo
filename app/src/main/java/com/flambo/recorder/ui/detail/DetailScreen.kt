@@ -189,6 +189,9 @@ fun DetailScreen(
     }
 
     val gestureEnabled by viewModel.gestureEnabled.collectAsState()
+    // The swipe fights the card maximize/minimize morph on one node, so it
+    // parks while the new animation is enabled; the back arrow still works.
+    val swipeEnabled = gestureEnabled && !cardExpandAnimEnabled
     val progressStyle by viewModel.progressStyle.collectAsState()
     val scale = remember { Animatable(1f) }
     val corner = remember { Animatable(0f) }
@@ -197,7 +200,7 @@ fun DetailScreen(
     val gestureScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val velocityTracker = remember { VelocityTracker() }
-    PredictiveBackHandler(enabled = gestureEnabled) { progress ->
+    PredictiveBackHandler(enabled = swipeEnabled) { progress ->
         try {
             progress.collect { event ->
                 val p = event.progress
@@ -226,8 +229,8 @@ fun DetailScreen(
                 clip = corner.value > 0f
             }
             .clip(RoundedCornerShape(corner.value.dp))
-            .pointerInput(gestureEnabled) {
-                if (!gestureEnabled) return@pointerInput
+            .pointerInput(swipeEnabled) {
+                if (!swipeEnabled) return@pointerInput
                 detectHorizontalDragGestures(
                     onDragStart = { velocityTracker.resetTracking() },
                     onDragEnd = {

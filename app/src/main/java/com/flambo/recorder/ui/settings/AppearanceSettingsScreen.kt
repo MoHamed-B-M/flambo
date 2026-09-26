@@ -379,8 +379,11 @@ fun AppearanceSettingsScreen(
                                 }
                             },
                             supportingContent = {
+                                val cardAnimOn by prefs.cardExpandAnimFlow.collectAsState(initial = true)
                                 Text(
-                                    if (gestureEnabled) "Right-swipe detail card to go back • 100dp / 400dp/s" else "Gesture disabled — use back arrow",
+                                    if (!gestureEnabled) "Gesture disabled — use back arrow"
+                                    else if (cardAnimOn) "Paused while card animation is on — use back arrow"
+                                    else "Right-swipe detail card to go back • 100dp / 400dp/s",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

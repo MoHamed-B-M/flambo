@@ -8,10 +8,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -77,7 +79,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -85,7 +91,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.sin
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.data.PreferencesManager
@@ -96,14 +106,12 @@ import com.flambo.recorder.ui.settings.components.PreferenceValueItem
 import com.flambo.recorder.ui.settings.components.SectionHeader
 import com.flambo.recorder.ui.settings.components.SegmentedPreferenceGroup
 import com.flambo.recorder.ui.theme.ColorPaletteGenerator
-import com.flambo.recorder.ui.theme.AppThemeStyle
 import com.flambo.recorder.ui.theme.CUSTOM_DEFAULTS
 import com.flambo.recorder.ui.theme.CUSTOM_ROLES
 import com.flambo.recorder.ui.theme.CUSTOM_SWATCHES
 import com.flambo.recorder.ui.theme.ColorSchemeStyle
 import com.flambo.recorder.ui.theme.argbToHex
 import com.flambo.recorder.ui.theme.parseColorHex
-import com.flambo.recorder.ui.theme.swatch
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.ui.theme.themeSeedById
 import kotlinx.coroutines.CancellationException
@@ -127,9 +135,9 @@ fun AppearanceSettingsScreen(
     val appIcon by prefs.appIconFlow.collectAsState(initial = AppIconManager.ICON_DEFAULT)
     val progressStyle by prefs.progressStyleFlow.collectAsState(initial = ProgressBarStyle.SLIDER)
 
-    var showThemeDialog by remember { mutableStateOf(false) }
+    var showAppThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
-    var showColorSchemeDialog by remember { mutableStateOf(false) }
+    var showAppThemeDialog by remember { mutableStateOf(false) }
     var showCustomColorsDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showProgressBarDialog by remember { mutableStateOf(false) }
@@ -263,34 +271,15 @@ fun AppearanceSettingsScreen(
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceValueItem(
-                            icon = when (darkTheme) {
-                                "light" -> Icons.Filled.LightMode
-                                "dark" -> Icons.Filled.DarkMode
-                                else -> Icons.Filled.SettingsBrightness
-                            },
-                            title = "Theme",
+                            icon = Icons.Filled.Palette,
+                            title = "App theme",
                             value = run {
                                 val mode = when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System" }
-                                val color = if (dynamicColor) "Dynamic" else ColorPaletteGenerator.fromString(colorSchemeStyle).name.lowercase().replaceFirstChar { it.titlecase() }
-                                "$color • $mode"
+                                val style = ColorPaletteGenerator.fromString(colorSchemeStyle).name.lowercase().replaceFirstChar { it.titlecase() }
+                                "$style • $mode"
                             },
-                            onClick = { showThemeDialog = true }
-                        )
-                    }
-                    item {
-                        PreferenceValueItem(
-                            icon = Icons.Filled.Palette,
-                            title = "Color Scheme",
-                            value = ColorPaletteGenerator.fromString(colorSchemeStyle).name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() } + " • ${if (darkTheme == "system") "System" else darkTheme}",
-                            subtitle = when (ColorPaletteGenerator.fromString(colorSchemeStyle)) {
-                                ColorSchemeStyle.DYNAMIC -> "Material You • Android 12+"
-                                ColorSchemeStyle.NOTHING -> "Black & white • stark"
-                                ColorSchemeStyle.ONEPLUS -> "Signature red • black & white"
-                                ColorSchemeStyle.APPLE -> "iOS blue • airy"
-                                ColorSchemeStyle.GITHUB -> "Primer • light & dark dimmed"
-                                ColorSchemeStyle.CUSTOM -> "Your own role colors"
-                            },
-                            onClick = { showColorSchemeDialog = true }
+                            subtitle = "Brightness, brand palettes and custom colors",
+                            onClick = { showAppThemeDialog = true }
                         )
                     }
                     item {
@@ -504,106 +493,6 @@ fun AppearanceSettingsScreen(
     }
     }
 
-    if (showThemeDialog) {
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text("Theme", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Dynamic color", style = MaterialTheme.typography.titleSmall)
-                            Text("Match your wallpaper (Android 12+)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = dynamicColor,
-                            onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
-                            thumbContent = if (dynamicColor) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                            } else null
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "Brand style",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            AppThemeStyle.entries.forEach { brand ->
-                                val selected = !dynamicColor && colorSchemeStyle == brand.name
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(brand.swatch)
-                                        .border(
-                                            2.dp,
-                                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                            CircleShape
-                                        )
-                                        .clickable(enabled = !dynamicColor) {
-                                            scope.launch { prefs.setColorScheme(brand.name) }
-                                        }
-                                ) {
-                                    if (selected) {
-                                        Icon(Icons.Filled.Check, contentDescription = "${brand.name} selected", tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(20.dp))
-                                    }
-                                }
-                            }
-                        }
-                        if (dynamicColor) {
-                            Text("Turn dynamic color off to pick a brand style.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        } else {
-                            Text("Nothing • OnePlus • Apple • GitHub — full palettes live under Color Scheme.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Text("Brightness", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val options = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
-                        options.forEachIndexed { index, (value, label) ->
-                            ToggleButton(
-                                checked = darkTheme == value,
-                                onCheckedChange = {
-                                    scope.launch { prefs.setDarkTheme(value) }
-                                    showThemeDialog = false
-                                },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    when (value) {
-                                        "light" -> Icons.Filled.LightMode
-                                        "dark" -> Icons.Filled.DarkMode
-                                        else -> Icons.Filled.SettingsBrightness
-                                    }, contentDescription = null, modifier = Modifier.size(18.dp)
-                                )
-                                Text(label, modifier = Modifier.padding(start = 8.dp))
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showThemeDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
     if (showLayoutDialog) {
         AlertDialog(
             onDismissRequest = { showLayoutDialog = false },
@@ -752,7 +641,7 @@ fun AppearanceSettingsScreen(
         )
     }
 
-    if (showColorSchemeDialog) {
+    if (showAppThemeDialog) {
         val context = androidx.compose.ui.platform.LocalContext.current
         val customColors by prefs.customColorsFlow.collectAsState(initial = emptyMap())
         val isDark = when (darkTheme) {
@@ -761,12 +650,40 @@ fun AppearanceSettingsScreen(
             else -> androidx.compose.foundation.isSystemInDarkTheme()
         }
         AlertDialog(
-            onDismissRequest = { showColorSchemeDialog = false },
-            title = { Text("Color Scheme", style = MaterialTheme.typography.titleLarge) },
+            onDismissRequest = { showAppThemeDialog = false },
+            title = { Text("App theme", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Brightness", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val options = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
+                        options.forEachIndexed { index, (value, label) ->
+                            ToggleButton(
+                                checked = darkTheme == value,
+                                onCheckedChange = { scope.launch { prefs.setDarkTheme(value) } },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    when (value) {
+                                        "light" -> Icons.Filled.LightMode
+                                        "dark" -> Icons.Filled.DarkMode
+                                        else -> Icons.Filled.SettingsBrightness
+                                    }, contentDescription = null, modifier = Modifier.size(18.dp)
+                                )
+                                Text(label, modifier = Modifier.padding(start = 8.dp))
+                            }
+                        }
+                    }
                     Text(
-                        "Expressive palettes • preview shows Primary • Secondary • Tertiary",
+                        "Palettes • preview shows Primary • Secondary • Tertiary",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -781,7 +698,7 @@ fun AppearanceSettingsScreen(
                                 color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     scope.launch { prefs.setColorScheme(style.name) }
-                                    showColorSchemeDialog = false
+                                    showAppThemeDialog = false
                                     if (style == ColorSchemeStyle.CUSTOM) showCustomColorsDialog = true
                                 }
                             ) {
@@ -824,7 +741,7 @@ fun AppearanceSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showColorSchemeDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showAppThemeDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
             },
             shape = ShapeLargeIncreased
         )
@@ -913,6 +830,10 @@ fun AppearanceSettingsScreen(
                             shapes = ButtonDefaults.shapes()
                         ) { Text("Apply") }
                     }
+                    HueWheel(
+                        selectedArgb = currentArgb(selectedRole),
+                        onPick = { scope.launch { prefs.setCustomColor(selectedRole, it) } }
+                    )
                     TextButton(
                         onClick = { scope.launch { prefs.resetCustomColors() } },
                         shapes = ButtonDefaults.shapes()
@@ -924,6 +845,71 @@ fun AppearanceSettingsScreen(
             },
             shape = ShapeLargeIncreased
         )
+    }
+}
+
+/**
+ * Hue ring picker: tap anywhere on the ring to paint the selected role.
+ * A white marker shows the current color's hue. Saturation/value stay
+ * fixed high so every pick lands vivid and readable.
+ */
+@Composable
+private fun HueWheel(
+    selectedArgb: Int,
+    onPick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sweepBrush = remember {
+        Brush.sweepGradient(
+            (0..6).map { i ->
+                Color(android.graphics.Color.HSVToColor(floatArrayOf(i * 60f, 0.9f, 1f)))
+            }
+        )
+    }
+    // Hue of the current role color, for the marker dot.
+    val markerHue = remember(selectedArgb) {
+        val hsv = FloatArray(3)
+        android.graphics.Color.RGBToHSV(
+            (selectedArgb shr 16) and 0xFF,
+            (selectedArgb shr 8) and 0xFF,
+            selectedArgb and 0xFF,
+            hsv
+        )
+        hsv[0]
+    }
+    var wheelPx by remember { mutableStateOf(IntSize.Zero) }
+    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Canvas(
+            modifier = Modifier
+                .size(192.dp)
+                .onSizeChanged { wheelPx = it }
+                .pointerInput(Unit) {
+                    detectTapGestures { tap ->
+                        val w = wheelPx.width.toFloat()
+                        val h = wheelPx.height.toFloat()
+                        if (w == 0f || h == 0f) return@detectTapGestures
+                        val dx = tap.x - w / 2f
+                        val dy = tap.y - h / 2f
+                        val outer = minOf(w, h) / 2f
+                        val r = hypot(dx, dy)
+                        if (r < outer * 0.52f || r > outer) return@detectTapGestures
+                        var deg = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+                        if (deg < 0f) deg += 360f
+                        onPick(android.graphics.Color.HSVToColor(floatArrayOf(deg, 0.85f, 0.95f)))
+                    }
+                }
+        ) {
+            val radius = size.minDimension / 2f
+            drawCircle(brush = sweepBrush, radius = radius)
+            drawCircle(color = MaterialTheme.colorScheme.surfaceContainerHigh, radius = radius * 0.52f)
+            val markerRad = Math.toRadians(markerHue.toDouble()).toFloat()
+            val dotR = radius * 0.76f
+            drawCircle(
+                color = Color.White,
+                radius = 9.dp.toPx(),
+                center = center + Offset(cos(markerRad) * dotR, sin(markerRad) * dotR)
+            )
+        }
     }
 }
 

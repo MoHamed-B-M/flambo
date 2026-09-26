@@ -14,7 +14,8 @@ A playback and motion update. Transport controls become one connected group, and
 - **Bigger recording card** — The recording card fills the screen while recording with slimmer controls that adapt to short screens so nothing overflows.
 - **Brand intro** — A short Flambo animation plays on every launch. Turn it off in Appearance if you'd rather skip straight to your recordings.
 - **Brand themes** — Color schemes are now Nothing, OnePlus, Apple and GitHub presets plus Dynamic wallpaper colors, each with matching Light and Dark modes.
-- **Custom colors** — Pick the Custom scheme to set your own Surface, Primary, Secondary, Text and Container colors from swatches or exact hex, per role.
+- **Custom colors** — Pick the Custom scheme to set your own Surface, Primary, Secondary, Text and Container colors from swatches, a hue wheel or exact hex, per role.
+- **App theme, one place** — Brightness, palettes and custom colors live in a single App theme dialog; cards lift off dark backgrounds so they stay easy to see.
 
 ### Improvements
 

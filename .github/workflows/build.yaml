@@ -41,12 +41,12 @@ env:
   # installing a beta over stable always counts as an update for Android.
   # STABLE_BUILD must keep increasing across stables — Android refuses to
   # install an update whose versionCode is not higher than the installed one.
-  BASE_VERSION: "1.5.0"
-  STABLE_BUILD: "6"
+  BASE_VERSION: "1.6.0"
+  STABLE_BUILD: "7"
   BETA_CODE_OFFSET: "100000"
   # Codename for the stable release title, e.g. "Rhyolite" → "Flambo 1.5.0+6 — Rhyolite".
   # Empty for a maintenance release with no codename.
-  RELEASE_TAGLINE: "Rhyolite"
+  RELEASE_TAGLINE: "Scoria"
 
 jobs:
   build:
@@ -467,40 +467,13 @@ jobs:
           | **APK size** | `${{ steps.meta.outputs.size }}` (per ABI) |
           | **SHA-256** | `${{ steps.meta.outputs.sha }}` |
 
-          ## ✨ What's in ${{ needs.build.outputs.version_name }}
-          - **Perlite — expressive polish**: redesigned typography (emphasized W600/W700 headlines, tighter tracking) and tuned tonal surfaces (warmer light/dark backgrounds, `surfaceContainerHigh` sheet), scrollable What's New with `fastSpatialSpec` motion
-          - **Whisper multilingual**: `whisper.cpp` tiny 75 MB via `WhisperJNI` on `Dispatchers.IO` with language picker (95+ langs) — scaffold removed, native `whisper_full` with timestamps
-          - **Tachylite — headless automation**: exported `RecordingReceiver` (Key Mapper / Tasker broadcast `ACTION_TOGGLE` / `START` / `STOP`) + `CREATE_SHORTCUT` picker + transparent `NoDisplay` trampoline that never flashes the UI, never enters Recents and never queues on the lock screen (`taskAffinity=""` + `finishAndRemoveTask`)
-          - **Android 14+ FGS fix**: background start now catches `ForegroundServiceStartNotAllowedException` / `SecurityException` and unwinds cleanly instead of crashing — no leaked headless recorder without a notification
-          - **Library bulk actions**: long-press to multi-select → contextual bar with **Group** (shared tag), **Move** across volumes (copy-fallback, collision-safe), **Delete** to trash; `Empty Trash` with count dialog
-          - **Library layout**: Settings → Appearance → **List** or **Grid** (2-column compact tiles, tap-to-open, hold-to-select)
-          - **Smarter naming**: next recording is `MAX + 1` of the current prefix in the visible library — empty library restarts at `1`
-          - **Persistent update download**: download survives closing Settings and even process death — kept until you tap **Install** (or **Delete file**); auto-deletes the APK on next launch after the system installer finishes
-          - **Lock-screen isolation**: `ShortcutHandlerActivity` isolated with `NoDisplay` + empty affinity + `finishAndRemoveTask` — no flash, no Recents, nothing deferred until unlock
-          - **Launcher shortcuts & Key Mapper**: Start / Pause recording from long-press on app icon or hardware key bindings (e.g. volume buttons while screen is off)
-          - **Onboarding blocks until mic granted**: first-launch tour won't dismiss until microphone permission is allowed
-          - **Settings buttons redesigned**: all 'Change' buttons now use filled tonal style with animated shapes
-          - **Universal APK**: alongside per-ABI splits, a universal APK installs on any device
-          - **Custom recording names**: pick your own prefix with auto-incrementing numbers
-          - **Custom export folder**: pick any folder via the system picker, plus internal/phone/SD-card volumes
-          - **Faster startup**: splash intro removed, no permission prompt on launch — the app opens straight into your library
-          - What's New sheet shows real GitHub release notes (offline fallback included)
-          - One-tap recording with live waveform, pause/resume and a persistent notification (timer, Pause/Resume, Save)
-          - Microphone + system-sound capture (system capture is parked as under-development while projection bugs are fixed)
-          - Real-time noise reduction and one-tap Clean audio enhancement (Light/Balanced/Strong, keep or replace)
-          - Fully offline transcription (Vosk) with downloadable language models, copy/share/edit, searchable transcripts
-          - Playback: waveform scrubber, speed pills, skip buttons, floating mini-player
-          - Library: inline rename, tags, favorites, search, soft delete + undo, auto-purging Trash
-          - Expressive onboarding tour, rotating home-screen tips, What's New sheet after updates
-          - Settings: quality presets, storage folder picker (internal/phone/SD card), theme seeds + dynamic color
-          - Self-updates: beta/stable channels, in-app download + install with auto-cleanup, launch-time check with notification
-
-          ## 📖 Full changelog from `changelogs.md`
+          ## ✨ What's new in ${{ needs.build.outputs.version_name }}
           EOF
           if [[ -f changelogs.md ]]; then
             echo "" >> release_notes.md
-            # Extract 1.5.0 section (up to next ## [x)
-            sed -n '/## \[1.5.0/,/## \[/p' changelogs.md | head -n -1 >> release_notes.md
+            # Current 1.6.0 section only (up to the next ## [x) — the release
+            # page shows exactly what shipped in this version, never older notes.
+            sed -n '/## \[1.6.0/,/## \[/p' changelogs.md | head -n -1 >> release_notes.md
             echo "" >> release_notes.md
           fi
           echo "" >> release_notes.md

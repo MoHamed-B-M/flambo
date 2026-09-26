@@ -1,5 +1,10 @@
 package com.flambo.recorder.ui.components
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.LocalSharedTransitionScope
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.rememberSharedContentState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -248,7 +253,7 @@ fun RecordingCard(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun RecordingGridTile(
     recording: Recording,
@@ -257,14 +262,28 @@ fun RecordingGridTile(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    fileMissing: Boolean = false
+    fileMissing: Boolean = false,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    expandAnimationEnabled: Boolean = true
 ) {
     val playbackState by playback.state.collectAsState()
     val isCurrent = playbackState.currentPath == recording.filePath
     val isPlaying = isCurrent && playbackState.isPlaying
+    // Shared-element key must match DetailScreen's. rememberSharedContentState
+    // is called unconditionally — only the modifier application is gated.
+    val sharedContentState = rememberSharedContentState(key = "recording-card-${recording.id}")
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val sharedElementModifier = if (expandAnimationEnabled && animatedVisibilityScope != null && sharedTransitionScope != null) {
+        with(sharedTransitionScope) {
+            Modifier.sharedBounds(sharedContentState, animatedVisibilityScope)
+        }
+    } else {
+        Modifier
+    }
 
     Card(
         modifier = modifier
+            .then(sharedElementModifier)
             .fillMaxWidth()
             .clip(ShapeLargeIncreased)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),

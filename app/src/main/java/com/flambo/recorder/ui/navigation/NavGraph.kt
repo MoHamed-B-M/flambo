@@ -1,8 +1,10 @@
 package com.flambo.recorder.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -155,20 +157,24 @@ fun FlamboNavGraph(
         return popped
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = Dest.Home.route,
+    val cardExpandAnim by app.prefs.cardExpandAnimFlow.collectAsState(initial = true)
 
-        enterTransition = { expressiveEnter() },
-        exitTransition = { expressiveExit() },
-        popEnterTransition = { expressivePopEnter() },
-        popExitTransition = { expressivePopExit() }
-    ) {
+    SharedTransitionLayout {
+        NavHost(
+            navController = navController,
+            startDestination = Dest.Home.route,
+
+            enterTransition = { expressiveEnter() },
+            exitTransition = { expressiveExit() },
+            popEnterTransition = { expressivePopEnter() },
+            popExitTransition = { expressivePopExit() }
+        ) {
         composable(
             route = Dest.Home.route,
             enterTransition = { expressivePopEnter() },
             exitTransition = { expressiveExit() }
         ) {
+            val animScope = this
             val factory = remember {
                 object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST")
@@ -191,7 +197,9 @@ fun FlamboNavGraph(
                 onOpenDetail = { id -> debouncedNavigate(Dest.Detail.create(id)) },
                 onOpenSettings = { debouncedNavigate(Dest.Settings.route) },
                 onEnableSystemSound = onEnableSystemSound,
-                onRequestMicPermission = onRequestMicPermission
+                onRequestMicPermission = onRequestMicPermission,
+                animatedVisibilityScope = animScope,
+                cardExpandAnimEnabled = cardExpandAnim
             )
         }
 
@@ -203,6 +211,7 @@ fun FlamboNavGraph(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) { backStackEntry ->
+            val animScope = this
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable
             val factory = remember(id) {
                 object : ViewModelProvider.Factory {
@@ -217,7 +226,9 @@ fun FlamboNavGraph(
                 viewModel = vm,
                 playback = playback,
                 onBack = { debouncedPop() },
-                onDeleted = { debouncedPop() }
+                onDeleted = { debouncedPop() },
+                animatedVisibilityScope = animScope,
+                cardExpandAnimEnabled = cardExpandAnim && homeLayout == "grid"
             )
         }
 
@@ -303,6 +314,7 @@ fun FlamboNavGraph(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
             AboutSettingsScreen(prefs = app.prefs, onBack = { debouncedPop() }, onRerunOnboarding = onRerunOnboarding)
+        }
         }
     }
 }

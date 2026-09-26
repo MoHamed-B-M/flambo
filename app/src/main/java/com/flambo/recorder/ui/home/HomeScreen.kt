@@ -3,6 +3,7 @@ package com.flambo.recorder.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -123,10 +124,13 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onEnableSystemSound: () -> Unit = {},
     onRequestMicPermission: (AudioSource) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    cardExpandAnimEnabled: Boolean = true
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val recorderState by recorder.state.collectAsState()
+    val cardExpandAnim by prefs.cardExpandAnimFlow.collectAsState(initial = true)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -541,6 +545,8 @@ fun HomeScreen(
                                 playback = playback,
                                 selected = rec.id in selection,
                                 fileMissing = rec.id in uiState.missingIds,
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
                                 onClick = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id

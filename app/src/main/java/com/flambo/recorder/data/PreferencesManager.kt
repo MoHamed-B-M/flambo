@@ -42,6 +42,7 @@ class PreferencesManager(private val context: Context) {
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
+        val CARD_EXPAND_ANIM = booleanPreferencesKey("card_expand_anim")
         val APP_ICON = stringPreferencesKey("app_icon")
         val PROGRESS_STYLE = stringPreferencesKey("progress_style")
     }
@@ -241,6 +242,13 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setGestureEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.GESTURE_ENABLED] = enabled }
+    }
+
+    val cardExpandAnimFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.CARD_EXPAND_ANIM] ?: true }
+
+    suspend fun setCardExpandAnim(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.CARD_EXPAND_ANIM] = enabled }
     }
 
     val appIconFlow: Flow<String> =

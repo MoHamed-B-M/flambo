@@ -36,7 +36,12 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Storage
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.LocalSharedTransitionScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.rememberSharedContentState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -116,13 +121,15 @@ import com.flambo.recorder.data.StorageVolumes
 import android.content.Intent
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun DetailScreen(
     viewModel: DetailViewModel,
     playback: PlaybackController,
     onBack: () -> Unit,
-    onDeleted: () -> Unit
+    onDeleted: () -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    cardExpandAnimEnabled: Boolean = true
 ) {
     val recording by viewModel.recording.collectAsState()
     val editTitle by viewModel.editTitle.collectAsState()
@@ -264,7 +271,21 @@ fun DetailScreen(
                 )
             }
     ) {
+        // Shared-element target matching the grid tile ("recording-card-<id>").
+        // Applied on the Scaffold — inside the swipe-gesture Box — so the
+        // dismiss transform and the shared morph never fight on one node.
+        // rememberSharedContentState stays unconditional; only usage is gated.
+        val sharedContentState = rememberSharedContentState(key = "recording-card-${rec.id}")
+        val sharedTransitionScope = LocalSharedTransitionScope.current
+        val sharedElementModifier = if (cardExpandAnimEnabled && animatedVisibilityScope != null && sharedTransitionScope != null) {
+            with(sharedTransitionScope) {
+                Modifier.sharedBounds(sharedContentState, animatedVisibilityScope)
+            }
+        } else {
+            Modifier
+        }
         Scaffold(
+            modifier = Modifier.then(sharedElementModifier),
             topBar = {
                 TopAppBar(
                     title = { Text("Playback", style = MaterialTheme.typography.titleLarge) },
@@ -455,16 +476,16 @@ fun DetailScreen(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(
-                            ButtonGroupDefaults.ConnectedSpaceBetween,
-                            Alignment.CenterHorizontally
-                        ),
+                        horizontalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         FilledTonalButton(
                             onClick = { if (isCurrentTrack) playback.skip(-5000) },
                             enabled = isCurrentTrack && !fileMissing,
-                            shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+                            shape = RoundedCornerShape(
+                                topStart = 20.dp, topEnd = 8.dp,
+                                bottomStart = 20.dp, bottomEnd = 8.dp
+                            ),
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
                             modifier = Modifier
                                 .weight(1f)
@@ -484,7 +505,7 @@ fun DetailScreen(
                                 else playback.play(rec.filePath)
                             },
                             enabled = !fileMissing,
-                            shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+                            shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -513,7 +534,10 @@ fun DetailScreen(
                         FilledTonalButton(
                             onClick = { if (isCurrentTrack) playback.skip(10000) },
                             enabled = isCurrentTrack && !fileMissing,
-                            shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+                            shape = RoundedCornerShape(
+                                topStart = 8.dp, topEnd = 20.dp,
+                                bottomStart = 8.dp, bottomEnd = 20.dp
+                            ),
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
                             modifier = Modifier
                                 .weight(1f)

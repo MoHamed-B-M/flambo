@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -302,6 +303,17 @@ fun AppearanceSettingsScreen(
                             title = "Library layout",
                             value = if (homeLayout == "grid") "Grid • compact tap-to-open cards" else "List • full rows with actions",
                             onClick = { showLayoutDialog = true }
+                        )
+                    }
+                    item {
+                        val cardExpandAnim by prefs.cardExpandAnimFlow.collectAsState(initial = true)
+                        PreferenceSwitchItem(
+                            icon = Icons.Filled.ZoomOutMap,
+                            title = "Card expand animation",
+                            subtitle = if (cardExpandAnim) "Grid cards zoom open and back • app-launch feel"
+                            else "Open instantly without the zoom",
+                            checked = cardExpandAnim,
+                            onCheckedChange = { scope.launch { prefs.setCardExpandAnim(it) } }
                         )
                     }
                 }

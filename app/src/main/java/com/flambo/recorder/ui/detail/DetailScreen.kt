@@ -301,7 +301,7 @@ fun DetailScreen(
                 Modifier.sharedBounds(
                     containerState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ContainerSpatialSpringFloat }
+                    boundsTransform = FlamboMotion.ContainerBoundsTransform
                 )
             }
         } else {
@@ -313,7 +313,7 @@ fun DetailScreen(
                     .sharedElement(
                         actionState,
                         animatedVisibilityScope,
-                        boundsTransform = { _, _ -> FlamboMotion.ActionSpringFloat }
+                        boundsTransform = FlamboMotion.ActionBoundsTransform
                     )
                     .renderInSharedTransitionScopeOverlay()
             }
@@ -326,7 +326,7 @@ fun DetailScreen(
                     .sharedElement(
                         titleState,
                         animatedVisibilityScope,
-                        boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                        boundsTransform = FlamboMotion.ContentBoundsTransform
                     )
                     .skipToLookaheadSize()
             }
@@ -339,7 +339,7 @@ fun DetailScreen(
                     .sharedElement(
                         metaState,
                         animatedVisibilityScope,
-                        boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                        boundsTransform = FlamboMotion.ContentBoundsTransform
                     )
                     .skipToLookaheadSize()
             }
@@ -351,7 +351,7 @@ fun DetailScreen(
                 Modifier.sharedElement(
                     waveformState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                    boundsTransform = FlamboMotion.ContentBoundsTransform
                 )
             }
         } else {
@@ -426,10 +426,10 @@ fun DetailScreen(
             }
             AnimatedVisibility(
                 visible = showDetailsCard,
-                enter = expandVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                enter = expandVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
                     fadeIn(animationSpec = FlamboMotion.ContentSpringFloat) +
                     scaleIn(animationSpec = FlamboMotion.ContentSpringFloat, initialScale = 0.96f),
-                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
                     fadeOut(animationSpec = FlamboMotion.ContentSpringFloat) +
                     scaleOut(animationSpec = FlamboMotion.ContentSpringFloat, targetScale = 0.96f)
             ) {

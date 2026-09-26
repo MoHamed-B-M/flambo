@@ -111,7 +111,7 @@ fun RecordingCard(
             Modifier.sharedBounds(
                 containerState,
                 animatedVisibilityScope,
-                boundsTransform = { _, _ -> FlamboMotion.ContainerSpatialSpringFloat }
+                boundsTransform = FlamboMotion.ContainerBoundsTransform
             )
         }
     } else {
@@ -123,7 +123,7 @@ fun RecordingCard(
                 .sharedElement(
                     actionState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ActionSpringFloat }
+                    boundsTransform = FlamboMotion.ActionBoundsTransform
                 )
                 .renderInSharedTransitionScopeOverlay()
         }
@@ -136,7 +136,7 @@ fun RecordingCard(
                 .sharedElement(
                     titleState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                    boundsTransform = FlamboMotion.ContentBoundsTransform
                 )
                 .skipToLookaheadSize()
         }
@@ -149,7 +149,7 @@ fun RecordingCard(
                 .sharedElement(
                     metaState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                    boundsTransform = FlamboMotion.ContentBoundsTransform
                 )
                 .skipToLookaheadSize()
         }
@@ -161,7 +161,7 @@ fun RecordingCard(
             Modifier.sharedElement(
                 waveformState,
                 animatedVisibilityScope,
-                boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                boundsTransform = FlamboMotion.ContentBoundsTransform
             )
         }
     } else {
@@ -408,7 +408,7 @@ fun RecordingGridTile(
             Modifier.sharedBounds(
                 containerState,
                 animatedVisibilityScope,
-                boundsTransform = { _, _ -> FlamboMotion.ContainerSpatialSpringFloat }
+                boundsTransform = FlamboMotion.ContainerBoundsTransform
             )
         }
     } else {
@@ -420,7 +420,7 @@ fun RecordingGridTile(
                 .sharedElement(
                     actionState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ActionSpringFloat }
+                    boundsTransform = FlamboMotion.ActionBoundsTransform
                 )
                 .renderInSharedTransitionScopeOverlay()
         }
@@ -433,7 +433,7 @@ fun RecordingGridTile(
                 .sharedElement(
                     titleState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                    boundsTransform = FlamboMotion.ContentBoundsTransform
                 )
                 .skipToLookaheadSize()
         }
@@ -446,7 +446,7 @@ fun RecordingGridTile(
                 .sharedElement(
                     metaState,
                     animatedVisibilityScope,
-                    boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                    boundsTransform = FlamboMotion.ContentBoundsTransform
                 )
                 .skipToLookaheadSize()
         }
@@ -458,7 +458,7 @@ fun RecordingGridTile(
             Modifier.sharedElement(
                 waveformState,
                 animatedVisibilityScope,
-                boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                boundsTransform = FlamboMotion.ContentBoundsTransform
             )
         }
     } else {

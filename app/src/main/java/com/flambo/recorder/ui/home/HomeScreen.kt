@@ -503,10 +503,10 @@ fun HomeScreen(
 
             AnimatedVisibility(
                 visible = recorderState.isRecording,
-                enter = expandVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                enter = expandVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
                     fadeIn(animationSpec = FlamboMotion.ContentSpringFloat) +
                     scaleIn(animationSpec = FlamboMotion.ContainerSpatialSpringFloat, initialScale = 0.94f),
-                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
                     fadeOut(animationSpec = FlamboMotion.ContentSpringFloat) +
                     scaleOut(animationSpec = FlamboMotion.ContentSpringFloat, targetScale = 0.94f)
             ) {

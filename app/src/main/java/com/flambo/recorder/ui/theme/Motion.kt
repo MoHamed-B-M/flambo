@@ -2,6 +2,7 @@ package com.flambo.recorder.ui.theme
 
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.RectVisibilityThreshold
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -64,9 +65,15 @@ object FlamboMotion {
         stiffness = Spring.StiffnessMediumLow
     )
 
-    // Shared-element bounds: container shells glide with heavy mass,
-    // child controls pop with light mass.
-    val ContainerBoundsTransform = BoundsTransform { _, _ -> ContainerSpatialSpringFloat }
-    val ActionBoundsTransform = BoundsTransform { _, _ -> ActionSpringFloat }
-    val ContentBoundsTransform = BoundsTransform { _, _ -> ContentSpringFloat }
+    // Shared-element bounds: BoundsTransform animates Rect, so these are
+    // Rect springs with matching mass characters.
+    val ContainerBoundsTransform = BoundsTransform { _, _ ->
+        spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow, visibilityThreshold = RectVisibilityThreshold)
+    }
+    val ActionBoundsTransform = BoundsTransform { _, _ ->
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium, visibilityThreshold = RectVisibilityThreshold)
+    }
+    val ContentBoundsTransform = BoundsTransform { _, _ ->
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow, visibilityThreshold = RectVisibilityThreshold)
+    }
 }

@@ -1,9 +1,6 @@
 package com.flambo.recorder.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,14 +28,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabIndicatorScope
-import androidx.compose.material3.TabPosition
 import androidx.compose.material3.Text
+import androidx.compose.material3.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,14 +39,9 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /** A named group of recordings with a recording count and an optional folder color. */
 data class GroupFolder(
@@ -96,8 +85,9 @@ fun LibraryTabs(
 }
 
 /**
- * Animated rounded-rectangle outline that stretches between tabs with
- * direction-aware spring physics (adapted from the M3 expressive catalog).
+ * Fancy outline indicator with animated color (adapted from the M3 expressive
+ * catalog's FancyIndicator). Positioned with the standard tab offset; the
+ * color glides between primary/secondary/tertiary on tab change.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,64 +97,11 @@ fun TabIndicatorScope.FancyAnimatedIndicator(index: Int) {
         MaterialTheme.colorScheme.secondary,
         MaterialTheme.colorScheme.tertiary
     )
-    var startAnimatable by remember { mutableStateOf<Animatable<Dp, AnimationVector1D>?>(null) }
-    var endAnimatable by remember { mutableStateOf<Animatable<Dp, AnimationVector1D>?>(null) }
-    val coroutineScope = rememberCoroutineScope()
     val indicatorColor: Color by animateColorAsState(colors[index % colors.size], label = "tabIndicator")
 
     Box(
-        Modifier.tabIndicatorLayout { measurable: Measurable, constraints: Constraints, tabPositions: List<TabPosition> ->
-            val newStart = tabPositions[index].left
-            val newEnd = tabPositions[index].right
-            val startAnim =
-                startAnimatable
-                    ?: Animatable(newStart, Dp.VectorConverter).also { startAnimatable = it }
-            val endAnim =
-                endAnimatable
-                    ?: Animatable(newEnd, Dp.VectorConverter).also { endAnimatable = it }
-
-            if (endAnim.targetValue != newEnd) {
-                coroutineScope.launch {
-                    endAnim.animateTo(
-                        newEnd,
-                        animationSpec =
-                        if (endAnim.targetValue < newEnd) {
-                            spring(dampingRatio = 1f, stiffness = 1000f)
-                        } else {
-                            spring(dampingRatio = 1f, stiffness = 50f)
-                        }
-                    )
-                }
-            }
-
-            if (startAnim.targetValue != newStart) {
-                coroutineScope.launch {
-                    startAnim.animateTo(
-                        newStart,
-                        animationSpec =
-                        // The leading edge moves faster in the travel direction,
-                        // so the outline stretches toward the target tab.
-                        if (startAnim.targetValue < newStart) {
-                            spring(dampingRatio = 1f, stiffness = 50f)
-                        } else {
-                            spring(dampingRatio = 1f, stiffness = 1000f)
-                        }
-                    )
-                }
-            }
-
-            val indicatorEnd = endAnim.value.roundToPx()
-            val indicatorStart = startAnim.value.roundToPx()
-            val placeable = measurable.measure(
-                constraints.copy(
-                    maxWidth = indicatorEnd - indicatorStart,
-                    minWidth = indicatorEnd - indicatorStart
-                )
-            )
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                placeable.place(indicatorStart, 0)
-            }
-        }
+        Modifier
+            .tabIndicatorOffset(index)
             .padding(5.dp)
             .fillMaxSize()
             .drawWithContent {

@@ -150,6 +150,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Truly transparent system bars: without this the platform draws a
+        // scrim over the navigation bar on API 29+ despite the transparent theme.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        if (Build.VERSION.SDK_INT >= 35) {
+            window.isStatusBarContrastEnforced = false
+        }
 
         app = application as FlamboApp
         refreshPermissionStates()

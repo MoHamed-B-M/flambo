@@ -163,9 +163,12 @@ fun RecordingCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (recording.peakList.isNotEmpty()) {
+                // Parsed once per recording: peakList splits + parses ~120 floats,
+                // and cards recompose on every playback tick while playing.
+                val peaks = remember(recording.amplitudePeaks) { recording.peakList }
+                if (peaks.isNotEmpty()) {
                     StaticWaveform(
-                        peaks = recording.peakList,
+                        peaks = peaks,
                         progress = progress,
                         modifier = Modifier.padding(top = 6.dp)
                     )
@@ -333,12 +336,13 @@ fun RecordingGridTile(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (recording.peakList.isNotEmpty()) {
+            val gridPeaks = remember(recording.amplitudePeaks) { recording.peakList }
+            if (gridPeaks.isNotEmpty()) {
                 val gridProgress = if (isCurrent && playbackState.durationMs > 0) {
                     (playbackState.positionMs.toFloat() / playbackState.durationMs.toFloat()).coerceIn(0f, 1f)
                 } else 0f
                 StaticWaveform(
-                    peaks = recording.peakList,
+                    peaks = gridPeaks,
                     progress = gridProgress,
                     modifier = Modifier.padding(top = 4.dp)
                 )

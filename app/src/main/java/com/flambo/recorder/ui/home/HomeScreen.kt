@@ -3,7 +3,6 @@ package com.flambo.recorder.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -128,7 +127,6 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val recorderState by recorder.state.collectAsState()
-    val playbackState by playback.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -247,12 +245,6 @@ fun HomeScreen(
         if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete()
         else viewModel.dismissUndo()
     }
-
-    val fabSize by animateDpAsState(
-        targetValue = if (recorderState.isRecording) 0.dp else 56.dp,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
-        label = "fabSize"
-    )
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

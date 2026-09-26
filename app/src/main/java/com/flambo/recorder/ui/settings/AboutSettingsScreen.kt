@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
@@ -44,8 +43,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -77,18 +74,15 @@ import com.flambo.recorder.ui.settings.components.SegmentedPreferenceGroup
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutSettingsScreen(
     prefs: PreferencesManager,
-    scope: CoroutineScope,
     onBack: () -> Unit,
     onRerunOnboarding: () -> Unit
 ) {
-    val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
     val uriHandler = LocalUriHandler.current
 
 
@@ -209,30 +203,6 @@ fun AboutSettingsScreen(
                                 leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                 trailingContent = {
                                     TextButton(onClick = onRerunOnboarding, shapes = ButtonDefaults.shapes()) { Text("Replay") }
-                                },
-                                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                            )
-                        }
-                    }
-                    item {
-                        Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
-                            ListItem(
-                                headlineContent = { Text("Show tips") },
-                                supportingContent = { Text("Short how-tos on the home screen") },
-                                leadingContent = { Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingContent = {
-                                    Switch(
-                                        checked = tipsEnabled,
-                                        onCheckedChange = {
-                                            scope.launch {
-                                                prefs.setTipsEnabled(it)
-                                                if (it) prefs.setTipIndex(0)
-                                            }
-                                        },
-                                        thumbContent = if (tipsEnabled) {
-                                            { Icon(Icons.Filled.Lightbulb, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                                        } else null
-                                    )
                                 },
                                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                             )

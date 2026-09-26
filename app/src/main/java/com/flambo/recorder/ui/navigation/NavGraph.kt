@@ -302,7 +302,7 @@ fun FlamboNavGraph(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
-            AboutSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() }, onRerunOnboarding = onRerunOnboarding)
+            AboutSettingsScreen(prefs = app.prefs, onBack = { debouncedPop() }, onRerunOnboarding = onRerunOnboarding)
         }
     }
 }

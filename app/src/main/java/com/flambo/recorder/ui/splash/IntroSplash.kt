@@ -52,7 +52,9 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
                     }
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    loadUrl("file:///android_asset/flambo_intro.svg")
+                    // HTML shell (not the raw .svg): a bare SVG document is
+                    // unreliable in WebView and paints only its background.
+                    loadUrl("file:///android_asset/flambo_intro.html")
                 }
             },
             onRelease = { it.destroy() },

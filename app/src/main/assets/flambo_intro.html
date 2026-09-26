@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Flambo Intro</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #090a0f;
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  svg.intro {
+    display: block;
+    width: min(100vw, 88.88vh);
+    height: auto;
+    aspect-ratio: 8 / 9;
+  }
+</style>
+</head>
+<body>
+<svg class="intro" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 900">
+  <defs>
+    <!-- Brand Linear Gradient -->
+    <linearGradient id="flamboGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff416c" />
+      <stop offset="50%" stop-color="#ff4b2b" />
+      <stop offset="100%" stop-color="#8a2387" />
+    </linearGradient>
+
+    <!-- Embedded CSS Animation Keyframes -->
+    <style>
+      .bg {
+        fill: #090a0f;
+      }
+
+      /* Part 1: Top Microphone Capsule */
+      .mic-top {
+        fill: url(#flamboGradient);
+        fill-opacity: 0;
+        stroke: url(#flamboGradient);
+        stroke-width: 10px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 2000;
+        stroke-dashoffset: 2000;
+        transform-origin: 400px 290px;
+        animation:
+          drawTop 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards,
+          fillTop 0.5s ease-out 1.2s forwards;
+      }
+
+      /* Part 2: Bottom Cradle and Stand */
+      .mic-bottom {
+        fill: url(#flamboGradient);
+        fill-opacity: 0;
+        stroke: url(#flamboGradient);
+        stroke-width: 10px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 2200;
+        stroke-dashoffset: 2200;
+        transform-origin: 400px 525px;
+        animation:
+          drawBottom 1.1s cubic-bezier(0.16, 1, 0.3, 1) 1.2s forwards,
+          fillBottom 0.6s ease-out 2.1s forwards;
+      }
+
+      /* Brand Subtitle Text */
+      .brand-text {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-size: 40px;
+        font-weight: 900;
+        letter-spacing: 0.35em;
+        fill: url(#flamboGradient);
+        text-anchor: middle;
+        opacity: 0;
+        transform: translateY(18px);
+        animation: textReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 2.3s forwards;
+      }
+
+      /* Top Capsule Keyframes */
+      @keyframes drawTop {
+        0% {
+          stroke-dashoffset: 2000;
+          transform: translateY(-40px) scale(0.9);
+          opacity: 0;
+        }
+        20% {
+          opacity: 1;
+        }
+        100% {
+          stroke-dashoffset: 0;
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fillTop {
+        to {
+          fill-opacity: 1;
+          stroke-width: 0px;
+          filter: drop-shadow(0 0 15px rgba(255, 65, 108, 0.6));
+        }
+      }
+
+      /* Bottom Cradle Keyframes */
+      @keyframes drawBottom {
+        0% {
+          stroke-dashoffset: 2200;
+          transform: translateY(40px) scale(0.9);
+          opacity: 0;
+        }
+        20% {
+          opacity: 1;
+        }
+        100% {
+          stroke-dashoffset: 0;
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fillBottom {
+        to {
+          fill-opacity: 1;
+          stroke-width: 0px;
+          filter: drop-shadow(0 0 25px rgba(255, 65, 108, 0.8));
+        }
+      }
+
+      /* Subtitle Keyframes */
+      @keyframes textReveal {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </defs>
+
+  <!-- Background Layer -->
+  <rect class="bg" width="100%" height="100%" />
+
+  <g transform="translate(0, -20)">
+    <!-- Top Capsule Path -->
+    <path class="mic-top" d="M400,500 C477.32,500 540,437.32 540,360 L540,220 C540,142.68 477.32,80 400,80 C322.68,80 260,142.68 260,220 L260,360 C260,437.32 322.68,500 400,500 Z M310,220 C310,170.3 350.3,130 400,130 C449.7,130 490,170.3 490,220 L490,360 C490,409.7 449.7,450 400,450 C350.3,450 310,409.7 310,360 L310,220 Z" />
+
+    <!-- Bottom Cradle Path -->
+    <path class="mic-bottom" d="M600,330 C586.19,330 575,341.19 575,355 C575,451.65 496.65,530 400,530 C303.35,530 225,451.65 225,355 C225,341.19 213.81,330 200,330 C186.19,330 175,341.19 175,355 C175,466.86 256.76,559.81 362.5,577.16 L362.5,670 L290,670 C276.19,670 265,681.19 265,695 C265,708.81 276.19,720 290,720 L510,720 C523.81,720 535,708.81 535,695 C535,681.19 523.81,670 510,670 L437.5,670 L437.5,577.16 C543.24,559.81 625,466.86 625,355 C625,341.19 613.81,330 600,330 Z" />
+
+    <!-- Subtitle Text -->
+    <text x="400" y="810" class="brand-text">FLAMBO</text>
+  </g>
+</svg>
+</body>
+</html>

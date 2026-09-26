@@ -9,6 +9,7 @@ A playback and motion update. Transport controls become one connected group, and
 - **Card expand animation** — Grid and list cards zoom open into Playback and minimize back, like opening an Android app. Toggle it in Appearance → Layout.
 - **Expressive transport controls** — Skip back, play/pause and skip forward are now one connected button group with an animated play/pause icon.
 - **No-slide mode** — While the card animation is on, the old sliding transitions step aside so nothing fights the morph. Turn it off to get the classic slides back.
+- **Recording-focus mode** — While recording, the search bar and library step aside so only the recording card stays visible.
 
 ### Improvements
 

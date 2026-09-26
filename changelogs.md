@@ -42,6 +42,11 @@ A playback and motion update. Transport controls become one connected group, and
   <a href="https://github.com/MoHamed-B-M/flambo/blob/beta/screenshots/demos/VID_20260926205046.mp4">Watch demo 3 on GitHub</a>
 </video>
 
+<video controls width="270">
+  <source src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/Record_2026-09-26-22-20-10.mp4" type="video/mp4">
+  <a href="https://github.com/MoHamed-B-M/flambo/blob/beta/screenshots/demos/Record_2026-09-26-22-20-10.mp4">Watch demo 4 on GitHub</a>
+</video>
+
 ---
 
 ### Updating from 1.5.0

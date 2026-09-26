@@ -90,6 +90,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -100,6 +103,7 @@ import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateNotifier
 import com.flambo.recorder.update.WhatsNewItem
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -291,8 +295,30 @@ fun HomeScreen(
         else viewModel.dismissUndo()
     }
 
+    // Record button ducks while the library scrolls and comes back 2s
+    // after the last scroll frame (flings included).
+    var listScrolling by remember { mutableStateOf(false) }
+    var scrollIdleJob by remember { mutableStateOf<Job?>(null) }
+    val scrollListener = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y != 0f) {
+                    if (!listScrolling) listScrolling = true
+                    scrollIdleJob?.cancel()
+                    scrollIdleJob = scope.launch {
+                        delay(2000)
+                        listScrolling = false
+                    }
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .nestedScroll(scrollListener),
         topBar = {
             LargeTopAppBar(
                 title = {
@@ -375,7 +401,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
+                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash && !listScrolling,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {

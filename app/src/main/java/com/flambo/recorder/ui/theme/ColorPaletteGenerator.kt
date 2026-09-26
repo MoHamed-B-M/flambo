@@ -167,55 +167,73 @@ object ColorPaletteGenerator {
 
     private fun vibrantLight(seed: ThemeSeed): ColorScheme {
         val base = seed.light
-        // High-chroma containers with distinct tertiary
+        // Full-chroma pop: boosted primaries plus surfaces tinted with the
+        // seed hue so the whole theme reads vivid, not just the buttons.
         return base.copy(
-            primary = saturate(base.primary, 1.15f),
-            primaryContainer = saturate(base.primaryContainer, 1.25f),
-            secondary = saturate(base.secondary, 1.2f),
-            secondaryContainer = saturate(base.secondaryContainer, 1.2f),
+            primary = saturate(base.primary, 1.6f),
+            primaryContainer = saturate(base.primaryContainer, 1.6f),
+            secondary = saturate(base.secondary, 1.6f),
+            secondaryContainer = saturate(base.secondaryContainer, 1.6f),
             tertiary = Color(0xFFE65100), // vivid tertiary accent
             tertiaryContainer = Color(0xFFFFE0B2),
-            onTertiaryContainer = Color(0xFF332000)
+            onTertiaryContainer = Color(0xFF332000),
+            surfaceContainerLow = tint(base.surfaceContainerLow, base.primary, 0.08f),
+            surfaceContainer = tint(base.surfaceContainer, base.primary, 0.10f),
+            surfaceContainerHigh = tint(base.surfaceContainerHigh, base.primary, 0.12f),
+            surfaceContainerHighest = tint(base.surfaceContainerHighest, base.primary, 0.14f)
         )
     }
 
     private fun vibrantDark(seed: ThemeSeed): ColorScheme {
         val base = seed.dark
         return base.copy(
-            primary = saturate(base.primary, 1.2f),
-            primaryContainer = saturate(base.primaryContainer, 1.15f),
-            secondary = saturate(base.secondary, 1.15f),
-            secondaryContainer = saturate(base.secondaryContainer, 1.15f),
+            primary = saturate(base.primary, 1.6f),
+            primaryContainer = saturate(base.primaryContainer, 1.6f),
+            secondary = saturate(base.secondary, 1.6f),
+            secondaryContainer = saturate(base.secondaryContainer, 1.6f),
             tertiary = Color(0xFFFFAB40),
             tertiaryContainer = Color(0xFF5D4037),
-            onTertiaryContainer = Color(0xFFFFE0B2)
+            onTertiaryContainer = Color(0xFFFFE0B2),
+            surfaceContainerLow = tint(base.surfaceContainerLow, base.primary, 0.10f),
+            surfaceContainer = tint(base.surfaceContainer, base.primary, 0.12f),
+            surfaceContainerHigh = tint(base.surfaceContainerHigh, base.primary, 0.14f),
+            surfaceContainerHighest = tint(base.surfaceContainerHighest, base.primary, 0.16f)
         )
     }
 
     private fun expressiveLight(seed: ThemeSeed): ColorScheme {
         val base = seed.light
-        // Expressive — high chroma primary/secondary, distinct tertiary
+        // Expressive — boosted chroma with violet tertiary bleeding into the
+        // surfaces, clearly apart from both tonal spot and vibrant.
         return base.copy(
-            primary = saturate(base.primary, 1.3f),
-            primaryContainer = saturate(lighten(base.primaryContainer, 0.08f), 1.2f),
-            secondary = saturate(base.secondary, 1.25f),
-            secondaryContainer = saturate(base.secondaryContainer, 1.25f),
+            primary = saturate(base.primary, 1.45f),
+            primaryContainer = saturate(lighten(base.primaryContainer, 0.08f), 1.4f),
+            secondary = saturate(base.secondary, 1.45f),
+            secondaryContainer = saturate(base.secondaryContainer, 1.45f),
             tertiary = Color(0xFF7C4DFF), // distinct expressive tertiary
             tertiaryContainer = Color(0xFFEDE7F6),
-            onTertiaryContainer = Color(0xFF1A0A2E)
+            onTertiaryContainer = Color(0xFF1A0A2E),
+            surfaceContainerLow = tint(base.surfaceContainerLow, base.tertiary, 0.08f),
+            surfaceContainer = tint(base.surfaceContainer, base.tertiary, 0.10f),
+            surfaceContainerHigh = tint(base.surfaceContainerHigh, base.tertiary, 0.12f),
+            surfaceContainerHighest = tint(base.surfaceContainerHighest, base.tertiary, 0.14f)
         )
     }
 
     private fun expressiveDark(seed: ThemeSeed): ColorScheme {
         val base = seed.dark
         return base.copy(
-            primary = saturate(base.primary, 1.25f),
-            primaryContainer = saturate(base.primaryContainer, 1.2f),
-            secondary = saturate(base.secondary, 1.2f),
-            secondaryContainer = saturate(base.secondaryContainer, 1.2f),
+            primary = saturate(base.primary, 1.45f),
+            primaryContainer = saturate(base.primaryContainer, 1.4f),
+            secondary = saturate(base.secondary, 1.45f),
+            secondaryContainer = saturate(base.secondaryContainer, 1.4f),
             tertiary = Color(0xFFB388FF),
             tertiaryContainer = Color(0xFF4A2C82),
-            onTertiaryContainer = Color(0xFFEDE7F6)
+            onTertiaryContainer = Color(0xFFEDE7F6),
+            surfaceContainerLow = tint(base.surfaceContainerLow, base.tertiary, 0.10f),
+            surfaceContainer = tint(base.surfaceContainer, base.tertiary, 0.12f),
+            surfaceContainerHigh = tint(base.surfaceContainerHigh, base.tertiary, 0.14f),
+            surfaceContainerHighest = tint(base.surfaceContainerHighest, base.tertiary, 0.16f)
         )
     }
 
@@ -236,6 +254,15 @@ object ColorPaletteGenerator {
             red = (grey + (color.red - grey) * factor).coerceIn(0f, 1f),
             green = (grey + (color.green - grey) * factor).coerceIn(0f, 1f),
             blue = (grey + (color.blue - grey) * factor).coerceIn(0f, 1f),
+            alpha = color.alpha
+        )
+    }
+
+    private fun tint(color: Color, tint: Color, amount: Float): Color {
+        return Color(
+            red = lerp(color.red, tint.red, amount),
+            green = lerp(color.green, tint.green, amount),
+            blue = lerp(color.blue, tint.blue, amount),
             alpha = color.alpha
         )
     }

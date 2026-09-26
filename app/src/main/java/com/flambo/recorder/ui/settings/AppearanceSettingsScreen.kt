@@ -323,6 +323,19 @@ fun AppearanceSettingsScreen(
                             }
                         )
                     }
+                    item {
+                        val introAnim by prefs.introAnimFlow.collectAsState(initial = true)
+                        PreferenceSwitchItem(
+                            icon = Icons.Filled.PlayArrow,
+                            title = "Intro animation",
+                            subtitle = if (introAnim) "Brand animation plays on every launch"
+                            else "Skip straight to your recordings",
+                            checked = introAnim,
+                            onCheckedChange = { enabled ->
+                                scope.launch { prefs.setIntroAnim(enabled) }
+                            }
+                        )
+                    }
                 }
             }
 

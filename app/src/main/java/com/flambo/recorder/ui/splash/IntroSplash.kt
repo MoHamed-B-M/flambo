@@ -32,8 +32,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 private const val INTRO_TOTAL_MS = 3100
+
+/** Warm-up beat: lets cold-start class loading settle before frame one. */
+private const val INTRO_WARMUP_MS = 180
 
 private const val TOP_PATH =
     "M400,500 C477.32,500 540,437.32 540,360 L540,220 C540,142.68 477.32,80 400,80 " +
@@ -66,6 +70,8 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
     BackHandler(onBack = onDone)
     val clock = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
+        // Don't race app start: parser/shader warm-up happens here, off the clock.
+        delay(INTRO_WARMUP_MS)
         clock.animateTo(1f, tween(INTRO_TOTAL_MS, easing = LinearEasing))
         onDone()
     }
@@ -86,6 +92,15 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
         )
     )
     val textLayout = remember { textMeasurer.measure("FLAMBO", textStyle) }
+    // Static artwork brush hoisted out of the frame loop: allocating it per
+    // frame was garbage pressure on top of cold-start loading.
+    val morphBrush = remember {
+        Brush.linearGradient(
+            listOf(Color(0xFFFF416C), Color(0xFFFF4B2B), Color(0xFF8A2387)),
+            start = Offset(0f, 0f),
+            end = Offset(800f, 900f)
+        )
+    }
 
     Box(
         modifier = modifier
@@ -102,11 +117,7 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
             val s = minOf(size.width / 800f, size.height / 900f)
             val tx = (size.width - 800f * s) / 2f
             val ty = (size.height - 900f * s) / 2f - 20f * s
-            val brush = Brush.linearGradient(
-                listOf(Color(0xFFFF416C), Color(0xFFFF4B2B), Color(0xFF8A2387)),
-                start = Offset(0f, 0f),
-                end = Offset(800f, 900f)
-            )
+            val brush = morphBrush
             withTransform({
                 translate(tx, ty)
                 scale(s, s, pivot = Offset.Zero)

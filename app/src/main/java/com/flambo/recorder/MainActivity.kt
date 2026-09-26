@@ -186,9 +186,12 @@ class MainActivity : ComponentActivity() {
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
             var rerunOnboarding by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunOnboarding
+            val introEnabled by app.prefs.introAnimFlow.collectAsState(initial = true)
             // Cold-start brand intro over the loading content (plain remember:
             // rotation must not replay it, and content loads underneath).
+            // Shown only when enabled in Appearance settings.
             var showIntro by remember { mutableStateOf(true) }
+            val introVisible = showIntro && introEnabled
 
             SideEffect {
                 val controller = WindowCompat.getInsetsController(window, window.decorView)
@@ -225,7 +228,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         AnimatedVisibility(
-                            visible = showIntro,
+                            visible = introVisible,
                             exit = fadeOut()
                         ) {
                             IntroSplash(onDone = { showIntro = false })

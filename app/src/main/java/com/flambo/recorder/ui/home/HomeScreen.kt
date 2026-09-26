@@ -1097,12 +1097,12 @@ private fun ActiveRecordingPanel(
                 .padding(28.dp)
         ) {
             val roomy = maxHeight >= 560.dp
-            val gap = if (roomy) 24.dp else 14.dp
-            val timerStyle = if (roomy) MaterialTheme.typography.displayLarge
-            else MaterialTheme.typography.displayMedium
+            val gap = if (roomy) 20.dp else 14.dp
+            val timerStyle = if (roomy) MaterialTheme.typography.displayMedium
+            else MaterialTheme.typography.displaySmall
             val waveHeight = if (roomy) 128.dp else 88.dp
-            val buttonHeight = if (roomy) ButtonDefaults.LargeContainerHeight
-            else ButtonDefaults.MediumContainerHeight
+            val buttonHeight = if (roomy) ButtonDefaults.MediumContainerHeight
+            else ButtonDefaults.SmallContainerHeight
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -1116,7 +1116,7 @@ private fun ActiveRecordingPanel(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
-                        .size(if (roomy) 12.dp else 10.dp)
+                        .size(if (roomy) 10.dp else 8.dp)
                         .background(
                             color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
                             shape = ShapeFull
@@ -1126,13 +1126,13 @@ private fun ActiveRecordingPanel(
                     imageVector = Icons.Filled.Mic,
                     contentDescription = null,
                     tint = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(if (roomy) 20.dp else 16.dp)
+                    modifier = Modifier.size(if (roomy) 16.dp else 14.dp)
                 )
                 Text(
                     text = (if (isPaused) "Paused" else "Recording") +
                         if (source == AudioSource.SYSTEM) " • System sound" else "",
-                    style = if (roomy) MaterialTheme.typography.titleMedium
-                    else MaterialTheme.typography.labelLarge,
+                    style = if (roomy) MaterialTheme.typography.titleSmall
+                    else MaterialTheme.typography.labelMedium,
                     color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error
                 )
             }

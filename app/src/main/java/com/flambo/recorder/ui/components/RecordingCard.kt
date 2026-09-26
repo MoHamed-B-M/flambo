@@ -88,84 +88,18 @@ fun RecordingCard(
         else -> formatDuration(recording.durationMs)
     }
 
-    // Granular shared keys so the card morphs element-by-element instead of
-    // flying as a frozen raster: shell, play control, title, meta, waveform.
-    // All states stay unconditional; only the modifiers are gated.
-    val containerState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "container_${recording.id}")
+    // Single maximize/minimize morph: the whole card expands to fill the page
+    // on press and shrinks back into place on back. State call stays
+    // unconditional; only the modifier is gated.
+    val sharedContentState = with(sharedTransitionScope) {
+        rememberSharedContentState(key = "recording-card-${recording.id}")
     }
-    val actionState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "action_${recording.id}")
-    }
-    val titleState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "title_${recording.id}")
-    }
-    val metaState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "meta_${recording.id}")
-    }
-    val waveformState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "waveform_${recording.id}")
-    }
-    val containerModifier = if (expandAnimationEnabled) {
+    val sharedElementModifier = if (expandAnimationEnabled) {
         with(sharedTransitionScope) {
             Modifier.sharedBounds(
-                containerState,
+                sharedContentState,
                 animatedVisibilityScope,
-                boundsTransform = FlamboMotion.ContainerBoundsTransform
-            )
-        }
-    } else {
-        Modifier
-    }
-    val actionModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier
-                .sharedElement(
-                    actionState,
-                    animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ActionBoundsTransform
-                )
-                // Overlay only mid-flight: a permanent overlay leaves ghost
-                // play icons stuck on the destination screen after landing.
-                .renderInSharedTransitionScopeOverlay(
-                    renderInOverlay = { animatedVisibilityScope.transition.isRunning }
-                )
-        }
-    } else {
-        Modifier
-    }
-    val titleModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier
-                .sharedElement(
-                    titleState,
-                    animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ContentBoundsTransform
-                )
-                .skipToLookaheadSize()
-        }
-    } else {
-        Modifier
-    }
-    val metaModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier
-                .sharedElement(
-                    metaState,
-                    animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ContentBoundsTransform
-                )
-                .skipToLookaheadSize()
-        }
-    } else {
-        Modifier
-    }
-    val waveformModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier.sharedElement(
-                waveformState,
-                animatedVisibilityScope,
-                boundsTransform = FlamboMotion.ContentBoundsTransform
+                boundsTransform = FlamboMotion.CardMorphBoundsTransform
             )
         }
     } else {
@@ -182,7 +116,7 @@ fun RecordingCard(
 
     Card(
         modifier = modifier
-            .then(containerModifier)
+            .then(sharedElementModifier)
             .fillMaxWidth()
             .clip(ShapeLargeIncreased)
             // Inline content changes (selection check, waveform, tags) resize
@@ -216,9 +150,7 @@ fun RecordingCard(
             Surface(
                 shape = ShapeLargeIncreased,
                 color = if (isPlaying) MaterialTheme.colorScheme.primary else if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier
-                    .size(48.dp)
-                    .then(actionModifier),
+                modifier = Modifier.size(48.dp),
                 onClick = {
                     if (isPlaying) playback.pause()
                     else playback.play(recording.filePath)
@@ -239,9 +171,7 @@ fun RecordingCard(
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .then(titleModifier)
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     if (recording.isFavorite) {
                         Icon(
@@ -252,11 +182,7 @@ fun RecordingCard(
                         )
                     }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = metaModifier
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (fileMissing) {
                         Text(
                             text = "File missing",
@@ -286,9 +212,7 @@ fun RecordingCard(
                     StaticWaveform(
                         peaks = peaks,
                         progress = progress,
-                        modifier = Modifier
-                            .padding(top = 6.dp)
-                            .then(waveformModifier)
+                        modifier = Modifier.padding(top = 6.dp)
                     )
                 }
                 if (recording.tagList.isNotEmpty()) {
@@ -390,83 +314,17 @@ fun RecordingGridTile(
     val playbackState by playback.state.collectAsState()
     val isCurrent = playbackState.currentPath == recording.filePath
     val isPlaying = isCurrent && playbackState.isPlaying
-    // Granular keys mirror the list card: only one layout is visible at a
-    // time, so list, grid and detail all share the same key namespace.
-    val containerState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "container_${recording.id}")
+    // Same shared key as the list card: only one layout is visible at a time.
+    // State call stays unconditional; only the modifier is gated.
+    val sharedContentState = with(sharedTransitionScope) {
+        rememberSharedContentState(key = "recording-card-${recording.id}")
     }
-    val actionState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "action_${recording.id}")
-    }
-    val titleState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "title_${recording.id}")
-    }
-    val metaState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "meta_${recording.id}")
-    }
-    val waveformState = with(sharedTransitionScope) {
-        rememberSharedContentState(key = "waveform_${recording.id}")
-    }
-    val containerModifier = if (expandAnimationEnabled) {
+    val sharedElementModifier = if (expandAnimationEnabled) {
         with(sharedTransitionScope) {
             Modifier.sharedBounds(
-                containerState,
+                sharedContentState,
                 animatedVisibilityScope,
-                boundsTransform = FlamboMotion.ContainerBoundsTransform
-            )
-        }
-    } else {
-        Modifier
-    }
-    val actionModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier
-                .sharedElement(
-                    actionState,
-                    animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ActionBoundsTransform
-                )
-                // Overlay only mid-flight: a permanent overlay leaves ghost
-                // play icons stuck on the destination screen after landing.
-                .renderInSharedTransitionScopeOverlay(
-                    renderInOverlay = { animatedVisibilityScope.transition.isRunning }
-                )
-        }
-    } else {
-        Modifier
-    }
-    val titleModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier
-                .sharedElement(
-                    titleState,
-                    animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ContentBoundsTransform
-                )
-                .skipToLookaheadSize()
-        }
-    } else {
-        Modifier
-    }
-    val metaModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier
-                .sharedElement(
-                    metaState,
-                    animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ContentBoundsTransform
-                )
-                .skipToLookaheadSize()
-        }
-    } else {
-        Modifier
-    }
-    val waveformModifier = if (expandAnimationEnabled) {
-        with(sharedTransitionScope) {
-            Modifier.sharedElement(
-                waveformState,
-                animatedVisibilityScope,
-                boundsTransform = FlamboMotion.ContentBoundsTransform
+                boundsTransform = FlamboMotion.CardMorphBoundsTransform
             )
         }
     } else {
@@ -475,7 +333,7 @@ fun RecordingGridTile(
 
     Card(
         modifier = modifier
-            .then(containerModifier)
+            .then(sharedElementModifier)
             .fillMaxWidth()
             .clip(ShapeLargeIncreased)
             .animateContentSize(animationSpec = FlamboMotion.ContainerSizeSpring)
@@ -502,9 +360,7 @@ fun RecordingGridTile(
                 Surface(
                     shape = ShapeLargeIncreased,
                     color = if (isPlaying) MaterialTheme.colorScheme.primary else if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .then(actionModifier),
+                    modifier = Modifier.size(44.dp),
                     onClick = {
                         if (isPlaying) playback.pause()
                         else playback.play(recording.filePath)
@@ -538,8 +394,7 @@ fun RecordingGridTile(
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                minLines = 2,
-                modifier = titleModifier
+                minLines = 2
             )
             val gridDuration = if (isCurrent && playbackState.durationMs > 0) {
                 "${formatDuration(playbackState.positionMs)} / ${formatDuration(playbackState.durationMs)}"
@@ -549,8 +404,7 @@ fun RecordingGridTile(
                 style = MaterialTheme.typography.labelSmall,
                 color = if (fileMissing) MaterialTheme.colorScheme.error else if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = metaModifier
+                overflow = TextOverflow.Ellipsis
             )
             val gridPeaks = remember(recording.amplitudePeaks) { recording.peakList }
             if (gridPeaks.isNotEmpty()) {
@@ -560,9 +414,7 @@ fun RecordingGridTile(
                 StaticWaveform(
                     peaks = gridPeaks,
                     progress = gridProgress,
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .then(waveformModifier)
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
         }

@@ -64,6 +64,17 @@ object FlamboMotion {
         stiffness = Spring.StiffnessMediumLow
     )
 
+    // Maximize/minimize card morph with catalog-style direction awareness:
+    // the card fills the page on a soft stretchy spring and snaps back into
+    // place on a stiff spring.
+    val CardMorphBoundsTransform = BoundsTransform { initial, target ->
+        if (target.width * target.height >= initial.width * initial.height) {
+            spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+        } else {
+            spring(dampingRatio = 1f, stiffness = 600f)
+        }
+    }
+
     // Shared-element bounds: BoundsTransform animates Rect, so these are
     // Rect springs with matching mass characters.
     val ContainerBoundsTransform = BoundsTransform { _, _ ->

@@ -276,86 +276,20 @@ fun DetailScreen(
                 )
             }
     ) {
-        // Granular shared targets matching the home cards: the shell uses
-        // heavy-mass bounds while title/meta/waveform track it and the play
-        // control flies on the overlay. Applied on the Scaffold — inside the
+        // Shared-element target matching the home cards ("recording-card-<id>"):
+        // the card maximizes to fill the page on press and minimizes back
+        // into place on back. Applied on the Scaffold — inside the
         // swipe-gesture Box — so dismiss and morph never fight on one node.
-        // All states stay unconditional; only modifiers are gated.
-        val containerState = with(sharedTransitionScope) {
-            rememberSharedContentState(key = "container_${rec.id}")
+        // The state call is unconditional; only the modifier is gated.
+        val sharedContentState = with(sharedTransitionScope) {
+            rememberSharedContentState(key = "recording-card-${rec.id}")
         }
-        val actionState = with(sharedTransitionScope) {
-            rememberSharedContentState(key = "action_${rec.id}")
-        }
-        val titleState = with(sharedTransitionScope) {
-            rememberSharedContentState(key = "title_${rec.id}")
-        }
-        val metaState = with(sharedTransitionScope) {
-            rememberSharedContentState(key = "meta_${rec.id}")
-        }
-        val waveformState = with(sharedTransitionScope) {
-            rememberSharedContentState(key = "waveform_${rec.id}")
-        }
-        val containerModifier = if (cardExpandAnimEnabled) {
+        val sharedElementModifier = if (cardExpandAnimEnabled) {
             with(sharedTransitionScope) {
                 Modifier.sharedBounds(
-                    containerState,
+                    sharedContentState,
                     animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ContainerBoundsTransform
-                )
-            }
-        } else {
-            Modifier
-        }
-        val actionModifier = if (cardExpandAnimEnabled) {
-            with(sharedTransitionScope) {
-                Modifier
-                    .sharedElement(
-                        actionState,
-                        animatedVisibilityScope,
-                        boundsTransform = FlamboMotion.ActionBoundsTransform
-                    )
-                    // Overlay only mid-flight: a permanent overlay leaves ghost
-                    // play icons stuck on chips, pills and the seekbar.
-                    .renderInSharedTransitionScopeOverlay(
-                        renderInOverlay = { animatedVisibilityScope.transition.isRunning }
-                    )
-            }
-        } else {
-            Modifier
-        }
-        val titleModifier = if (cardExpandAnimEnabled) {
-            with(sharedTransitionScope) {
-                Modifier
-                    .sharedElement(
-                        titleState,
-                        animatedVisibilityScope,
-                        boundsTransform = FlamboMotion.ContentBoundsTransform
-                    )
-                    .skipToLookaheadSize()
-            }
-        } else {
-            Modifier
-        }
-        val metaModifier = if (cardExpandAnimEnabled) {
-            with(sharedTransitionScope) {
-                Modifier
-                    .sharedElement(
-                        metaState,
-                        animatedVisibilityScope,
-                        boundsTransform = FlamboMotion.ContentBoundsTransform
-                    )
-                    .skipToLookaheadSize()
-            }
-        } else {
-            Modifier
-        }
-        val waveformModifier = if (cardExpandAnimEnabled) {
-            with(sharedTransitionScope) {
-                Modifier.sharedElement(
-                    waveformState,
-                    animatedVisibilityScope,
-                    boundsTransform = FlamboMotion.ContentBoundsTransform
+                    boundsTransform = FlamboMotion.CardMorphBoundsTransform
                 )
             }
         } else {
@@ -375,7 +309,7 @@ fun DetailScreen(
             Modifier
         }
         Scaffold(
-            modifier = Modifier.then(containerModifier).then(morphClip),
+            modifier = Modifier.then(sharedElementModifier).then(morphClip),
             topBar = {
                 TopAppBar(
                     title = { Text("Playback", style = MaterialTheme.typography.titleLarge) },
@@ -518,14 +452,12 @@ fun DetailScreen(
                     } else {
                         Text(
                             rec.title,
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = titleModifier
+                            style = MaterialTheme.typography.headlineSmall
                         )
                         Text(
                             "${formatDuration(rec.durationMs)} • ${formatRelativeTime(rec.createdAt)} • ${rec.quality}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = metaModifier
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         TextButton(onClick = { viewModel.setEditTitle(rec.title) }) { Text("Rename") }
                     }
@@ -560,7 +492,6 @@ fun DetailScreen(
                         progress = progress,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(waveformModifier)
                             .graphicsLayer {
                                 clip = true
                                 shape = RoundedCornerShape(16.dp)
@@ -630,7 +561,6 @@ fun DetailScreen(
                                 .weight(1.4f)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
                                 .then(playPress.modifier)
-                                .then(actionModifier)
                         ) {
                             AnimatedContent(
                                 targetState = isThisPlaying,

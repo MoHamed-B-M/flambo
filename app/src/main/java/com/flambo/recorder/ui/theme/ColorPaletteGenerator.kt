@@ -27,14 +27,17 @@ object ColorPaletteGenerator {
         context: Context? = null,
         dynamicColorEnabled: Boolean = false
     ): ColorScheme {
+        // Wallpaper dynamic colors win over every style when enabled — the
+        // settings toggle promises "match your wallpaper", not "only if you
+        // also picked the Dynamic style".
+        if (dynamicColorEnabled && context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
         return when (style) {
             ColorSchemeStyle.DYNAMIC -> {
-                if (dynamicColorEnabled && context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-                } else {
-                    // Fallback to TONAL_SPOT on older versions or when dynamic disabled
-                    if (darkTheme) seed.dark else seed.light
-                }
+                // Dynamic requested but unavailable (off, no context, pre-S):
+                // fall back to the seed's tonal spot.
+                if (darkTheme) seed.dark else seed.light
             }
             ColorSchemeStyle.TONAL_SPOT -> if (darkTheme) seed.dark else seed.light
             ColorSchemeStyle.NEUTRAL -> if (darkTheme) neutralDark(seed) else neutralLight(seed)

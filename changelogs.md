@@ -10,8 +10,8 @@ A playback and motion update. Transport controls become one connected group, and
 - **Expressive transport controls** — Skip back, play/pause and skip forward are now one connected button group with an animated play/pause icon.
 - **No-slide mode** — While the card animation is on, the old sliding transitions step aside so nothing fights the morph. Turn it off to get the classic slides back.
 - **Recording-focus mode** — While recording, the search bar and library step aside so only the recording card stays visible.
-- **Groups** — Long-press recordings, tap Group, and give it a name. A folder button appears in the top bar once your first group exists; open it to browse folders, tap one to see its recordings, and pick each folder's color.
-- **Bigger recording card** — The recording card fills the screen while recording with a larger timer, waveform and buttons, shrinking back down on short screens so nothing overflows.
+- **Groups** — Long-press recordings, tap Group, and give it a name. A folder button appears in the top bar once your first group exists; open it to browse folders, tap one to see its recordings, and pick each folder's color. Swipe a folder away to delete the group (recordings stay, Undo brings it back).
+- **Bigger recording card** — The recording card fills the screen while recording with slimmer controls that adapt to short screens so nothing overflows.
 - **Brand intro** — A short Flambo animation plays on every launch. Turn it off in Appearance if you'd rather skip straight to your recordings.
 
 ### Improvements

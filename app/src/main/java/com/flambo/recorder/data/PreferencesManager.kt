@@ -42,6 +42,7 @@ class PreferencesManager(private val context: Context) {
         val HOME_LAYOUT = stringPreferencesKey("home_layout")
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
         val GROUP_COLORS = stringPreferencesKey("group_colors")
+        val CUSTOM_COLORS = stringPreferencesKey("custom_colors")
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
         val CARD_EXPAND_ANIM = booleanPreferencesKey("card_expand_anim")
@@ -255,11 +256,27 @@ class PreferencesManager(private val context: Context) {
     }
 
     val colorSchemeFlow: Flow<String> =
-        context.dataStore.data.map { it[Keys.COLOR_SCHEME] ?: "TONAL_SPOT" }
+        context.dataStore.data.map { it[Keys.COLOR_SCHEME] ?: "NOTHING" }
 
     suspend fun setColorScheme(scheme: String) {
-        val valid = setOf("TONAL_SPOT", "EXPRESSIVE", "VIBRANT", "NEUTRAL", "MONOCHROME", "DYNAMIC", "SPRITZ", "RAINBOW", "FRUIT_SALAD")
-        context.dataStore.edit { it[Keys.COLOR_SCHEME] = if (scheme.uppercase() in valid) scheme.uppercase() else "TONAL_SPOT" }
+        val valid = setOf("DYNAMIC", "NOTHING", "ONEPLUS", "APPLE", "GITHUB", "CUSTOM")
+        context.dataStore.edit { it[Keys.COLOR_SCHEME] = if (scheme.uppercase() in valid) scheme.uppercase() else "NOTHING" }
+    }
+
+    /** Custom style role colors: role name -> ARGB int, JSON object string. */
+    val customColorsFlow: Flow<Map<String, Int>> =
+        context.dataStore.data.map { parseGroupColors(it[Keys.CUSTOM_COLORS] ?: "") }
+
+    suspend fun setCustomColor(role: String, argb: Int) {
+        context.dataStore.edit { prefs ->
+            val updated = parseGroupColors(prefs[Keys.CUSTOM_COLORS] ?: "").toMutableMap()
+            updated[role] = argb
+            prefs[Keys.CUSTOM_COLORS] = JSONObject(updated as Map<*, *>).toString()
+        }
+    }
+
+    suspend fun resetCustomColors() {
+        context.dataStore.edit { it.remove(Keys.CUSTOM_COLORS) }
     }
 
     val gestureEnabledFlow: Flow<Boolean> =

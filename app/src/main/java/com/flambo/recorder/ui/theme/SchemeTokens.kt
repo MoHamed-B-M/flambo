@@ -16,64 +16,135 @@ import androidx.compose.ui.graphics.Color
  * (which also carries NEUTRAL and DYNAMIC) onto these four.
  */
 enum class AppThemeStyle {
-    EXPRESSIVE,
-    VIBRANT,
-    TONAL_SPOT,
-    MONOCHROME;
+    NOTHING,
+    ONEPLUS,
+    APPLE,
+    GITHUB;
 
     companion object {
+        /** Legacy stored styles land on the closest brand. */
         fun fromSchemeStyle(style: ColorSchemeStyle): AppThemeStyle = when (style) {
-            ColorSchemeStyle.EXPRESSIVE -> EXPRESSIVE
-            ColorSchemeStyle.VIBRANT -> VIBRANT
-            ColorSchemeStyle.MONOCHROME -> MONOCHROME
-            else -> TONAL_SPOT
+            ColorSchemeStyle.ONEPLUS -> ONEPLUS
+            ColorSchemeStyle.APPLE -> APPLE
+            ColorSchemeStyle.GITHUB -> GITHUB
+            ColorSchemeStyle.CUSTOM -> GITHUB
+            else -> NOTHING
         }
     }
 }
 
+/** Preset swatches for the custom role editor. */
+val CUSTOM_SWATCHES = listOf(
+    0xFF000000.toInt(),
+    0xFFFFFFFF.toInt(),
+    0xFFEB0028.toInt(),
+    0xFF0969DA.toInt(),
+    0xFF006EDB.toInt(),
+    0xFF006A6A.toInt(),
+    0xFF4C662B.toInt(),
+    0xFFFFB300.toInt(),
+    0xFFFF9800.toInt(),
+    0xFF7C4DFF.toInt(),
+    0xFFD81B60.toInt(),
+    0xFF59636E.toInt()
+)
+
+fun parseColorHex(raw: String): Int? {
+    val h = raw.trim().removePrefix("#")
+    if (h.length != 6 && h.length != 8) return null
+    val full = if (h.length == 6) "FF$h" else h
+    return full.toLongOrNull(16)?.toInt()
+}
+
+fun argbToHex(argb: Int): String = "#%06X".format(0xFFFFFF and argb)
+val AppThemeStyle.swatch: Color
+    get() = when (this) {
+        AppThemeStyle.NOTHING -> Color(0xFF000000)
+        AppThemeStyle.ONEPLUS -> Color(0xFFEB0028)
+        AppThemeStyle.APPLE -> Color(0xFF006EDB)
+        AppThemeStyle.GITHUB -> Color(0xFF0969DA)
+    }
+
+/** Editable roles for the CUSTOM style: surface, primary, secondary, text, containers. */
+val CUSTOM_ROLES = listOf("primary", "secondary", "surface", "text", "container", "primaryContainer")
+
+/** GitHub-flavored defaults so a fresh Custom starts sane. */
+val CUSTOM_DEFAULTS = mapOf(
+    "primary" to 0xFF0969DA.toInt(),
+    "secondary" to 0xFF59636E.toInt(),
+    "surface" to 0xFFFFFFFF.toInt(),
+    "text" to 0xFF1F2328.toInt(),
+    "container" to 0xFFF6F8FA.toInt(),
+    "primaryContainer" to 0xFFDDF4FF.toInt()
+)
+
 fun AppThemeStyle.lightScheme(): ColorScheme = when (this) {
-    AppThemeStyle.EXPRESSIVE -> fixedLight(
-        primary = Color(0xFFB90038),
-        secondary = Color(0xFF006874),
-        surface = Color(0xFFFFF8F7)
-    )
-    AppThemeStyle.VIBRANT -> fixedLight(
-        primary = Color(0xFFC0003C),
-        secondary = Color(0xFF006A6A),
-        surface = Color(0xFFFFF8F7)
-    )
-    AppThemeStyle.TONAL_SPOT -> fixedLight(
-        primary = Color(0xFFA8324C),
-        secondary = Color(0xFF77565A),
-        surface = Color(0xFFFFF8F7)
-    )
-    AppThemeStyle.MONOCHROME -> fixedLight(
+    // Nothing OS: stark black on white.
+    AppThemeStyle.NOTHING -> fixedLight(
         primary = Color(0xFF000000),
         secondary = Color(0xFF5E5E5E),
-        surface = Color(0xFFF9F9F9)
+        surface = Color(0xFFFFFFFF)
+    )
+    // OnePlus: signature red, black and white.
+    AppThemeStyle.ONEPLUS -> fixedLight(
+        primary = Color(0xFFEB0028),
+        secondary = Color(0xFF333333),
+        surface = Color(0xFFFFFFFF)
+    )
+    // Apple: iOS blue on airy system surfaces.
+    AppThemeStyle.APPLE -> fixedLight(
+        primary = Color(0xFF006EDB),
+        secondary = Color(0xFF636366),
+        surface = Color(0xFFF2F2F7)
+    )
+    // GitHub Primer light.
+    AppThemeStyle.GITHUB -> fixedLight(
+        primary = Color(0xFF0969DA),
+        secondary = Color(0xFF59636E),
+        surface = Color(0xFFFFFFFF)
     )
 }
 
 fun AppThemeStyle.darkScheme(): ColorScheme = when (this) {
-    AppThemeStyle.EXPRESSIVE -> fixedDark(
-        primary = Color(0xFFFFB3B8),
-        secondary = Color(0xFF4FD8EC),
-        surface = Color(0xFF1A1112)
-    )
-    AppThemeStyle.VIBRANT -> fixedDark(
-        primary = Color(0xFFFFB2B9),
-        secondary = Color(0xFF4CDADA),
-        surface = Color(0xFF1C1112)
-    )
-    AppThemeStyle.TONAL_SPOT -> fixedDark(
-        primary = Color(0xFFFFB2BC),
-        secondary = Color(0xFFE6BDC1),
-        surface = Color(0xFF191213)
-    )
-    AppThemeStyle.MONOCHROME -> fixedDark(
+    AppThemeStyle.NOTHING -> fixedDark(
         primary = Color(0xFFFFFFFF),
         secondary = Color(0xFFC6C6C6),
-        surface = Color(0xFF121212)
+        surface = Color(0xFF000000)
+    )
+    AppThemeStyle.ONEPLUS -> fixedDark(
+        primary = Color(0xFFFF3B4D),
+        secondary = Color(0xFFCACACA),
+        surface = Color(0xFF000000)
+    )
+    AppThemeStyle.APPLE -> fixedDark(
+        primary = Color(0xFF0A84FF),
+        secondary = Color(0xFFA7A7B0),
+        surface = Color(0xFF000000)
+    )
+    AppThemeStyle.GITHUB -> fixedDark(
+        primary = Color(0xFF4493F8),
+        secondary = Color(0xFF9198A1),
+        surface = Color(0xFF0D1117)
+    )
+}
+
+/** CUSTOM style: user roles over a derived full scheme. Missing roles fall back to defaults. */
+fun customScheme(colors: Map<String, Int>, darkTheme: Boolean): ColorScheme {
+    fun role(name: String): Color =
+        colors[name]?.let { Color(it) } ?: Color(CUSTOM_DEFAULTS.getValue(name))
+    val primary = role("primary")
+    val secondary = role("secondary")
+    val surface = role("surface")
+    val base = if (darkTheme) fixedDark(primary, secondary, surface)
+    else fixedLight(primary, secondary, surface)
+    val container = role("container")
+    val primaryContainer = role("primaryContainer")
+    return base.copy(
+        onSurface = role("text"),
+        surfaceContainer = container,
+        onSurfaceVariant = mix(role("text"), container, 0.35f),
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onColorFor(primaryContainer)
     )
 }
 

@@ -10,12 +10,12 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 enum class ColorSchemeStyle {
-    TONAL_SPOT,
-    EXPRESSIVE,
-    VIBRANT,
-    NEUTRAL,
-    MONOCHROME,
-    DYNAMIC
+    DYNAMIC,
+    NOTHING,
+    ONEPLUS,
+    APPLE,
+    GITHUB,
+    CUSTOM
 }
 
 object ColorPaletteGenerator {
@@ -25,7 +25,8 @@ object ColorPaletteGenerator {
         darkTheme: Boolean,
         style: ColorSchemeStyle,
         context: Context? = null,
-        dynamicColorEnabled: Boolean = false
+        dynamicColorEnabled: Boolean = false,
+        customColors: Map<String, Int> = emptyMap()
     ): ColorScheme {
         // Wallpaper dynamic colors win over every style when enabled — the
         // settings toggle promises "match your wallpaper", not "only if you
@@ -33,34 +34,31 @@ object ColorPaletteGenerator {
         if (dynamicColorEnabled && context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        // Expressive, Vibrant and Monochrome are absolute brand palettes
-        // (SchemeTokens); only Tonal Spot follows the selected seed.
-        val fixed = when (style) {
-            ColorSchemeStyle.EXPRESSIVE -> AppThemeStyle.EXPRESSIVE
-            ColorSchemeStyle.VIBRANT -> AppThemeStyle.VIBRANT
-            ColorSchemeStyle.MONOCHROME -> AppThemeStyle.MONOCHROME
+        // Brand presets are absolute palettes (SchemeTokens); Custom is
+        // built from the stored role colors. The seed only survives as the
+        // fallback when Dynamic is requested but unavailable.
+        val brand = when (style) {
+            ColorSchemeStyle.NOTHING -> AppThemeStyle.NOTHING
+            ColorSchemeStyle.ONEPLUS -> AppThemeStyle.ONEPLUS
+            ColorSchemeStyle.APPLE -> AppThemeStyle.APPLE
+            ColorSchemeStyle.GITHUB -> AppThemeStyle.GITHUB
             else -> null
         }
-        if (fixed != null) {
-            return if (darkTheme) fixed.darkScheme() else fixed.lightScheme()
+        if (brand != null) {
+            return if (darkTheme) brand.darkScheme() else brand.lightScheme()
         }
-        return when (style) {
-            ColorSchemeStyle.DYNAMIC -> {
-                // Dynamic requested but unavailable (off, no context, pre-S):
-                // fall back to the seed's tonal spot.
-                if (darkTheme) seed.dark else seed.light
-            }
-            ColorSchemeStyle.TONAL_SPOT -> if (darkTheme) seed.dark else seed.light
-            ColorSchemeStyle.NEUTRAL -> if (darkTheme) neutralDark(seed) else neutralLight(seed)
-            else -> if (darkTheme) seed.dark else seed.light
+        if (style == ColorSchemeStyle.CUSTOM) {
+            return customScheme(customColors, darkTheme)
         }
+        return if (darkTheme) seed.dark else seed.light
     }
 
     fun fromString(value: String?): ColorSchemeStyle {
         return try {
-            ColorSchemeStyle.valueOf(value?.uppercase() ?: "TONAL_SPOT")
+            ColorSchemeStyle.valueOf(value?.uppercase() ?: "NOTHING")
         } catch (_: Exception) {
-            ColorSchemeStyle.TONAL_SPOT
+            // Legacy stored styles (TONAL_SPOT, EXPRESSIVE, …) fall here.
+            ColorSchemeStyle.NOTHING
         }
     }
 

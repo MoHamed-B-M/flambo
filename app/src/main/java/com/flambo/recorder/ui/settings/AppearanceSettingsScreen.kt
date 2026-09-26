@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.FilterChip
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -54,6 +55,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -75,6 +77,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -93,9 +96,13 @@ import com.flambo.recorder.ui.settings.components.PreferenceValueItem
 import com.flambo.recorder.ui.settings.components.SectionHeader
 import com.flambo.recorder.ui.settings.components.SegmentedPreferenceGroup
 import com.flambo.recorder.ui.theme.ColorPaletteGenerator
+import com.flambo.recorder.ui.theme.CUSTOM_DEFAULTS
+import com.flambo.recorder.ui.theme.CUSTOM_ROLES
+import com.flambo.recorder.ui.theme.CUSTOM_SWATCHES
 import com.flambo.recorder.ui.theme.ColorSchemeStyle
+import com.flambo.recorder.ui.theme.argbToHex
+import com.flambo.recorder.ui.theme.parseColorHex
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
-import com.flambo.recorder.ui.theme.ThemeSeeds
 import com.flambo.recorder.ui.theme.themeSeedById
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -113,7 +120,7 @@ fun AppearanceSettingsScreen(
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
     val homeLayout by prefs.homeLayoutFlow.collectAsState(initial = "list")
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
-    val colorSchemeStyle by prefs.colorSchemeFlow.collectAsState(initial = "TONAL_SPOT")
+    val colorSchemeStyle by prefs.colorSchemeFlow.collectAsState(initial = "NOTHING")
     val gestureEnabled by prefs.gestureEnabledFlow.collectAsState(initial = true)
     val appIcon by prefs.appIconFlow.collectAsState(initial = AppIconManager.ICON_DEFAULT)
     val progressStyle by prefs.progressStyleFlow.collectAsState(initial = ProgressBarStyle.SLIDER)
@@ -121,6 +128,7 @@ fun AppearanceSettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
     var showColorSchemeDialog by remember { mutableStateOf(false) }
+    var showCustomColorsDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showProgressBarDialog by remember { mutableStateOf(false) }
 
@@ -261,7 +269,7 @@ fun AppearanceSettingsScreen(
                             title = "Theme",
                             value = run {
                                 val mode = when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System" }
-                                val color = if (dynamicColor) "Dynamic" else themeSeedById(themeSeed).label
+                                val color = if (dynamicColor) "Dynamic" else ColorPaletteGenerator.fromString(colorSchemeStyle).name.lowercase().replaceFirstChar { it.titlecase() }
                                 "$color • $mode"
                             },
                             onClick = { showThemeDialog = true }
@@ -274,11 +282,11 @@ fun AppearanceSettingsScreen(
                             value = ColorPaletteGenerator.fromString(colorSchemeStyle).name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() } + " • ${if (darkTheme == "system") "System" else darkTheme}",
                             subtitle = when (ColorPaletteGenerator.fromString(colorSchemeStyle)) {
                                 ColorSchemeStyle.DYNAMIC -> "Material You • Android 12+"
-                                ColorSchemeStyle.MONOCHROME -> "Greyscale • AMOLED black"
-                                ColorSchemeStyle.VIBRANT -> "High-chroma containers"
-                                ColorSchemeStyle.EXPRESSIVE -> "Expressive accents"
-                                ColorSchemeStyle.NEUTRAL -> "Muted • Low chroma"
-                                ColorSchemeStyle.TONAL_SPOT -> "Seed-tonal • Balanced"
+                                ColorSchemeStyle.NOTHING -> "Black & white • stark"
+                                ColorSchemeStyle.ONEPLUS -> "Signature red • black & white"
+                                ColorSchemeStyle.APPLE -> "iOS blue • airy"
+                                ColorSchemeStyle.GITHUB -> "Primer • light & dark dimmed"
+                                ColorSchemeStyle.CUSTOM -> "Your own role colors"
                             },
                             onClick = { showColorSchemeDialog = true }
                         )
@@ -291,6 +299,23 @@ fun AppearanceSettingsScreen(
                             subtitle = "Playback seek bar style",
                             onClick = { showProgressBarDialog = true }
                         )
+                    }
+                }
+            }
+
+            if (colorSchemeStyle == ColorSchemeStyle.CUSTOM.name) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader(title = "Custom colors")
+                    SegmentedPreferenceGroup {
+                        item {
+                            PreferenceValueItem(
+                                icon = Icons.Filled.Palette,
+                                title = "Edit role colors",
+                                value = "Surface • Primary • Text • …",
+                                subtitle = "Fine-tune each theme role",
+                                onClick = { showCustomColorsDialog = true }
+                            )
+                        }
                     }
                 }
             }
@@ -503,36 +528,38 @@ fun AppearanceSettingsScreen(
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "Flambo colors",
+                            "Brand style",
                             style = MaterialTheme.typography.titleSmall,
-                            color = if (dynamicColor) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            ThemeSeeds.forEach { seed ->
-                                val selected = !dynamicColor && themeSeed == seed.id
+                            AppThemeStyle.entries.forEach { brand ->
+                                val selected = !dynamicColor && colorSchemeStyle == brand.name
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
                                         .size(44.dp)
                                         .clip(CircleShape)
-                                        .background(seed.swatch)
+                                        .background(brand.swatch)
                                         .border(
                                             2.dp,
                                             if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                             CircleShape
                                         )
                                         .clickable(enabled = !dynamicColor) {
-                                            scope.launch { prefs.setThemeSeed(seed.id) }
+                                            scope.launch { prefs.setColorScheme(brand.name) }
                                         }
                                 ) {
                                     if (selected) {
-                                        Icon(Icons.Filled.Check, contentDescription = "${seed.label} selected", tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Filled.Check, contentDescription = "${brand.name} selected", tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(20.dp))
                                     }
                                 }
                             }
                         }
                         if (dynamicColor) {
-                            Text("Turn dynamic color off to pick a Flambo color.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Turn dynamic color off to pick a brand style.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            Text("Nothing • OnePlus • Apple • GitHub — full palettes live under Color Scheme.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Text("Brightness", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
@@ -725,6 +752,7 @@ fun AppearanceSettingsScreen(
 
     if (showColorSchemeDialog) {
         val context = androidx.compose.ui.platform.LocalContext.current
+        val customColors by prefs.customColorsFlow.collectAsState(initial = emptyMap())
         val isDark = when (darkTheme) {
             "light" -> false
             "dark" -> true
@@ -744,7 +772,7 @@ fun AppearanceSettingsScreen(
                         ColorSchemeStyle.entries.forEach { style ->
                             val selected = style.name == colorSchemeStyle
                             val seed = themeSeedById(themeSeed)
-                            val scheme = ColorPaletteGenerator.scheme(seed, isDark, style, context, dynamicColor)
+                            val scheme = ColorPaletteGenerator.scheme(seed, isDark, style, context, dynamicColor, customColors)
                             val colors = listOf(scheme.primary, scheme.secondary, scheme.tertiary)
                             Surface(
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
@@ -752,6 +780,7 @@ fun AppearanceSettingsScreen(
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     scope.launch { prefs.setColorScheme(style.name) }
                                     showColorSchemeDialog = false
+                                    if (style == ColorSchemeStyle.CUSTOM) showCustomColorsDialog = true
                                 }
                             ) {
                                 Row(
@@ -775,11 +804,11 @@ fun AppearanceSettingsScreen(
                                         Text(
                                             when (style) {
                                                 ColorSchemeStyle.DYNAMIC -> "Material You • Android 12+"
-                                                ColorSchemeStyle.MONOCHROME -> "Greyscale • AMOLED"
-                                                ColorSchemeStyle.VIBRANT -> "High chroma"
-                                                ColorSchemeStyle.EXPRESSIVE -> "Expressive • vivid"
-                                                ColorSchemeStyle.NEUTRAL -> "Muted • Low chroma"
-                                                ColorSchemeStyle.TONAL_SPOT -> "Tonal Spot • Balanced"
+                                                ColorSchemeStyle.NOTHING -> "Black & white • stark"
+                                                ColorSchemeStyle.ONEPLUS -> "Signature red • black & white"
+                                                ColorSchemeStyle.APPLE -> "iOS blue • airy"
+                                                ColorSchemeStyle.GITHUB -> "Primer • light & dark dimmed"
+                                                ColorSchemeStyle.CUSTOM -> "Your own role colors"
                                             },
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -794,6 +823,102 @@ fun AppearanceSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showColorSchemeDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    if (showCustomColorsDialog) {
+        val customColors by prefs.customColorsFlow.collectAsState(initial = emptyMap())
+        var selectedRole by remember { mutableStateOf(CUSTOM_ROLES.first()) }
+        var hexDraft by remember(selectedRole) { mutableStateOf("") }
+        fun currentArgb(role: String): Int = customColors[role] ?: CUSTOM_DEFAULTS.getValue(role)
+        fun roleLabel(role: String): String = when (role) {
+            "primary" -> "Primary"
+            "secondary" -> "Secondary"
+            "surface" -> "Surface"
+            "text" -> "Text"
+            "container" -> "Container"
+            "primaryContainer" -> "Primary container"
+            else -> role
+        }
+        AlertDialog(
+            onDismissRequest = { showCustomColorsDialog = false },
+            title = { Text("Custom colors", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Pick a role, then a color.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CUSTOM_ROLES.forEach { role ->
+                            FilterChip(
+                                selected = role == selectedRole,
+                                onClick = { selectedRole = role },
+                                label = { Text(roleLabel(role)) }
+                            )
+                        }
+                    }
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CUSTOM_SWATCHES.forEach { argb ->
+                            val selected = currentArgb(selectedRole) == argb
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(argb))
+                                    .border(
+                                        2.dp,
+                                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                        CircleShape
+                                    )
+                                    .clickable { scope.launch { prefs.setCustomColor(selectedRole, argb) } }
+                            ) {
+                                if (selected) {
+                                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = hexDraft,
+                            onValueChange = { hexDraft = it },
+                            label = { Text("#RRGGBB") },
+                            placeholder = { Text(argbToHex(currentArgb(selectedRole))) },
+                            singleLine = true,
+                            shape = ShapeLargeIncreased,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick = {
+                                parseColorHex(hexDraft)?.let { scope.launch { prefs.setCustomColor(selectedRole, it) } }
+                                hexDraft = ""
+                            },
+                            enabled = parseColorHex(hexDraft) != null,
+                            shapes = ButtonDefaults.shapes()
+                        ) { Text("Apply") }
+                    }
+                    TextButton(
+                        onClick = { scope.launch { prefs.resetCustomColors() } },
+                        shapes = ButtonDefaults.shapes()
+                    ) { Text("Reset to defaults") }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCustomColorsDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Done") }
             },
             shape = ShapeLargeIncreased
         )

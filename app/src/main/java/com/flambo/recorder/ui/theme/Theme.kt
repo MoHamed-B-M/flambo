@@ -16,7 +16,8 @@ fun FlamboTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     seedId: String = "ember",
-    colorSchemeStyle: String = "TONAL_SPOT",
+    colorSchemeStyle: String = "NOTHING",
+    customColors: Map<String, Int> = emptyMap(),
     expressive: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -30,7 +31,8 @@ fun FlamboTheme(
         darkTheme = darkTheme,
         style = style,
         context = context,
-        dynamicColorEnabled = dynamicColor
+        dynamicColorEnabled = dynamicColor,
+        customColors = customColors
     )
 
     if (expressive) {

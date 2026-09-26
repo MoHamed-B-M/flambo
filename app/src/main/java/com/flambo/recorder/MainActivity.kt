@@ -175,7 +175,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val dynamicColor by app.prefs.dynamicColorFlow.collectAsState(initial = true)
             val themeSeed by app.prefs.themeSeedFlow.collectAsState(initial = "ember")
-            val colorSchemeStyle by app.prefs.colorSchemeFlow.collectAsState(initial = "TONAL_SPOT")
+            val colorSchemeStyle by app.prefs.colorSchemeFlow.collectAsState(initial = "NOTHING")
+            val customColors by app.prefs.customColorsFlow.collectAsState(initial = emptyMap())
             val darkThemePref by app.prefs.darkThemeFlow.collectAsState(initial = "system")
             val darkTheme = when (darkThemePref) {
                 "light" -> false
@@ -199,7 +200,7 @@ class MainActivity : ComponentActivity() {
                 controller.isAppearanceLightNavigationBars = !darkTheme
             }
 
-            FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed, colorSchemeStyle = colorSchemeStyle) {
+            FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed, colorSchemeStyle = colorSchemeStyle, customColors = customColors) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when {

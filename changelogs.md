@@ -13,6 +13,8 @@ A playback and motion update. Transport controls become one connected group, and
 - **Groups** — Long-press recordings, tap Group, and give it a name. A folder button appears in the top bar once your first group exists; open it to browse folders, tap one to see its recordings, and pick each folder's color. Swipe a folder away to delete the group (recordings stay, Undo brings it back).
 - **Bigger recording card** — The recording card fills the screen while recording with slimmer controls that adapt to short screens so nothing overflows.
 - **Brand intro** — A short Flambo animation plays on every launch. Turn it off in Appearance if you'd rather skip straight to your recordings.
+- **Brand themes** — Color schemes are now Nothing, OnePlus, Apple and GitHub presets plus Dynamic wallpaper colors, each with matching Light and Dark modes.
+- **Custom colors** — Pick the Custom scheme to set your own Surface, Primary, Secondary, Text and Container colors from swatches or exact hex, per role.
 
 ### Improvements
 

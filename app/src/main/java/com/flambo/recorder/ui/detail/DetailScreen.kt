@@ -200,6 +200,16 @@ fun DetailScreen(
     val gestureScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val velocityTracker = remember { VelocityTracker() }
+    // Exactly-once back navigation: the drag fling, the system predictive
+    // back and the arrow all race for the same pop — a second pop on a dead
+    // entry is what crashed the app.
+    var backConsumed by remember { mutableStateOf(false) }
+    fun safeBack() {
+        if (!backConsumed) {
+            backConsumed = true
+            onBack()
+        }
+    }
     PredictiveBackHandler(enabled = swipeEnabled) { progress ->
         try {
             progress.collect { event ->
@@ -208,7 +218,7 @@ fun DetailScreen(
                 corner.snapTo(p * 24f)
                 alpha.snapTo((1f - p * 0.15f).coerceIn(0.85f, 1f))
             }
-            onBack()
+            safeBack()
         } catch (e: CancellationException) {
             gestureScope.launch {
                 scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
@@ -240,12 +250,14 @@ fun DetailScreen(
                         val velocityThreshold = with(density) { 400.dp.toPx() }
                         val shouldDismiss = offset > dismissDistance || velocity > velocityThreshold
                         if (shouldDismiss) {
+                            // One sequenced coroutine: fling off-screen, then
+                            // pop exactly once. The old blind 80ms-delay twin
+                            // launch could pop a dead entry and crash.
                             gestureScope.launch {
-                                offsetX.animateTo(with(density) { 1080.dp.toPx() }, spring(stiffness = Spring.StiffnessMedium))
-                            }
-                            gestureScope.launch {
-                                kotlinx.coroutines.delay(80)
-                                if (offsetX.value >= with(density) { 1080.dp.toPx() } * 0.5f) onBack()
+                                runCatching {
+                                    offsetX.animateTo(with(density) { 1080.dp.toPx() }, spring(stiffness = Spring.StiffnessMedium))
+                                }
+                                safeBack()
                             }
                         } else {
                             gestureScope.launch {
@@ -317,7 +329,7 @@ fun DetailScreen(
                 TopAppBar(
                     title = { Text("Playback", style = MaterialTheme.typography.titleLarge) },
                     navigationIcon = {
-                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                        IconButton(onClick = { safeBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
                     },
                     actions = {
                         IconButton(onClick = { showDetailsCard = !showDetailsCard }) {

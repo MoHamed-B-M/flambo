@@ -42,6 +42,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -167,15 +168,14 @@ fun DetailScreen(
 
     val rec = recording
     if (rec == null) {
-        Scaffold(topBar = {
-            TopAppBar(title = { Text("Recording") }, navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-            })
-        }) { padding ->
-            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        // Blank surface-colored placeholder, no loading scaffold: Room emits
+        // null for the first frames, and a "Loading…" screen here would flash
+        // mid-flight while the shared-element overlay is morphing.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        )
         return
     }
 
@@ -315,7 +315,11 @@ fun DetailScreen(
                         animatedVisibilityScope,
                         boundsTransform = FlamboMotion.ActionBoundsTransform
                     )
-                    .renderInSharedTransitionScopeOverlay()
+                    // Overlay only mid-flight: a permanent overlay leaves ghost
+                    // play icons stuck on chips, pills and the seekbar.
+                    .renderInSharedTransitionScopeOverlay(
+                        renderInOverlay = { animatedVisibilityScope.transition.isRunning }
+                    )
             }
         } else {
             Modifier
@@ -363,8 +367,15 @@ fun DetailScreen(
             animationSpec = FlamboMotion.ActionSpringFloat,
             label = "detailFavPop"
         )
+        // Match the card's 28dp shape token mid-flight so corners don't snap
+        // halfway; unclip once settled for a full-bleed playback screen.
+        val morphClip = if (cardExpandAnimEnabled && animatedVisibilityScope.transition.isRunning) {
+            Modifier.clip(ShapeLargeIncreased)
+        } else {
+            Modifier
+        }
         Scaffold(
-            modifier = Modifier.then(containerModifier),
+            modifier = Modifier.then(containerModifier).then(morphClip),
             topBar = {
                 TopAppBar(
                     title = { Text("Playback", style = MaterialTheme.typography.titleLarge) },

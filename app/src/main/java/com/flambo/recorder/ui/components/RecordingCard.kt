@@ -125,7 +125,11 @@ fun RecordingCard(
                     animatedVisibilityScope,
                     boundsTransform = FlamboMotion.ActionBoundsTransform
                 )
-                .renderInSharedTransitionScopeOverlay()
+                // Overlay only mid-flight: a permanent overlay leaves ghost
+                // play icons stuck on the destination screen after landing.
+                .renderInSharedTransitionScopeOverlay(
+                    renderInOverlay = { animatedVisibilityScope.transition.isRunning }
+                )
         }
     } else {
         Modifier
@@ -422,7 +426,11 @@ fun RecordingGridTile(
                     animatedVisibilityScope,
                     boundsTransform = FlamboMotion.ActionBoundsTransform
                 )
-                .renderInSharedTransitionScopeOverlay()
+                // Overlay only mid-flight: a permanent overlay leaves ghost
+                // play icons stuck on the destination screen after landing.
+                .renderInSharedTransitionScopeOverlay(
+                    renderInOverlay = { animatedVisibilityScope.transition.isRunning }
+                )
         }
     } else {
         Modifier

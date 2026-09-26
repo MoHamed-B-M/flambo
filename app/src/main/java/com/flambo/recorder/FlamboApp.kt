@@ -22,7 +22,6 @@ class FlamboApp : Application() {
     @Volatile var storageVolumeId: String = StorageVolumes.ID_DEFAULT
     @Volatile var recordingPrefix: String = "Recording"
     @Volatile var customFolderUri: String = ""
-    @Volatile var saveToCustomFolder: Boolean = false
 
     fun recordingsDir(): File = StorageVolumes.resolveDir(this, storageVolumeId)
 
@@ -46,7 +45,6 @@ class FlamboApp : Application() {
             storageVolumeId = runCatching { prefs.recordingsVolume() }.getOrDefault(StorageVolumes.ID_DEFAULT)
             recordingPrefix = runCatching { prefs.recordingPrefix() }.getOrDefault("Recording")
             customFolderUri = runCatching { prefs.customFolderUri() }.getOrDefault("")
-            saveToCustomFolder = runCatching { prefs.saveToCustomFolder() }.getOrDefault(false)
         }
 
         appScope.launch {

@@ -121,6 +121,12 @@ fun FlamboNavGraph(
     val scope = rememberCoroutineScope()
 
     val playback = remember { PlaybackController(context) }
+    // Stop any playing audio the moment a recording starts — on every start
+    // path (UI, shortcuts, automation). Posted to Main: start() may run on a
+    // background thread, and player calls belong on Main.
+    app.recorder.onRecordingStarted = {
+        android.os.Handler(android.os.Looper.getMainLooper()).post { playback.stop() }
+    }
     val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val audioSource by app.prefs.audioSourceFlow.collectAsState(initial = "mic")
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)

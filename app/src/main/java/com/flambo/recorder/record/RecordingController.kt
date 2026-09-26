@@ -67,6 +67,15 @@ class RecordingController(
             private set
     }
 
+    /**
+     * Invoked synchronously after a recording successfully starts, on the
+     * caller's thread. The UI layer sets this to stop playback so the mic
+     * never records speaker output. All start paths (UI, headless,
+     * shortcuts, automation) funnel through [start], so one hook covers all.
+     * Keep implementations fast and exception-safe.
+     */
+    var onRecordingStarted: (() -> Unit)? = null
+
     init {
         instance = this
     }
@@ -124,6 +133,7 @@ class RecordingController(
             return false
         }
         startSampling()
+        runCatching { onRecordingStarted?.invoke() }
         return true
     }
 
@@ -151,6 +161,7 @@ class RecordingController(
             return false
         }
         startSampling()
+        runCatching { onRecordingStarted?.invoke() }
         return true
     }
 
@@ -402,9 +413,9 @@ class RecordingController(
     }
 
     /**
-     * Renames the temp take to the generated title, then either stores it in
-     * the picked system folder directly (single source of truth) or keeps it
-     * in the app folder plus an export copy — never both silently.
+     * Renames the temp take to the generated title, then stores it in the
+     * picked system folder when one is set (single copy, so the file manager
+     * and the library always show the same file), otherwise in the app folder.
      */
     private suspend fun finalizeRecording(
         tempFile: File,
@@ -426,9 +437,9 @@ class RecordingController(
             }
         } catch (_: Exception) {}
         var finalPath = actualFile.absolutePath
-        // System folder as the save location: move the take into the picked
+        // Picked system folder is the save location: move the take into the
         // tree so the file manager and the library show the same file.
-        val movedToTree = moveToSaveFolderIfEnabled(actualFile)
+        val movedToTree = moveToCustomFolderIfNeeded(actualFile)
         if (movedToTree != null) finalPath = movedToTree
         val rec = Recording(
             title = title,
@@ -439,20 +450,15 @@ class RecordingController(
             quality = qualityName
         )
         val id = repository.insert(rec)
-        if (!com.flambo.recorder.data.AudioFileStore.isContentUri(finalPath)) {
-            copyToCustomFolderIfNeeded(actualFile)
-        }
         withContext(Dispatchers.Main) {
             onSaved?.invoke(rec.copy(id = id))
         }
     }
 
     /** Returns the new document URI string when the take was moved into the picked folder. */
-    private suspend fun moveToSaveFolderIfEnabled(file: File): String? {
+    private suspend fun moveToCustomFolderIfNeeded(file: File): String? {
         return try {
             val app = appContext as? FlamboApp ?: return null
-            val enabled = try { app.prefs.saveToCustomFolder() } catch (_: Exception) { app.saveToCustomFolder }
-            if (!enabled) return null
             val uri = try { app.prefs.customFolderUri() } catch (_: Exception) { app.customFolderUri }
             if (uri.isBlank()) return null
             if (!SafFolderHelper.isTreeUriValid(appContext, uri)) return null
@@ -467,24 +473,5 @@ class RecordingController(
         } catch (_: Exception) {
             null
         }
-    }
-
-    private suspend fun copyToCustomFolderIfNeeded(file: File) {
-        try {
-            val app = appContext as? FlamboApp ?: return
-
-            val uri = try { app.prefs.customFolderUri() } catch (_: Exception) { app.customFolderUri }
-            if (uri.isBlank()) return
-            if (!SafFolderHelper.isTreeUriValid(appContext, uri)) return
-            val mime = when (file.extension.lowercase()) {
-                "wav" -> "audio/wav"
-                "m4a" -> "audio/mp4"
-                else -> "audio/*"
-            }
-            val docUri = SafFolderHelper.createFile(appContext, uri, file.name, mime) ?: return
-            appContext.contentResolver.openOutputStream(docUri)?.use { out ->
-                file.inputStream().use { inp -> inp.copyTo(out) }
-            }
-        } catch (_: Exception) { }
     }
 }

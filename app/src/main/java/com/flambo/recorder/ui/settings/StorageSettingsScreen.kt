@@ -65,7 +65,6 @@ import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.SafFolderHelper
 import com.flambo.recorder.data.StorageVolumes
-import com.flambo.recorder.ui.settings.components.PreferenceSwitchItem
 import com.flambo.recorder.ui.settings.components.PreferenceValueItem
 import com.flambo.recorder.ui.settings.components.SectionHeader
 import com.flambo.recorder.ui.settings.components.SegmentedPreferenceGroup
@@ -84,7 +83,6 @@ fun StorageSettingsScreen(
     val storageVolume by prefs.recordingsVolumeFlow.collectAsState(initial = "default")
     val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
     val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
-    val saveToCustomFolder by prefs.saveToCustomFolderFlow.collectAsState(initial = false)
 
     var showStorageDialog by remember { mutableStateOf(false) }
     var showNamingDialog by remember { mutableStateOf(false) }
@@ -232,27 +230,8 @@ fun StorageSettingsScreen(
                             icon = Icons.Filled.FolderOpen,
                             title = "Custom folder",
                             value = customLabel,
-                            subtitle = if (saveToCustomFolder) "Save location — new recordings go here directly"
-                            else "System picker — extra export copy, SAF persistent permission",
+                            subtitle = "Save location — new recordings go here directly",
                             onClick = { folderPicker.launch(null) }
-                        )
-                    }
-                    item {
-                        PreferenceSwitchItem(
-                            icon = Icons.Filled.FolderOpen,
-                            title = "Save to custom folder",
-                            subtitle = if (saveToCustomFolder) "Single copy in the picked folder — file manager and library match"
-                            else "Keep app copy plus an extra copy in the picked folder",
-                            checked = saveToCustomFolder,
-                            onCheckedChange = { enabled ->
-                                scope.launch {
-                                    prefs.setSaveToCustomFolder(enabled)
-                                    (context.applicationContext as? FlamboApp)?.let { it.saveToCustomFolder = enabled }
-                                    if (enabled && !SafFolderHelper.isTreeUriValid(context.applicationContext, customFolderUri)) {
-                                        folderPicker.launch(null)
-                                    }
-                                }
-                            }
                         )
                     }
                 }
@@ -261,10 +240,8 @@ fun StorageSettingsScreen(
                         TextButton(onClick = {
                             scope.launch {
                                 prefs.clearCustomFolderUri()
-                                prefs.setSaveToCustomFolder(false)
                                 (context.applicationContext as? FlamboApp)?.let {
                                     it.customFolderUri = ""
-                                    it.saveToCustomFolder = false
                                 }
                             }
                         }, shapes = ButtonDefaults.shapes()) { Text("Clear custom folder") }

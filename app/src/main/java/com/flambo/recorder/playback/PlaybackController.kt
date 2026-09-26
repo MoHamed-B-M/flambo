@@ -134,6 +134,14 @@ class PlaybackController(private val context: Context) {
         currentPath = null
     }
 
+    /**
+     * Stops playback if the loaded track is one of [paths] (e.g. it was just
+     * deleted or trashed). Blank paths are ignored. Safe to call unconditionally.
+     */
+    fun stopIfCurrent(vararg paths: String) {
+        if (paths.any { it.isNotBlank() && it == currentPath }) stop()
+    }
+
     fun release() {
         ticker?.cancel()
         player?.release()

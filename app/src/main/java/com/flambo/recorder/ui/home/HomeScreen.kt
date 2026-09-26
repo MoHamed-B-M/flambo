@@ -523,7 +523,10 @@ fun HomeScreen(
                             TrashRow(
                                 recording = rec,
                                 onRestore = { viewModel.restoreFromTrash(rec.id) },
-                                onDeleteForever = { viewModel.permanentDelete(rec.id) }
+                                onDeleteForever = {
+                                    playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
+                                    viewModel.permanentDelete(rec.id)
+                                }
                             )
                         }
                     }
@@ -576,7 +579,10 @@ fun HomeScreen(
                                     }
                                 },
                                 onFavorite = { viewModel.toggleFavorite(rec.id) },
-                                onDelete = { viewModel.softDelete(rec) },
+                                onDelete = {
+                                    playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
+                                    viewModel.softDelete(rec)
+                                },
                                 onRename = {
                                     showRenameDialog = rec
                                     renameText = rec.title
@@ -611,6 +617,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    playback.stopIfCurrent(*uiState.trash.flatMap { listOf(it.filePath, it.enhancedPath) }.toTypedArray())
                     viewModel.emptyTrash()
                     showEmptyTrashConfirm = false
                 }) { Text("Delete all", color = MaterialTheme.colorScheme.error) }
@@ -630,6 +637,10 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    val doomed = (uiState.recordings + uiState.trash)
+                        .filter { it.id in selection }
+                        .flatMap { listOf(it.filePath, it.enhancedPath) }
+                    playback.stopIfCurrent(*doomed.toTypedArray())
                     viewModel.softDeleteAll(selection)
                     selection = emptySet()
                     showBulkDeleteConfirm = false

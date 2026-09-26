@@ -580,6 +580,7 @@ fun DetailScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
+                    playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                     viewModel.softDelete()
                     onDeleted()
                 }) { Text("Move to trash", color = MaterialTheme.colorScheme.error) }

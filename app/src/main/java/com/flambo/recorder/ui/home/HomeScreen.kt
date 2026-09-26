@@ -71,6 +71,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -86,6 +89,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -701,18 +705,47 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(groups, key = { it.name }) { folder ->
-                                GroupFolderCard(
-                                    group = folder,
-                                    onOpen = { openGroup = folder.name },
-                                    onRecolor = {
-                                        recolorGroup = folder.name
-                                        groupColorDraft = folder.colorArgb
+                                val dismissState = rememberSwipeToDismissBoxState(
+                                    confirmValueChange = { value ->
+                                        if (value == SwipeToDismissBoxValue.Settled) {
+                                            false
+                                        } else {
+                                            viewModel.ungroup(folder.name) { ids ->
+                                                scope.launch {
+                                                    val r = snackbarHostState.showSnackbar(
+                                                        message = "Deleted group “${folder.name}”",
+                                                        actionLabel = "Undo",
+                                                        withDismissAction = true
+                                                    )
+                                                    if (r == SnackbarResult.ActionPerformed) {
+                                                        viewModel.tagRecordings(ids, folder.name)
+                                                    }
+                                                }
+                                            }
+                                            true
+                                        }
+                                    }
+                                )
+                                SwipeToDismissBox(
+                                    state = dismissState,
+                                    backgroundContent = {
+                                        DismissGroupBackground(dismissState.targetValue)
                                     },
                                     modifier = Modifier.animateItem(
                                         fadeInSpec = null,
                                         placementSpec = FlamboMotion.PlacementSpring,
                                         fadeOutSpec = null
-                                    )
+                                    ),
+                                    content = {
+                                        GroupFolderCard(
+                                            group = folder,
+                                            onOpen = { openGroup = folder.name },
+                                            onRecolor = {
+                                                recolorGroup = folder.name
+                                                groupColorDraft = folder.colorArgb
+                                            }
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -1225,6 +1258,29 @@ private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
             Spacer(Modifier.size(8.dp))
             Text("Start recording")
         }
+    }
+}
+
+@Composable
+private fun DismissGroupBackground(target: SwipeToDismissBoxValue) {
+    val alignment = when (target) {
+        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+        else -> Alignment.CenterStart
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(ShapeLargeIncreased)
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 20.dp),
+        contentAlignment = alignment
+    ) {
+        Icon(
+            Icons.Filled.Delete,
+            contentDescription = "Delete group",
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 

@@ -98,6 +98,9 @@ class HomeViewModel(
     fun tagRecordings(ids: Set<Long>, tag: String, onDone: (Int) -> Unit = {}) =
         viewModelScope.launch { onDone(repository.addTagToAll(ids, tag)) }
 
+    fun ungroup(tag: String, onDone: (Set<Long>) -> Unit = {}) =
+        viewModelScope.launch { onDone(repository.removeTagFromAll(tag)) }
+
     fun restoreFromTrash(id: Long) = viewModelScope.launch { repository.restore(id) }
 
     fun rename(id: Long, newTitle: String) = viewModelScope.launch { repository.rename(id, newTitle) }

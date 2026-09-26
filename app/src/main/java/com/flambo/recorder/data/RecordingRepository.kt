@@ -3,6 +3,7 @@ package com.flambo.recorder.data
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -53,6 +54,20 @@ class RecordingRepository(
             }
         }
         return tagged
+    }
+
+    /** Removes a group tag from every recording; returns affected ids for undo. */
+    suspend fun removeTagFromAll(tag: String): Set<Long> {
+        val clean = tag.trim().trim(',')
+        if (clean.isEmpty()) return emptySet()
+        val touched = mutableSetOf<Long>()
+        observeRecordings().first().forEach { rec ->
+            if (clean in rec.tagList) {
+                dao.update(rec.copy(tags = (rec.tagList - clean).joinToString(",")))
+                touched += rec.id
+            }
+        }
+        return touched
     }
 
     suspend fun moveToDirectory(ids: Collection<Long>, targetDir: File): Int = withContext(Dispatchers.IO) {

@@ -312,6 +312,19 @@ fun HomeScreen(
                 }
                 return Offset.Zero
             }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // Pulled past the top edge: chrome comes back now, no 2s wait.
+                if (available.y > 0f) {
+                    scrollIdleJob?.cancel()
+                    if (listScrolling) listScrolling = false
+                }
+                return Offset.Zero
+            }
         }
     }
 

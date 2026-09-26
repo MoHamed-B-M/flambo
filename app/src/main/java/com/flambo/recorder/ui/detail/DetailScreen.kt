@@ -59,7 +59,10 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -476,9 +479,10 @@ fun DetailScreen(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        val skipBackPress = rememberTransportPress(enabled = isCurrentTrack && !fileMissing)
                         FilledTonalButton(
                             onClick = { if (isCurrentTrack) playback.skip(-5000) },
                             enabled = isCurrentTrack && !fileMissing,
@@ -487,9 +491,11 @@ fun DetailScreen(
                                 bottomStart = 20.dp, bottomEnd = 8.dp
                             ),
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            interactionSource = skipBackPress.interaction,
                             modifier = Modifier
                                 .weight(1f)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
+                                .then(skipBackPress.modifier)
                         ) {
                             Icon(
                                 Icons.Filled.Replay5,
@@ -498,6 +504,7 @@ fun DetailScreen(
                             )
                         }
 
+                        val playPress = rememberTransportPress(enabled = !fileMissing)
                         androidx.compose.material3.Button(
                             onClick = {
                                 if (fileMissing) return@Button
@@ -511,9 +518,11 @@ fun DetailScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            interactionSource = playPress.interaction,
                             modifier = Modifier
                                 .weight(1.4f)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
+                                .then(playPress.modifier)
                         ) {
                             AnimatedContent(
                                 targetState = isThisPlaying,
@@ -531,21 +540,24 @@ fun DetailScreen(
                             }
                         }
 
+                        val skipForwardPress = rememberTransportPress(enabled = isCurrentTrack && !fileMissing)
                         FilledTonalButton(
-                            onClick = { if (isCurrentTrack) playback.skip(10000) },
+                            onClick = { if (isCurrentTrack) playback.skip(5000) },
                             enabled = isCurrentTrack && !fileMissing,
                             shape = RoundedCornerShape(
                                 topStart = 8.dp, topEnd = 20.dp,
                                 bottomStart = 8.dp, bottomEnd = 20.dp
                             ),
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            interactionSource = skipForwardPress.interaction,
                             modifier = Modifier
                                 .weight(1f)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
+                                .then(skipForwardPress.modifier)
                         ) {
                             Icon(
                                 Icons.Filled.Forward5,
-                                contentDescription = "Forward 10s",
+                                contentDescription = "Forward 5s",
                                 modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
                             )
                         }
@@ -717,6 +729,37 @@ fun DetailScreen(
             shape = ShapeLargeIncreased
         )
     }
+}
+
+private class TransportPress(
+    val interaction: MutableInteractionSource,
+    val modifier: Modifier
+)
+
+/**
+ * Press-and-shrink feedback for the transport buttons. Returns the
+ * interaction source to feed the button plus a scale modifier — GPU-only,
+ * no remeasure. Uses only long-stable APIs.
+ */
+@Composable
+private fun rememberTransportPress(enabled: Boolean): TransportPress {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.93f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "transportPress"
+    )
+    return TransportPress(
+        interaction = interaction,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+    )
 }
 
 @Composable

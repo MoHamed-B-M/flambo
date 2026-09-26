@@ -3,6 +3,9 @@ package com.flambo.recorder.ui.components
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,7 +55,7 @@ import com.flambo.recorder.domain.formatRelativeTime
 import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun RecordingCard(
     recording: Recording,
@@ -64,7 +67,10 @@ fun RecordingCard(
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    fileMissing: Boolean = false
+    fileMissing: Boolean = false,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    expandAnimationEnabled: Boolean = true
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val playbackState by playback.state.collectAsState()
@@ -79,8 +85,22 @@ fun RecordingCard(
         else -> formatDuration(recording.durationMs)
     }
 
+    // Same shared key as the grid tile: only one layout is visible at a time.
+    // State call stays unconditional; only the modifier is gated.
+    val sharedContentState = with(sharedTransitionScope) {
+        rememberSharedContentState(key = "recording-card-${recording.id}")
+    }
+    val sharedElementModifier = if (expandAnimationEnabled) {
+        with(sharedTransitionScope) {
+            Modifier.sharedBounds(sharedContentState, animatedVisibilityScope)
+        }
+    } else {
+        Modifier
+    }
+
     Card(
         modifier = modifier
+            .then(sharedElementModifier)
             .fillMaxWidth()
             .clip(ShapeLargeIncreased)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),

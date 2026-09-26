@@ -22,6 +22,8 @@ class FlamboApp : Application() {
     @Volatile var storageVolumeId: String = StorageVolumes.ID_DEFAULT
     @Volatile var recordingPrefix: String = "Recording"
     @Volatile var customFolderUri: String = ""
+    /** Mirrors the card-expand toggle for nav transitions, which can't collect flows. */
+    @Volatile var cardExpandAnim: Boolean = true
 
     fun recordingsDir(): File = StorageVolumes.resolveDir(this, storageVolumeId)
 
@@ -45,6 +47,7 @@ class FlamboApp : Application() {
             storageVolumeId = runCatching { prefs.recordingsVolume() }.getOrDefault(StorageVolumes.ID_DEFAULT)
             recordingPrefix = runCatching { prefs.recordingPrefix() }.getOrDefault("Recording")
             customFolderUri = runCatching { prefs.customFolderUri() }.getOrDefault("")
+            cardExpandAnim = runCatching { prefs.cardExpandAnim() }.getOrDefault(true)
         }
 
         appScope.launch {

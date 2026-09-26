@@ -7,6 +7,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -175,7 +176,12 @@ fun FlamboNavGraph(
         composable(
             route = Dest.Home.route,
             enterTransition = { expressivePopEnter() },
-            exitTransition = { expressiveExit() }
+            // When the card morph is active the grid tile stays on screen as the
+            // shared overlay — sliding home away would fight it, so just fade.
+            exitTransition = {
+                if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) fadeOut(tween(120))
+                else expressiveExit()
+            }
         ) {
             val animScope = this
             val factory = remember {
@@ -210,10 +216,12 @@ fun FlamboNavGraph(
         composable(
             route = Dest.Detail.route,
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            // When the card morph is active it owns the motion — plain fades here
+            // so no slide fights the maximize/minimize. Otherwise classic slides.
+            enterTransition = { if (app.cardExpandAnim) fadeIn(tween(150)) else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { if (app.cardExpandAnim) fadeOut(tween(150)) else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { if (app.cardExpandAnim) fadeIn(tween(150)) else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { if (app.cardExpandAnim) fadeOut(tween(150)) else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) { backStackEntry ->
             val animScope = this
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable
@@ -233,7 +241,7 @@ fun FlamboNavGraph(
                 onDeleted = { debouncedPop() },
                 sharedTransitionScope = sharedScope,
                 animatedVisibilityScope = animScope,
-                cardExpandAnimEnabled = cardExpandAnim && homeLayout == "grid"
+                cardExpandAnimEnabled = cardExpandAnim
             )
         }
 

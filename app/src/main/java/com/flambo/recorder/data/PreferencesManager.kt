@@ -251,6 +251,9 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[Keys.CARD_EXPAND_ANIM] = enabled }
     }
 
+    suspend fun cardExpandAnim(): Boolean =
+        context.dataStore.data.map { it[Keys.CARD_EXPAND_ANIM] ?: true }.first()
+
     val appIconFlow: Flow<String> =
         context.dataStore.data.map { it[Keys.APP_ICON] ?: "default" }
 

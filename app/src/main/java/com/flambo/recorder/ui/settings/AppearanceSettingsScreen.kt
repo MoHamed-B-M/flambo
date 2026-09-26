@@ -84,6 +84,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import androidx.compose.ui.unit.dp
+import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.ui.components.PlaybackProgressBar
 import com.flambo.recorder.ui.components.ProgressBarStyle
@@ -307,13 +308,19 @@ fun AppearanceSettingsScreen(
                     }
                     item {
                         val cardExpandAnim by prefs.cardExpandAnimFlow.collectAsState(initial = true)
+                        val appContext = LocalContext.current.applicationContext
                         PreferenceSwitchItem(
                             icon = Icons.Filled.ZoomOutMap,
                             title = "Card expand animation",
-                            subtitle = if (cardExpandAnim) "Grid cards zoom open and back • app-launch feel"
+                            subtitle = if (cardExpandAnim) "Cards zoom open and back • app-launch feel"
                             else "Open instantly without the zoom",
                             checked = cardExpandAnim,
-                            onCheckedChange = { scope.launch { prefs.setCardExpandAnim(it) } }
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    prefs.setCardExpandAnim(enabled)
+                                    (appContext as? FlamboApp)?.cardExpandAnim = enabled
+                                }
+                            }
                         )
                     }
                 }

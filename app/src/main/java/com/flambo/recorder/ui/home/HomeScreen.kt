@@ -589,7 +589,10 @@ fun HomeScreen(
                                     renameText = rec.title
                                 },
                                 selected = rec.id in selection,
-                                onLongClick = { selection = selection + rec.id }
+                                onLongClick = { selection = selection + rec.id },
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim
                             )
                         }
                     }

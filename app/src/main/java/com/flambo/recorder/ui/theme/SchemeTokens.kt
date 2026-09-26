@@ -27,7 +27,6 @@ enum class AppThemeStyle {
             ColorSchemeStyle.ONEPLUS -> ONEPLUS
             ColorSchemeStyle.APPLE -> APPLE
             ColorSchemeStyle.GITHUB -> GITHUB
-            ColorSchemeStyle.CUSTOM -> GITHUB
             else -> NOTHING
         }
     }

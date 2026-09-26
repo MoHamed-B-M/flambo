@@ -27,6 +27,7 @@ A playback and motion update. Transport controls become one connected group, and
 - The header, search bar and Record button duck while scrolling and slide back 2s after you stop.
 - Dynamic color now applies to every palette style, not just Dynamic.
 - Fixed an occasional crash when swiping back from playback.
+- Custom theme parked for now; the five-brand lineup is Dynamic, Nothing, OnePlus, Apple and GitHub.
 
 ### Demos
 

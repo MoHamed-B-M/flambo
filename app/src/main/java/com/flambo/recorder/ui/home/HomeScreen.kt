@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Info
@@ -78,7 +79,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -111,7 +111,6 @@ import kotlinx.coroutines.launch
 import com.flambo.recorder.ui.components.GroupColorRow
 import com.flambo.recorder.ui.components.GroupFolder
 import com.flambo.recorder.ui.components.GroupFolderCard
-import com.flambo.recorder.ui.components.LibraryTabs
 import com.flambo.recorder.ui.components.RecordingCard
 import com.flambo.recorder.ui.components.RecordingGridTile
 import com.flambo.recorder.ui.components.WaveformVisualizer
@@ -201,11 +200,14 @@ fun HomeScreen(
     var showGroupDialog by remember { mutableStateOf(false) }
     var groupText by remember { mutableStateOf("") }
     var groupColorDraft by remember { mutableStateOf<Int?>(null) }
-    var libraryTab by rememberSaveable { mutableIntStateOf(0) }
+    var showGroups by rememberSaveable { mutableStateOf(false) }
     var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
     var recolorGroup by remember { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = selectionMode) { selection = emptySet() }
+    // Groups page back stack: folder first, then the page itself.
+    BackHandler(enabled = !selectionMode && openGroup != null) { openGroup = null }
+    BackHandler(enabled = !selectionMode && openGroup == null && showGroups) { showGroups = false }
     var searchExpanded by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     BackHandler(enabled = searchExpanded && !selectionMode) { searchExpanded = false }
@@ -328,6 +330,16 @@ fun HomeScreen(
                             }
                         }) {
                             Icon(Icons.Filled.Info, contentDescription = "What's new")
+                        }
+                        // Appears once the first group is created; opens the groups page.
+                        if (groups.isNotEmpty()) {
+                            IconButton(onClick = {
+                                viewModel.clearQuery()
+                                openGroup = null
+                                showGroups = true
+                            }) {
+                                Icon(Icons.Filled.Folder, contentDescription = "Groups")
+                            }
                         }
                         IconButton(
                             onClick = {
@@ -479,18 +491,7 @@ fun HomeScreen(
                 }
             }
 
-            LibraryTabs(
-                selectedIndex = libraryTab,
-                onSelect = {
-                    libraryTab = it
-                    if (it == 1) {
-                        viewModel.clearQuery()
-                        openGroup = null
-                    }
-                }
-            )
-
-            if (tipsEnabled && !recorderState.isRecording && libraryTab == 0) {
+            if (tipsEnabled && !recorderState.isRecording && !showGroups) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]
                 TipCard(
                     tip = tip,
@@ -573,7 +574,7 @@ fun HomeScreen(
                         }
                     }
                 }
-            } else if (libraryTab == 0) {
+            } else if (!showGroups) {
 
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
                     EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())
@@ -654,6 +655,30 @@ fun HomeScreen(
             } else {
                 val group = openGroup
                 if (group == null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IconButton(onClick = { showGroups = false }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to recordings")
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Groups",
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${groups.size} folders",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     if (groups.isEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(32.dp),

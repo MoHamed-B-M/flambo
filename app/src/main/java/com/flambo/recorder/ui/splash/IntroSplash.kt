@@ -129,6 +129,16 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 val textFrac = LinearOutSlowInEasing.transform(phase(tMs, 2300, 800))
                 if (textFrac > 0f) {
+                    // drawText has no alpha param: bake it into the brush.
+                    val fadedBrush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFFFF416C).copy(alpha = textFrac),
+                            Color(0xFFFF4B2B).copy(alpha = textFrac),
+                            Color(0xFF8A2387).copy(alpha = textFrac)
+                        ),
+                        start = Offset(200f, 810f),
+                        end = Offset(600f, 810f)
+                    )
                     drawText(
                         textMeasurer = textMeasurer,
                         text = "FLAMBO",
@@ -136,8 +146,7 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
                             400f - textLayout.size.width / 2f,
                             810f + (1f - textFrac) * 18f
                         ),
-                        style = textStyle,
-                        alpha = textFrac
+                        style = textStyle.copy(brush = fadedBrush)
                     )
                 }
             }

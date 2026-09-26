@@ -175,17 +175,18 @@ fun FlamboNavGraph(
         ) {
         composable(
             route = Dest.Home.route,
-            // Returning from detail under the morph: no slide/fade, the
-            // minimizing card owns the motion back into place.
+            // Returning from detail under the morph: a spring fade/scale keeps
+            // the content transition alive so the minimizing card can ride it
+            // back into place. None freezes progress and the morph snaps.
             enterTransition = {
-                if (app.cardExpandAnim && initialState.destination.route == Dest.Detail.route) EnterTransition.None
+                if (app.cardExpandAnim && initialState.destination.route == Dest.Detail.route) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.98f, animationSpec = fastFadeSpring)
                 else expressivePopEnter()
             },
-            // When the card morph is active it is the only animation running:
-            // home stays put with no fade so the card's slow growth carries
-            // the whole transition. Otherwise the expressive exit.
+            // When the card morph is active it rides the route transition: home
+            // gently fades and settles on a spring while the card takes over.
+            // None would freeze transition progress and snap the morph.
             exitTransition = {
-                if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) ExitTransition.None
+                if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) fadeOut(animationSpec = fastFadeSpring)
                 else expressiveExit()
             }
         ) {
@@ -222,13 +223,15 @@ fun FlamboNavGraph(
         composable(
             route = Dest.Detail.route,
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
-            // When the card morph is active it owns the motion entirely: route
-            // transitions are None (no fake fades), the slow bounds morph is
-            // the single animation. Otherwise classic slides.
-            enterTransition = { if (app.cardExpandAnim) EnterTransition.None else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { if (app.cardExpandAnim) ExitTransition.None else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { if (app.cardExpandAnim) EnterTransition.None else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { if (app.cardExpandAnim) ExitTransition.None else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            // When the card morph is active it rides these spring transitions:
+            // the page calmly fades and settles (transform + alpha only,
+            // GPU-cheap) while the slow bounds morph carries the motion.
+            // None freezes progress and the card would just snap open.
+            // Otherwise classic slides.
+            enterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) { backStackEntry ->
             val animScope = this
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable

@@ -96,6 +96,7 @@ import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateNotifier
 import com.flambo.recorder.update.WhatsNewItem
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
@@ -237,6 +238,9 @@ fun HomeScreen(
         installedVersion = version
         val lastSeen = prefs.lastSeenVersionCode()
         if (lastSeen != 0L && code > lastSeen) {
+            // Let the launch intro finish first so the sheet doesn't pop
+            // underneath it; no wait when the intro is disabled.
+            if (prefs.introAnimFlow.first()) delay(INTRO_SHEET_DELAY_MS)
             whatsNewVersion = version
             whatsNewItems = ReleaseNotes.loadWhatsNew(context)
         }
@@ -1062,6 +1066,9 @@ fun HomeScreen(
     }
 }
 
+/** Intro (~3.3s) plus fade-out beat before What's New may pop. */
+private const val INTRO_SHEET_DELAY_MS = 3800L
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ActiveRecordingPanel(
@@ -1082,23 +1089,34 @@ private fun ActiveRecordingPanel(
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(
+        // Adaptive to the new full-space size: short screens (landscape,
+        // small phones) get the compact treatment so nothing overflows.
+        androidx.compose.foundation.layout.BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(28.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(28.dp)
         ) {
-            Spacer(Modifier.weight(1f))
+            val roomy = maxHeight >= 560.dp
+            val gap = if (roomy) 24.dp else 14.dp
+            val timerStyle = if (roomy) MaterialTheme.typography.displayLarge
+            else MaterialTheme.typography.displayMedium
+            val waveHeight = if (roomy) 128.dp else 88.dp
+            val buttonHeight = if (roomy) ButtonDefaults.LargeContainerHeight
+            else ButtonDefaults.MediumContainerHeight
             Column(
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(gap),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
-                        .size(12.dp)
+                        .size(if (roomy) 12.dp else 10.dp)
                         .background(
                             color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
                             shape = ShapeFull
@@ -1108,12 +1126,13 @@ private fun ActiveRecordingPanel(
                     imageVector = Icons.Filled.Mic,
                     contentDescription = null,
                     tint = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(if (roomy) 20.dp else 16.dp)
                 )
                 Text(
                     text = (if (isPaused) "Paused" else "Recording") +
                         if (source == AudioSource.SYSTEM) " • System sound" else "",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = if (roomy) MaterialTheme.typography.titleMedium
+                    else MaterialTheme.typography.labelLarge,
                     color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error
                 )
             }
@@ -1125,7 +1144,7 @@ private fun ActiveRecordingPanel(
             ) { time ->
                 Text(
                     text = time,
-                    style = MaterialTheme.typography.displayLarge,
+                    style = timerStyle,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -1134,7 +1153,7 @@ private fun ActiveRecordingPanel(
                 amplitudes = peaks,
                 currentAmplitude = amplitude,
                 isPaused = isPaused,
-                height = 128.dp,
+                height = waveHeight,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -1146,30 +1165,30 @@ private fun ActiveRecordingPanel(
                     onClick = onPauseResume,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.weight(1f),
-                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight)
+                    contentPadding = ButtonDefaults.contentPaddingFor(buttonHeight)
                 ) {
                     Icon(
                         imageVector = if (isPaused) Icons.Filled.Mic else Icons.Filled.Pause,
                         contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
+                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonHeight))
                     )
-                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
-                    Text(if (isPaused) "Resume" else "Pause", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(buttonHeight)))
+                    Text(if (isPaused) "Resume" else "Pause", style = ButtonDefaults.textStyleFor(buttonHeight))
                 }
                 Button(
                     onClick = onStop,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.weight(1f),
-                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight)
+                    contentPadding = ButtonDefaults.contentPaddingFor(buttonHeight)
                 ) {
-                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight)))
-                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
-                    Text("Stop & save", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonHeight)))
+                    Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(buttonHeight)))
+                    Text("Stop & save", style = ButtonDefaults.textStyleFor(buttonHeight))
                 }
             }
             TextButton(onClick = onCancel) { Text("Discard", color = MaterialTheme.colorScheme.error) }
             }
-            Spacer(Modifier.weight(1f))
+            }
         }
     }
 }

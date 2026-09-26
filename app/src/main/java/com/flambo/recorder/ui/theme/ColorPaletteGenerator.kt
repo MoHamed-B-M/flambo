@@ -14,8 +14,7 @@ enum class ColorSchemeStyle {
     NOTHING,
     ONEPLUS,
     APPLE,
-    GITHUB,
-    CUSTOM
+    GITHUB
 }
 
 object ColorPaletteGenerator {
@@ -46,9 +45,6 @@ object ColorPaletteGenerator {
         }
         if (brand != null) {
             return if (darkTheme) brand.darkScheme() else brand.lightScheme()
-        }
-        if (style == ColorSchemeStyle.CUSTOM) {
-            return customScheme(customColors, darkTheme)
         }
         return if (darkTheme) seed.dark else seed.light
     }

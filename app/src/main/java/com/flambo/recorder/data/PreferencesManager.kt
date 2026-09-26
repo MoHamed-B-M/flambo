@@ -259,7 +259,7 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.data.map { it[Keys.COLOR_SCHEME] ?: "NOTHING" }
 
     suspend fun setColorScheme(scheme: String) {
-        val valid = setOf("DYNAMIC", "NOTHING", "ONEPLUS", "APPLE", "GITHUB", "CUSTOM")
+        val valid = setOf("DYNAMIC", "NOTHING", "ONEPLUS", "APPLE", "GITHUB")
         context.dataStore.edit { it[Keys.COLOR_SCHEME] = if (scheme.uppercase() in valid) scheme.uppercase() else "NOTHING" }
     }
 

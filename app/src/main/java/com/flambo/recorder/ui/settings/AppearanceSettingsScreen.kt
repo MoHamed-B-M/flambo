@@ -8,12 +8,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -46,7 +44,6 @@ import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.FilterChip
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -57,7 +54,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -79,11 +75,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -91,11 +82,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.hypot
 import kotlin.math.max
-import kotlin.math.sin
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.FlamboApp
 import com.flambo.recorder.data.PreferencesManager
@@ -106,12 +93,7 @@ import com.flambo.recorder.ui.settings.components.PreferenceValueItem
 import com.flambo.recorder.ui.settings.components.SectionHeader
 import com.flambo.recorder.ui.settings.components.SegmentedPreferenceGroup
 import com.flambo.recorder.ui.theme.ColorPaletteGenerator
-import com.flambo.recorder.ui.theme.CUSTOM_DEFAULTS
-import com.flambo.recorder.ui.theme.CUSTOM_ROLES
-import com.flambo.recorder.ui.theme.CUSTOM_SWATCHES
 import com.flambo.recorder.ui.theme.ColorSchemeStyle
-import com.flambo.recorder.ui.theme.argbToHex
-import com.flambo.recorder.ui.theme.parseColorHex
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.ui.theme.themeSeedById
 import kotlinx.coroutines.CancellationException
@@ -137,7 +119,6 @@ fun AppearanceSettingsScreen(
 
     var showAppThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
-    var showCustomColorsDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showProgressBarDialog by remember { mutableStateOf(false) }
 
@@ -289,23 +270,6 @@ fun AppearanceSettingsScreen(
                             subtitle = "Playback seek bar style",
                             onClick = { showProgressBarDialog = true }
                         )
-                    }
-                }
-            }
-
-            if (colorSchemeStyle == ColorSchemeStyle.CUSTOM.name) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionHeader(title = "Custom colors")
-                    SegmentedPreferenceGroup {
-                        item {
-                            PreferenceValueItem(
-                                icon = Icons.Filled.Palette,
-                                title = "Edit role colors",
-                                value = "Surface • Primary • Text • …",
-                                subtitle = "Fine-tune each theme role",
-                                onClick = { showCustomColorsDialog = true }
-                            )
-                        }
                     }
                 }
             }
@@ -698,7 +662,6 @@ fun AppearanceSettingsScreen(
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     scope.launch { prefs.setColorScheme(style.name) }
                                     showAppThemeDialog = false
-                                    if (style == ColorSchemeStyle.CUSTOM) showCustomColorsDialog = true
                                 }
                             ) {
                                 Row(
@@ -726,7 +689,6 @@ fun AppearanceSettingsScreen(
                                                 ColorSchemeStyle.ONEPLUS -> "Signature red • black & white"
                                                 ColorSchemeStyle.APPLE -> "iOS blue • airy"
                                                 ColorSchemeStyle.GITHUB -> "Primer • light & dark dimmed"
-                                                ColorSchemeStyle.CUSTOM -> "Your own role colors"
                                             },
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -744,172 +706,6 @@ fun AppearanceSettingsScreen(
             },
             shape = ShapeLargeIncreased
         )
-    }
-
-    if (showCustomColorsDialog) {
-        val customColors by prefs.customColorsFlow.collectAsState(initial = emptyMap())
-        var selectedRole by remember { mutableStateOf(CUSTOM_ROLES.first()) }
-        var hexDraft by remember(selectedRole) { mutableStateOf("") }
-        fun currentArgb(role: String): Int = customColors[role] ?: CUSTOM_DEFAULTS.getValue(role)
-        fun roleLabel(role: String): String = when (role) {
-            "primary" -> "Primary"
-            "secondary" -> "Secondary"
-            "surface" -> "Surface"
-            "text" -> "Text"
-            "container" -> "Container"
-            "primaryContainer" -> "Primary container"
-            else -> role
-        }
-        AlertDialog(
-            onDismissRequest = { showCustomColorsDialog = false },
-            title = { Text("Custom colors", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Pick a role, then a color.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        CUSTOM_ROLES.forEach { role ->
-                            FilterChip(
-                                selected = role == selectedRole,
-                                onClick = { selectedRole = role },
-                                label = { Text(roleLabel(role)) }
-                            )
-                        }
-                    }
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        CUSTOM_SWATCHES.forEach { argb ->
-                            val selected = currentArgb(selectedRole) == argb
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(argb))
-                                    .border(
-                                        2.dp,
-                                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                        CircleShape
-                                    )
-                                    .clickable { scope.launch { prefs.setCustomColor(selectedRole, argb) } }
-                            ) {
-                                if (selected) {
-                                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(20.dp))
-                                }
-                            }
-                        }
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = hexDraft,
-                            onValueChange = { hexDraft = it },
-                            label = { Text("#RRGGBB") },
-                            placeholder = { Text(argbToHex(currentArgb(selectedRole))) },
-                            singleLine = true,
-                            shape = ShapeLargeIncreased,
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(
-                            onClick = {
-                                parseColorHex(hexDraft)?.let { scope.launch { prefs.setCustomColor(selectedRole, it) } }
-                                hexDraft = ""
-                            },
-                            enabled = parseColorHex(hexDraft) != null,
-                            shapes = ButtonDefaults.shapes()
-                        ) { Text("Apply") }
-                    }
-                    HueWheel(
-                        selectedArgb = currentArgb(selectedRole),
-                        onPick = { scope.launch { prefs.setCustomColor(selectedRole, it) } }
-                    )
-                    TextButton(
-                        onClick = { scope.launch { prefs.resetCustomColors() } },
-                        shapes = ButtonDefaults.shapes()
-                    ) { Text("Reset to defaults") }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showCustomColorsDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Done") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-}
-
-/**
- * Hue ring picker: tap anywhere on the ring to paint the selected role.
- * A white marker shows the current color's hue. Saturation/value stay
- * fixed high so every pick lands vivid and readable.
- */
-@Composable
-private fun HueWheel(
-    selectedArgb: Int,
-    onPick: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val sweepBrush = remember {
-        Brush.sweepGradient(
-            (0..6).map { i ->
-                Color(android.graphics.Color.HSVToColor(floatArrayOf(i * 60f, 0.9f, 1f)))
-            }
-        )
-    }
-    // Hue of the current role color, for the marker dot.
-    val markerHue = remember(selectedArgb) {
-        val hsv = FloatArray(3)
-        android.graphics.Color.RGBToHSV(
-            (selectedArgb shr 16) and 0xFF,
-            (selectedArgb shr 8) and 0xFF,
-            selectedArgb and 0xFF,
-            hsv
-        )
-        hsv[0]
-    }
-    var wheelPx by remember { mutableStateOf(IntSize.Zero) }
-    val wheelHole = MaterialTheme.colorScheme.surfaceContainerHigh
-    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Canvas(
-            modifier = Modifier
-                .size(192.dp)
-                .onSizeChanged { wheelPx = it }
-                .pointerInput(Unit) {
-                    detectTapGestures { tap ->
-                        val w = wheelPx.width.toFloat()
-                        val h = wheelPx.height.toFloat()
-                        if (w == 0f || h == 0f) return@detectTapGestures
-                        val dx = tap.x - w / 2f
-                        val dy = tap.y - h / 2f
-                        val outer = minOf(w, h) / 2f
-                        val r = hypot(dx, dy)
-                        if (r < outer * 0.52f || r > outer) return@detectTapGestures
-                        var deg = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
-                        if (deg < 0f) deg += 360f
-                        onPick(android.graphics.Color.HSVToColor(floatArrayOf(deg, 0.85f, 0.95f)))
-                    }
-                }
-        ) {
-            val radius = size.minDimension / 2f
-            drawCircle(brush = sweepBrush, radius = radius)
-            drawCircle(color = wheelHole, radius = radius * 0.52f)
-            val markerRad = Math.toRadians(markerHue.toDouble()).toFloat()
-            val dotR = radius * 0.76f
-            drawCircle(
-                color = Color.White,
-                radius = 9.dp.toPx(),
-                center = center + Offset(cos(markerRad) * dotR, sin(markerRad) * dotR)
-            )
-        }
     }
 }
 

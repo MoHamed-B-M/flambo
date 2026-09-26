@@ -59,6 +59,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DockedSearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.TextField
@@ -362,6 +363,8 @@ fun HomeScreen(
                 .padding(padding)
         ) {
             DockedSearchBar(
+                colors = SearchBarDefaults.colors(containerColor = Color.Transparent),
+                shadowElevation = 4.dp,
                 inputField = {
                     TextField(
                         value = uiState.query,

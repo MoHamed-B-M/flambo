@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.6.0] - 2026-09-26
+## [1.5.5] - 2026-09-26
 
 A playback and motion update. Transport controls become one connected group, and cards open like apps.
 

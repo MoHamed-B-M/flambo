@@ -177,9 +177,10 @@ fun FlamboNavGraph(
             route = Dest.Home.route,
             enterTransition = { expressivePopEnter() },
             // When the card morph is active the grid tile stays on screen as the
-            // shared overlay — sliding home away would fight it, so just fade.
+            // shared overlay — sliding home away would fight it, so it gently
+            // fades and settles while the card takes over.
             exitTransition = {
-                if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) fadeOut(tween(120))
+                if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) fadeOut(tween(250))
                 else expressiveExit()
             }
         ) {
@@ -216,12 +217,13 @@ fun FlamboNavGraph(
         composable(
             route = Dest.Detail.route,
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
-            // When the card morph is active it owns the motion — plain fades here
-            // so no slide fights the maximize/minimize. Otherwise classic slides.
-            enterTransition = { if (app.cardExpandAnim) fadeIn(tween(150)) else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { if (app.cardExpandAnim) fadeOut(tween(150)) else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { if (app.cardExpandAnim) fadeIn(tween(150)) else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { if (app.cardExpandAnim) fadeOut(tween(150)) else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            // When the card morph is active it owns the motion: the page beneath
+            // calmly fades and settles (transform + alpha only, GPU-cheap) while
+            // the card maximizes/minimizes. Otherwise classic slides.
+            enterTransition = { if (app.cardExpandAnim) fadeIn(tween(300)) + scaleIn(initialScale = 0.94f, animationSpec = tween(300)) else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { if (app.cardExpandAnim) fadeOut(tween(250)) + scaleOut(targetScale = 0.96f, animationSpec = tween(250)) else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+            popEnterTransition = { if (app.cardExpandAnim) fadeIn(tween(300)) + scaleIn(initialScale = 0.94f, animationSpec = tween(300)) else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+            popExitTransition = { if (app.cardExpandAnim) fadeOut(tween(250)) + scaleOut(targetScale = 0.96f, animationSpec = tween(250)) else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) { backStackEntry ->
             val animScope = this
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable

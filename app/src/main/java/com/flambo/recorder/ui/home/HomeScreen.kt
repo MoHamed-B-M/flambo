@@ -149,7 +149,9 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // Pinned (not collapsing): with search back in the body below, a
+    // collapsing bar would shift it on scroll. Pinned keeps it fixed.
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     fun startRecording() {
         val source = AudioSource.fromPref(audioSource)
@@ -370,43 +372,81 @@ fun HomeScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             )
-            // Pinned search app bar: the topBar slot never scrolls, so list
-            // scroll can't move it. Hidden while recording (focus mode).
-            if (!recorderState.isRecording) {
-                DockedSearchBar(
-                    inputField = {
-                        TextField(
-                            value = uiState.query,
-                            onValueChange = viewModel::onQueryChange,
-                            placeholder = { Text("Search recordings") },
-                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                            trailingIcon = {
-                                if (uiState.query.isNotEmpty()) {
-                                    IconButton(onClick = viewModel::clearQuery) {
-                                        Icon(Icons.Filled.Close, contentDescription = "Clear")
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    keyboard?.hide()
-                                    searchExpanded = false
-                                }
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .onFocusChanged { if (it.isFocused) searchExpanded = true }
-                        )
-                    },
-                    expanded = searchExpanded,
-                    onExpandedChange = { searchExpanded = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp, bottom = 4.dp)
+        },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
+                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
+                exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
+            ) {
+
+                Button(
+                    onClick = { startRecording() },
+                    shapes = ButtonDefaults.shapes(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight),
+                    modifier = Modifier.heightIn(min = ButtonDefaults.LargeContainerHeight)
                 ) {
+                    Icon(
+                        Icons.Filled.Mic,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
+                    Text("Record", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) { padding ->
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Old position, back in the body: lists scroll internally below
+            // it, and the pinned app bar above never shifts it on scroll.
+            if (!recorderState.isRecording) {
+            DockedSearchBar(
+                inputField = {
+                    TextField(
+                        value = uiState.query,
+                        onValueChange = viewModel::onQueryChange,
+                        placeholder = { Text("Search recordings") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (uiState.query.isNotEmpty()) {
+                                IconButton(onClick = viewModel::clearQuery) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                keyboard?.hide()
+                                searchExpanded = false
+                            }
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { if (it.isFocused) searchExpanded = true }
+                    )
+                },
+                expanded = searchExpanded,
+                onExpandedChange = { searchExpanded = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp)
+            ) {
                     if (uiState.query.isBlank()) {
                         Text(
                             "Type to search your recordings",
@@ -461,44 +501,7 @@ fun HomeScreen(
                     }
                 }
             }
-        },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
-                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
-                exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
-            ) {
 
-                Button(
-                    onClick = { startRecording() },
-                    shapes = ButtonDefaults.shapes(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    ),
-                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight),
-                    modifier = Modifier.heightIn(min = ButtonDefaults.LargeContainerHeight)
-                ) {
-                    Icon(
-                        Icons.Filled.Mic,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
-                    )
-                    Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
-                    Text("Record", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
-                }
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Center,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.surface
-    ) { padding ->
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
             if (tipsEnabled && !recorderState.isRecording && !showGroups) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]
                 TipCard(

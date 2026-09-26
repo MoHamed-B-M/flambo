@@ -44,7 +44,7 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
         AndroidView(
             factory = { context ->
                 WebView(context).apply {
-                    setBackgroundColor(0xFF090A0F)
+                    setBackgroundColor(0xFF090A0F.toInt())
                     settings.apply {
                         javaScriptEnabled = false
                         loadWithOverviewMode = true

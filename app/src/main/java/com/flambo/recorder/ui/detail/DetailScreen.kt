@@ -2,10 +2,12 @@ package com.flambo.recorder.ui.detail
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -116,6 +118,7 @@ import com.flambo.recorder.stt.FileTranscription
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.ui.components.PlaybackProgressBar
 import com.flambo.recorder.ui.components.StaticWaveform
+import com.flambo.recorder.ui.theme.FlamboMotion
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.data.StorageVolumes
@@ -273,22 +276,95 @@ fun DetailScreen(
                 )
             }
     ) {
-        // Shared-element target matching the grid tile ("recording-card-<id>").
-        // Applied on the Scaffold — inside the swipe-gesture Box — so the
-        // dismiss transform and the shared morph never fight on one node.
-        // The state call is unconditional; only the modifier is gated.
-        val sharedContentState = with(sharedTransitionScope) {
-            rememberSharedContentState(key = "recording-card-${rec.id}")
+        // Granular shared targets matching the home cards: the shell uses
+        // heavy-mass bounds while title/meta/waveform track it and the play
+        // control flies on the overlay. Applied on the Scaffold — inside the
+        // swipe-gesture Box — so dismiss and morph never fight on one node.
+        // All states stay unconditional; only modifiers are gated.
+        val containerState = with(sharedTransitionScope) {
+            rememberSharedContentState(key = "container_${rec.id}")
         }
-        val sharedElementModifier = if (cardExpandAnimEnabled) {
+        val actionState = with(sharedTransitionScope) {
+            rememberSharedContentState(key = "action_${rec.id}")
+        }
+        val titleState = with(sharedTransitionScope) {
+            rememberSharedContentState(key = "title_${rec.id}")
+        }
+        val metaState = with(sharedTransitionScope) {
+            rememberSharedContentState(key = "meta_${rec.id}")
+        }
+        val waveformState = with(sharedTransitionScope) {
+            rememberSharedContentState(key = "waveform_${rec.id}")
+        }
+        val containerModifier = if (cardExpandAnimEnabled) {
             with(sharedTransitionScope) {
-                Modifier.sharedBounds(sharedContentState, animatedVisibilityScope)
+                Modifier.sharedBounds(
+                    containerState,
+                    animatedVisibilityScope,
+                    boundsTransform = { _, _ -> FlamboMotion.ContainerSpatialSpringFloat }
+                )
             }
         } else {
             Modifier
         }
+        val actionModifier = if (cardExpandAnimEnabled) {
+            with(sharedTransitionScope) {
+                Modifier
+                    .sharedElement(
+                        actionState,
+                        animatedVisibilityScope,
+                        boundsTransform = { _, _ -> FlamboMotion.ActionSpringFloat }
+                    )
+                    .renderInSharedTransitionScopeOverlay()
+            }
+        } else {
+            Modifier
+        }
+        val titleModifier = if (cardExpandAnimEnabled) {
+            with(sharedTransitionScope) {
+                Modifier
+                    .sharedElement(
+                        titleState,
+                        animatedVisibilityScope,
+                        boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                    )
+                    .skipToLookaheadSize()
+            }
+        } else {
+            Modifier
+        }
+        val metaModifier = if (cardExpandAnimEnabled) {
+            with(sharedTransitionScope) {
+                Modifier
+                    .sharedElement(
+                        metaState,
+                        animatedVisibilityScope,
+                        boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                    )
+                    .skipToLookaheadSize()
+            }
+        } else {
+            Modifier
+        }
+        val waveformModifier = if (cardExpandAnimEnabled) {
+            with(sharedTransitionScope) {
+                Modifier.sharedElement(
+                    waveformState,
+                    animatedVisibilityScope,
+                    boundsTransform = { _, _ -> FlamboMotion.ContentSpringFloat }
+                )
+            }
+        } else {
+            Modifier
+        }
+        // Light-mass pop when the favorite state flips.
+        val favPop by animateFloatAsState(
+            targetValue = if (rec.isFavorite) 1.18f else 1f,
+            animationSpec = FlamboMotion.ActionSpringFloat,
+            label = "detailFavPop"
+        )
         Scaffold(
-            modifier = Modifier.then(sharedElementModifier),
+            modifier = Modifier.then(containerModifier),
             topBar = {
                 TopAppBar(
                     title = { Text("Playback", style = MaterialTheme.typography.titleLarge) },
@@ -299,7 +375,13 @@ fun DetailScreen(
                         IconButton(onClick = { showDetailsCard = !showDetailsCard }) {
                             Icon(Icons.Filled.Info, contentDescription = "Details", tint = if (showDetailsCard) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        IconButton(onClick = { viewModel.toggleFavorite() }) {
+                        IconButton(
+                            onClick = { viewModel.toggleFavorite() },
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = favPop
+                                scaleY = favPop
+                            }
+                        ) {
                             Icon(
                                 imageVector = if (rec.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                 contentDescription = "Favorite",
@@ -342,7 +424,15 @@ fun DetailScreen(
                     }
                 }
             }
-            AnimatedVisibility(visible = showDetailsCard) {
+            AnimatedVisibility(
+                visible = showDetailsCard,
+                enter = expandVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                    fadeIn(animationSpec = FlamboMotion.ContentSpringFloat) +
+                    scaleIn(animationSpec = FlamboMotion.ContentSpringFloat, initialScale = 0.96f),
+                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                    fadeOut(animationSpec = FlamboMotion.ContentSpringFloat) +
+                    scaleOut(animationSpec = FlamboMotion.ContentSpringFloat, targetScale = 0.96f)
+            ) {
                 val detailsName = remember(rec.filePath) { com.flambo.recorder.data.AudioFileStore.displayName(context, rec.filePath).ifBlank { "—" } }
                 val fileSize = remember(rec.filePath) { com.flambo.recorder.data.AudioFileStore.length(context, rec.filePath) }
                 val fileDir = remember(rec.filePath) { com.flambo.recorder.data.AudioFileStore.locationLabel(context, rec.filePath).ifBlank { "—" } }
@@ -415,11 +505,16 @@ fun DetailScreen(
                             FilledTonalButton(onClick = { viewModel.saveTitle() }, shape = ShapeFull) { Text("Save") }
                         }
                     } else {
-                        Text(rec.title, style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            rec.title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = titleModifier
+                        )
                         Text(
                             "${formatDuration(rec.durationMs)} • ${formatRelativeTime(rec.createdAt)} • ${rec.quality}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = metaModifier
                         )
                         TextButton(onClick = { viewModel.setEditTitle(rec.title) }) { Text("Rename") }
                     }
@@ -454,6 +549,7 @@ fun DetailScreen(
                         progress = progress,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .then(waveformModifier)
                             .graphicsLayer {
                                 clip = true
                                 shape = RoundedCornerShape(16.dp)
@@ -523,6 +619,7 @@ fun DetailScreen(
                                 .weight(1.4f)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
                                 .then(playPress.modifier)
+                                .then(actionModifier)
                         ) {
                             AnimatedContent(
                                 targetState = isThisPlaying,
@@ -577,6 +674,12 @@ fun DetailScreen(
                         val speeds = listOf(0.5f, 1f, 1.5f, 2f)
                         speeds.forEachIndexed { index, speed ->
                             val selected = playbackState.speed == speed
+                            // Light-mass elastic pop when a speed becomes active.
+                            val speedPop by animateFloatAsState(
+                                targetValue = if (selected) 1.1f else 1f,
+                                animationSpec = FlamboMotion.ActionSpringFloat,
+                                label = "speedPop$speed"
+                            )
                             ToggleButton(
                                 checked = selected,
                                 onCheckedChange = { playback.setSpeed(speed) },
@@ -585,7 +688,10 @@ fun DetailScreen(
                                     speeds.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 },
-                                modifier = Modifier
+                                modifier = Modifier.graphicsLayer {
+                                    scaleX = speedPop
+                                    scaleY = speedPop
+                                }
                             ) {
                                 Text("${speed}x", style = MaterialTheme.typography.labelLarge)
                             }

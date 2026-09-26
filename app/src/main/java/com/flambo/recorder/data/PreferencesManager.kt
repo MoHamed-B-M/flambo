@@ -11,6 +11,7 @@ import com.flambo.recorder.domain.RecordingQuality
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 
 private val Context.dataStore by preferencesDataStore(name = "flambo_prefs")
 
@@ -40,6 +41,7 @@ class PreferencesManager(private val context: Context) {
         val RECORDING_PREFIX = stringPreferencesKey("recording_prefix")
         val HOME_LAYOUT = stringPreferencesKey("home_layout")
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
+        val GROUP_COLORS = stringPreferencesKey("group_colors")
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
         val CARD_EXPAND_ANIM = booleanPreferencesKey("card_expand_anim")
@@ -227,6 +229,28 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun clearCustomFolderUri() {
         context.dataStore.edit { it.remove(Keys.CUSTOM_FOLDER_URI) }
+    }
+
+    /** Folder name -> ARGB color int, stored as a JSON object string. */
+    val groupColorsFlow: Flow<Map<String, Int>> =
+        context.dataStore.data.map { parseGroupColors(it[Keys.GROUP_COLORS] ?: "") }
+
+    suspend fun setGroupColor(name: String, argb: Int) {
+        context.dataStore.edit { prefs ->
+            val updated = parseGroupColors(prefs[Keys.GROUP_COLORS] ?: "").toMutableMap()
+            updated[name] = argb
+            prefs[Keys.GROUP_COLORS] = JSONObject(updated as Map<*, *>).toString()
+        }
+    }
+
+    private fun parseGroupColors(raw: String): Map<String, Int> {
+        if (raw.isBlank()) return emptyMap()
+        return runCatching {
+            val json = JSONObject(raw)
+            buildMap {
+                json.keys().forEach { key -> put(key, json.getInt(key)) }
+            }
+        }.getOrDefault(emptyMap())
     }
 
     val colorSchemeFlow: Flow<String> =

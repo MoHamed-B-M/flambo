@@ -7,10 +7,12 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,11 +33,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
@@ -59,13 +63,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DockedSearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -77,8 +78,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -105,9 +108,14 @@ import com.flambo.recorder.record.RecordingController
 import com.flambo.recorder.ui.components.AppTips
 import com.flambo.recorder.ui.components.TipCard
 import kotlinx.coroutines.launch
+import com.flambo.recorder.ui.components.GroupColorRow
+import com.flambo.recorder.ui.components.GroupFolder
+import com.flambo.recorder.ui.components.GroupFolderCard
+import com.flambo.recorder.ui.components.LibraryTabs
 import com.flambo.recorder.ui.components.RecordingCard
 import com.flambo.recorder.ui.components.RecordingGridTile
 import com.flambo.recorder.ui.components.WaveformVisualizer
+import com.flambo.recorder.ui.theme.FlamboMotion
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
@@ -192,6 +200,10 @@ fun HomeScreen(
     var showMoveDialog by remember { mutableStateOf(false) }
     var showGroupDialog by remember { mutableStateOf(false) }
     var groupText by remember { mutableStateOf("") }
+    var groupColorDraft by remember { mutableStateOf<Int?>(null) }
+    var libraryTab by rememberSaveable { mutableIntStateOf(0) }
+    var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    var recolorGroup by remember { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = selectionMode) { selection = emptySet() }
     var searchExpanded by remember { mutableStateOf(false) }
@@ -204,6 +216,17 @@ fun HomeScreen(
     var installedVersion by remember { mutableStateOf<String?>(null) }
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
     val tipIndex by prefs.tipIndexFlow.collectAsState(initial = 0)
+    val groupColors by prefs.groupColorsFlow.collectAsState(initial = emptyMap())
+    val groups = remember(uiState.recordings, groupColors) {
+        uiState.recordings.flatMap { it.tagList }.distinct().sorted()
+            .map { name ->
+                GroupFolder(
+                    name = name,
+                    count = uiState.recordings.count { name in it.tagList },
+                    colorArgb = groupColors[name]
+                )
+            }
+    }
 
     var whatsNewItems by remember { mutableStateOf<List<WhatsNewItem>?>(null) }
 
@@ -283,7 +306,7 @@ fun HomeScreen(
                 },
                 actions = {
                     if (selectionMode) {
-                        IconButton(onClick = { groupText = ""; showGroupDialog = true }) {
+                        IconButton(onClick = { groupText = ""; groupColorDraft = null; showGroupDialog = true }) {
                             Icon(Icons.Filled.Group, contentDescription = "Group")
                         }
                         IconButton(onClick = { showMoveDialog = true }) {
@@ -368,8 +391,6 @@ fun HomeScreen(
             // While recording, only the recording card stays visible.
             if (!recorderState.isRecording) {
             DockedSearchBar(
-                colors = SearchBarDefaults.colors(containerColor = Color.Transparent),
-                shadowElevation = 4.dp,
                 inputField = {
                     TextField(
                         value = uiState.query,
@@ -390,13 +411,6 @@ fun HomeScreen(
                                 keyboard?.hide()
                                 searchExpanded = false
                             }
-                        ),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            disabledContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -465,7 +479,18 @@ fun HomeScreen(
                 }
             }
 
-            if (tipsEnabled && !recorderState.isRecording) {
+            LibraryTabs(
+                selectedIndex = libraryTab,
+                onSelect = {
+                    libraryTab = it
+                    if (it == 1) {
+                        viewModel.clearQuery()
+                        openGroup = null
+                    }
+                }
+            )
+
+            if (tipsEnabled && !recorderState.isRecording && libraryTab == 0) {
                 val tip = AppTips[tipIndex.mod(AppTips.size)]
                 TipCard(
                     tip = tip,
@@ -478,8 +503,12 @@ fun HomeScreen(
 
             AnimatedVisibility(
                 visible = recorderState.isRecording,
-                enter = fadeIn(tween(300)) + scaleIn(tween(300)),
-                exit = fadeOut(tween(200))
+                enter = expandVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                    fadeIn(animationSpec = FlamboMotion.ContentSpringFloat) +
+                    scaleIn(animationSpec = FlamboMotion.ContainerSpatialSpringFloat, initialScale = 0.94f),
+                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSpatialSpringFloat) +
+                    fadeOut(animationSpec = FlamboMotion.ContentSpringFloat) +
+                    scaleOut(animationSpec = FlamboMotion.ContentSpringFloat, targetScale = 0.94f)
             ) {
                 ActiveRecordingPanel(
                     elapsedMs = recorderState.elapsedMs,
@@ -534,12 +563,17 @@ fun HomeScreen(
                                 onDeleteForever = {
                                     playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                                     viewModel.permanentDelete(rec.id)
-                                }
+                                },
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = null,
+                                    placementSpec = FlamboMotion.PlacementSpring,
+                                    fadeOutSpec = null
+                                )
                             )
                         }
                     }
                 }
-            } else {
+            } else if (libraryTab == 0) {
 
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
                     EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())
@@ -567,7 +601,12 @@ fun HomeScreen(
                                         onOpenDetail(rec.id)
                                     }
                                 },
-                                onLongClick = { selection = selection + rec.id }
+                                onLongClick = { selection = selection + rec.id },
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = null,
+                                    placementSpec = FlamboMotion.PlacementSpring,
+                                    fadeOutSpec = null
+                                )
                             )
                         }
                     }
@@ -602,8 +641,170 @@ fun HomeScreen(
                                 onLongClick = { selection = selection + rec.id },
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
-                                expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim
+                                expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = null,
+                                    placementSpec = FlamboMotion.PlacementSpring,
+                                    fadeOutSpec = null
+                                )
                             )
+                        }
+                    }
+                }
+            } else {
+                val group = openGroup
+                if (group == null) {
+                    if (groups.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No groups yet — long-press recordings, tap Group, and give it a name",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(groups, key = { it.name }) { folder ->
+                                GroupFolderCard(
+                                    group = folder,
+                                    onOpen = { openGroup = folder.name },
+                                    onRecolor = {
+                                        recolorGroup = folder.name
+                                        groupColorDraft = folder.colorArgb
+                                    },
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = null,
+                                        placementSpec = FlamboMotion.PlacementSpring,
+                                        fadeOutSpec = null
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    val members = remember(group, uiState.recordings) {
+                        uiState.recordings.filter { group in it.tagList }
+                    }
+                    val folderColor = groups.firstOrNull { it.name == group }?.colorArgb
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IconButton(onClick = { openGroup = null }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to groups")
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = group,
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${members.size} recordings",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = {
+                            recolorGroup = group
+                            groupColorDraft = folderColor
+                        }) {
+                            Icon(Icons.Filled.Palette, contentDescription = "Folder color")
+                        }
+                    }
+                    if (members.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No recordings in this group",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else if (homeLayout == "grid") {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(members, key = { it.id }) { rec ->
+                                RecordingGridTile(
+                                    recording = rec,
+                                    playback = playback,
+                                    selected = rec.id in selection,
+                                    fileMissing = rec.id in uiState.missingIds,
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
+                                    onClick = {
+                                        if (selectionMode) {
+                                            selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                        } else {
+                                            onOpenDetail(rec.id)
+                                        }
+                                    },
+                                    onLongClick = { selection = selection + rec.id },
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = null,
+                                        placementSpec = FlamboMotion.PlacementSpring,
+                                        fadeOutSpec = null
+                                    )
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(members, key = { it.id }) { rec ->
+                                RecordingCard(
+                                    recording = rec,
+                                    playback = playback,
+                                    fileMissing = rec.id in uiState.missingIds,
+                                    onClick = {
+                                        if (selectionMode) {
+                                            selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                        } else {
+                                            onOpenDetail(rec.id)
+                                        }
+                                    },
+                                    onFavorite = { viewModel.toggleFavorite(rec.id) },
+                                    onDelete = {
+                                        playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
+                                        viewModel.softDelete(rec)
+                                    },
+                                    onRename = {
+                                        showRenameDialog = rec
+                                        renameText = rec.title
+                                    },
+                                    selected = rec.id in selection,
+                                    onLongClick = { selection = selection + rec.id },
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = null,
+                                        placementSpec = FlamboMotion.PlacementSpring,
+                                        fadeOutSpec = null
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -731,6 +932,15 @@ fun HomeScreen(
                         shape = ShapeLargeIncreased,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Text(
+                        "Folder color",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    GroupColorRow(
+                        selectedArgb = groupColorDraft,
+                        onSelect = { groupColorDraft = it }
+                    )
                 }
             },
             confirmButton = {
@@ -738,10 +948,14 @@ fun HomeScreen(
                     onClick = {
                         val ids = selection
                         val tag = groupText
+                        val color = groupColorDraft
                         showGroupDialog = false
                         selection = emptySet()
                         viewModel.tagRecordings(ids, tag) { n ->
                             scope.launch {
+                                if (color != null && tag.isNotBlank()) {
+                                    prefs.setGroupColor(tag.trim(), color)
+                                }
                                 snackbarHostState.showSnackbar(
                                     "Grouped $n as “$tag”",
                                     withDismissAction = true
@@ -754,6 +968,42 @@ fun HomeScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showGroupDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Cancel") }
+            },
+            shape = ShapeLargeIncreased
+        )
+    }
+
+    recolorGroup?.let { folderName ->
+        AlertDialog(
+            onDismissRequest = { recolorGroup = null },
+            title = { Text(folderName, style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Pick a folder color",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    GroupColorRow(
+                        selectedArgb = groupColorDraft,
+                        onSelect = { groupColorDraft = it }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val color = groupColorDraft
+                        recolorGroup = null
+                        if (color != null) {
+                            scope.launch { prefs.setGroupColor(folderName, color) }
+                        }
+                    },
+                    shapes = ButtonDefaults.shapes()
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { recolorGroup = null }, shapes = ButtonDefaults.shapes()) { Text("Cancel") }
             },
             shape = ShapeLargeIncreased
         )
@@ -924,12 +1174,13 @@ private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
 private fun TrashRow(
     recording: Recording,
     onRestore: () -> Unit,
-    onDeleteForever: () -> Unit
+    onDeleteForever: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     androidx.compose.material3.Card(
         shape = ShapeLargeIncreased,
         colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),

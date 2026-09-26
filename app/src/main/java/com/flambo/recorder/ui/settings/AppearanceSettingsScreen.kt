@@ -137,7 +137,6 @@ fun AppearanceSettingsScreen(
 
     var showAppThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
-    var showAppThemeDialog by remember { mutableStateOf(false) }
     var showCustomColorsDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showProgressBarDialog by remember { mutableStateOf(false) }
@@ -878,6 +877,7 @@ private fun HueWheel(
         hsv[0]
     }
     var wheelPx by remember { mutableStateOf(IntSize.Zero) }
+    val wheelHole = MaterialTheme.colorScheme.surfaceContainerHigh
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Canvas(
             modifier = Modifier
@@ -901,7 +901,7 @@ private fun HueWheel(
         ) {
             val radius = size.minDimension / 2f
             drawCircle(brush = sweepBrush, radius = radius)
-            drawCircle(color = MaterialTheme.colorScheme.surfaceContainerHigh, radius = radius * 0.52f)
+            drawCircle(color = wheelHole, radius = radius * 0.52f)
             val markerRad = Math.toRadians(markerHue.toDouble()).toFloat()
             val dotR = radius * 0.76f
             drawCircle(

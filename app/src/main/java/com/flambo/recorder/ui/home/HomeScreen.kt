@@ -320,6 +320,14 @@ fun HomeScreen(
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .nestedScroll(scrollListener),
         topBar = {
+            AnimatedVisibility(
+                visible = !listScrolling,
+                enter = expandVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
+                    fadeIn(animationSpec = FlamboMotion.ContentSpringFloat),
+                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
+                    fadeOut(animationSpec = FlamboMotion.ContentSpringFloat),
+                label = "appBar"
+            ) {
             LargeTopAppBar(
                 title = {
                     if (selectionMode) {
@@ -398,6 +406,7 @@ fun HomeScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             )
+            }
         },
         floatingActionButton = {
             AnimatedVisibility(
@@ -437,8 +446,16 @@ fun HomeScreen(
                 .padding(padding)
         ) {
             // Old position, back in the body: lists scroll internally below
-            // it, and the pinned app bar above never shifts it on scroll.
+            // it. Ducks on scroll exactly like the header and Record button.
             if (!recorderState.isRecording) {
+            AnimatedVisibility(
+                visible = !listScrolling,
+                enter = expandVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
+                    fadeIn(animationSpec = FlamboMotion.ContentSpringFloat),
+                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
+                    fadeOut(animationSpec = FlamboMotion.ContentSpringFloat),
+                label = "search"
+            ) {
             DockedSearchBar(
                 inputField = {
                     TextField(
@@ -526,6 +543,7 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
             }
 
             if (tipsEnabled && !recorderState.isRecording && !showGroups) {

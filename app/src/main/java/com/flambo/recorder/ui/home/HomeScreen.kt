@@ -1135,7 +1135,7 @@ private fun ActiveRecordingPanel(
             else MaterialTheme.typography.displaySmall
             val waveHeight = if (roomy) 128.dp else 88.dp
             val buttonHeight = if (roomy) ButtonDefaults.MediumContainerHeight
-            else ButtonDefaults.SmallContainerHeight
+            else ButtonDefaults.ExtraSmallContainerHeight
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,

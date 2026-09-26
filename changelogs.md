@@ -23,6 +23,14 @@ A playback and motion update. Transport controls become one connected group, and
 - The search bar is back to default Material colors.
 - What's New now pops after the intro finishes instead of underneath it.
 
+### Demos
+
+<video src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/Record_2026-09-26-20-42-25.mp4" controls width="270"></video>
+
+<video src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/Record_2026-09-26-20-42-50.mp4" controls width="270"></video>
+
+<video src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/VID_20260926205046.mp4" controls width="270"></video>
+
 ---
 
 ### Updating from 1.5.0

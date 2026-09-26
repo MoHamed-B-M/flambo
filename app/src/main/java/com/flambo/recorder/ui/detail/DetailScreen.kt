@@ -38,10 +38,8 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.LocalSharedTransitionScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.rememberSharedContentState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -128,7 +126,8 @@ fun DetailScreen(
     playback: PlaybackController,
     onBack: () -> Unit,
     onDeleted: () -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     cardExpandAnimEnabled: Boolean = true
 ) {
     val recording by viewModel.recording.collectAsState()
@@ -274,10 +273,11 @@ fun DetailScreen(
         // Shared-element target matching the grid tile ("recording-card-<id>").
         // Applied on the Scaffold — inside the swipe-gesture Box — so the
         // dismiss transform and the shared morph never fight on one node.
-        // rememberSharedContentState stays unconditional; only usage is gated.
-        val sharedContentState = rememberSharedContentState(key = "recording-card-${rec.id}")
-        val sharedTransitionScope = LocalSharedTransitionScope.current
-        val sharedElementModifier = if (cardExpandAnimEnabled && animatedVisibilityScope != null && sharedTransitionScope != null) {
+        // The state call is unconditional; only the modifier is gated.
+        val sharedContentState = with(sharedTransitionScope) {
+            rememberSharedContentState(key = "recording-card-${rec.id}")
+        }
+        val sharedElementModifier = if (cardExpandAnimEnabled) {
             with(sharedTransitionScope) {
                 Modifier.sharedBounds(sharedContentState, animatedVisibilityScope)
             }

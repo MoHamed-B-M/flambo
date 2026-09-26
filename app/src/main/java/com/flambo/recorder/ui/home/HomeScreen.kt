@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -125,7 +126,8 @@ fun HomeScreen(
     onEnableSystemSound: () -> Unit = {},
     onRequestMicPermission: (AudioSource) -> Unit = {},
     modifier: Modifier = Modifier,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     cardExpandAnimEnabled: Boolean = true
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -545,6 +547,7 @@ fun HomeScreen(
                                 playback = playback,
                                 selected = rec.id in selection,
                                 fileMissing = rec.id in uiState.missingIds,
+                                sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
                                 onClick = {

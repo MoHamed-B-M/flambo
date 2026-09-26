@@ -160,6 +160,9 @@ fun FlamboNavGraph(
     val cardExpandAnim by app.prefs.cardExpandAnimFlow.collectAsState(initial = true)
 
     SharedTransitionLayout {
+        // The layout's scope, handed down explicitly (no CompositionLocal for
+        // it on all supported library versions).
+        val sharedScope = this
         NavHost(
             navController = navController,
             startDestination = Dest.Home.route,
@@ -198,6 +201,7 @@ fun FlamboNavGraph(
                 onOpenSettings = { debouncedNavigate(Dest.Settings.route) },
                 onEnableSystemSound = onEnableSystemSound,
                 onRequestMicPermission = onRequestMicPermission,
+                sharedTransitionScope = sharedScope,
                 animatedVisibilityScope = animScope,
                 cardExpandAnimEnabled = cardExpandAnim
             )
@@ -227,6 +231,7 @@ fun FlamboNavGraph(
                 playback = playback,
                 onBack = { debouncedPop() },
                 onDeleted = { debouncedPop() },
+                sharedTransitionScope = sharedScope,
                 animatedVisibilityScope = animScope,
                 cardExpandAnimEnabled = cardExpandAnim && homeLayout == "grid"
             )

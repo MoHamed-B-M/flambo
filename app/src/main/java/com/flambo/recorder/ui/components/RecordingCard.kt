@@ -2,9 +2,7 @@ package com.flambo.recorder.ui.components
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.LocalSharedTransitionScope
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.rememberSharedContentState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -263,17 +261,20 @@ fun RecordingGridTile(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     fileMissing: Boolean = false,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     expandAnimationEnabled: Boolean = true
 ) {
     val playbackState by playback.state.collectAsState()
     val isCurrent = playbackState.currentPath == recording.filePath
     val isPlaying = isCurrent && playbackState.isPlaying
-    // Shared-element key must match DetailScreen's. rememberSharedContentState
-    // is called unconditionally — only the modifier application is gated.
-    val sharedContentState = rememberSharedContentState(key = "recording-card-${recording.id}")
-    val sharedTransitionScope = LocalSharedTransitionScope.current
-    val sharedElementModifier = if (expandAnimationEnabled && animatedVisibilityScope != null && sharedTransitionScope != null) {
+    // Shared-element key must match DetailScreen's. The state call below is a
+    // member of the scope (no CompositionLocal exists on all supported
+    // versions) and stays unconditional — only the modifier is gated.
+    val sharedContentState = with(sharedTransitionScope) {
+        rememberSharedContentState(key = "recording-card-${recording.id}")
+    }
+    val sharedElementModifier = if (expandAnimationEnabled) {
         with(sharedTransitionScope) {
             Modifier.sharedBounds(sharedContentState, animatedVisibilityScope)
         }

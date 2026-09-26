@@ -71,7 +71,7 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
     val clock = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         // Don't race app start: parser/shader warm-up happens here, off the clock.
-        delay(INTRO_WARMUP_MS)
+        delay(INTRO_WARMUP_MS.toLong())
         clock.animateTo(1f, tween(INTRO_TOTAL_MS, easing = LinearEasing))
         onDone()
     }

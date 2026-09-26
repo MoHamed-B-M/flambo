@@ -25,11 +25,20 @@ A playback and motion update. Transport controls become one connected group, and
 
 ### Demos
 
-<video src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/Record_2026-09-26-20-42-25.mp4" controls width="270"></video>
+<video controls width="270">
+  <source src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/Record_2026-09-26-20-42-25.mp4" type="video/mp4">
+  <a href="https://github.com/MoHamed-B-M/flambo/blob/beta/screenshots/demos/Record_2026-09-26-20-42-25.mp4">Watch demo 1 on GitHub</a>
+</video>
 
-<video src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/Record_2026-09-26-20-42-50.mp4" controls width="270"></video>
+<video controls width="270">
+  <source src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/Record_2026-09-26-20-42-50.mp4" type="video/mp4">
+  <a href="https://github.com/MoHamed-B-M/flambo/blob/beta/screenshots/demos/Record_2026-09-26-20-42-50.mp4">Watch demo 2 on GitHub</a>
+</video>
 
-<video src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/VID_20260926205046.mp4" controls width="270"></video>
+<video controls width="270">
+  <source src="https://raw.githubusercontent.com/MoHamed-B-M/flambo/beta/screenshots/demos/VID_20260926205046.mp4" type="video/mp4">
+  <a href="https://github.com/MoHamed-B-M/flambo/blob/beta/screenshots/demos/VID_20260926205046.mp4">Watch demo 3 on GitHub</a>
+</video>
 
 ---
 

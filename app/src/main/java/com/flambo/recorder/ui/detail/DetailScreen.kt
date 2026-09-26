@@ -1,6 +1,12 @@
 package com.flambo.recorder.ui.detail
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,6 +61,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,7 +72,6 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -448,43 +455,75 @@ fun DetailScreen(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            ButtonGroupDefaults.ConnectedSpaceBetween,
+                            Alignment.CenterHorizontally
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        FilledTonalIconButton(
+                        FilledTonalButton(
                             onClick = { if (isCurrentTrack) playback.skip(-5000) },
                             enabled = isCurrentTrack && !fileMissing,
-                            modifier = Modifier.size(48.dp),
-                            shape = ShapeFull
-                        ) {
-                            Icon(Icons.Filled.Replay5, contentDescription = "Back 5s")
-                        }
-
-                        androidx.compose.material3.FloatingActionButton(
-                            onClick = {
-                                if (fileMissing) return@FloatingActionButton
-                                if (isThisPlaying) playback.pause()
-                                else playback.play(rec.filePath)
-                            },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            shape = ShapeFull,
-                            modifier = Modifier.size(64.dp)
+                            shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+                            contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = ButtonDefaults.MediumContainerHeight)
                         ) {
                             Icon(
-                                imageVector = if (isThisPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (isThisPlaying) "Pause" else "Play",
-                                modifier = Modifier.size(32.dp)
+                                Icons.Filled.Replay5,
+                                contentDescription = "Back 5s",
+                                modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
                             )
                         }
 
-                        FilledTonalIconButton(
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                if (fileMissing) return@Button
+                                if (isThisPlaying) playback.pause()
+                                else playback.play(rec.filePath)
+                            },
+                            enabled = !fileMissing,
+                            shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            modifier = Modifier
+                                .weight(1.4f)
+                                .heightIn(min = ButtonDefaults.MediumContainerHeight)
+                        ) {
+                            AnimatedContent(
+                                targetState = isThisPlaying,
+                                transitionSpec = {
+                                    (scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn()) togetherWith
+                                        (scaleOut(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeOut())
+                                },
+                                label = "playpause"
+                            ) { playing ->
+                                Icon(
+                                    imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                    contentDescription = if (playing) "Pause" else "Play",
+                                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
+                                )
+                            }
+                        }
+
+                        FilledTonalButton(
                             onClick = { if (isCurrentTrack) playback.skip(10000) },
                             enabled = isCurrentTrack && !fileMissing,
-                            modifier = Modifier.size(48.dp),
-                            shape = ShapeFull
+                            shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+                            contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = ButtonDefaults.MediumContainerHeight)
                         ) {
-                            Icon(Icons.Filled.Forward5, contentDescription = "Forward 10s")
+                            Icon(
+                                Icons.Filled.Forward5,
+                                contentDescription = "Forward 10s",
+                                modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
+                            )
                         }
                     }
 

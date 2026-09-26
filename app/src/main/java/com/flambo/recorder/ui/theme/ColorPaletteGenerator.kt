@@ -33,6 +33,17 @@ object ColorPaletteGenerator {
         if (dynamicColorEnabled && context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
+        // Expressive, Vibrant and Monochrome are absolute brand palettes
+        // (SchemeTokens); only Tonal Spot follows the selected seed.
+        val fixed = when (style) {
+            ColorSchemeStyle.EXPRESSIVE -> AppThemeStyle.EXPRESSIVE
+            ColorSchemeStyle.VIBRANT -> AppThemeStyle.VIBRANT
+            ColorSchemeStyle.MONOCHROME -> AppThemeStyle.MONOCHROME
+            else -> null
+        }
+        if (fixed != null) {
+            return if (darkTheme) fixed.darkScheme() else fixed.lightScheme()
+        }
         return when (style) {
             ColorSchemeStyle.DYNAMIC -> {
                 // Dynamic requested but unavailable (off, no context, pre-S):
@@ -41,9 +52,7 @@ object ColorPaletteGenerator {
             }
             ColorSchemeStyle.TONAL_SPOT -> if (darkTheme) seed.dark else seed.light
             ColorSchemeStyle.NEUTRAL -> if (darkTheme) neutralDark(seed) else neutralLight(seed)
-            ColorSchemeStyle.MONOCHROME -> if (darkTheme) monochromeDark() else monochromeLight()
-            ColorSchemeStyle.VIBRANT -> if (darkTheme) vibrantDark(seed) else vibrantLight(seed)
-            ColorSchemeStyle.EXPRESSIVE -> if (darkTheme) expressiveDark(seed) else expressiveLight(seed)
+            else -> if (darkTheme) seed.dark else seed.light
         }
     }
 

@@ -12,6 +12,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
@@ -39,6 +41,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.flambo.recorder.ui.navigation.FlamboNavGraph
 import com.flambo.recorder.ui.onboarding.OnboardingScreen
+import com.flambo.recorder.ui.splash.IntroSplash
 import com.flambo.recorder.ui.theme.FlamboTheme
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import kotlinx.coroutines.launch
@@ -183,6 +186,9 @@ class MainActivity : ComponentActivity() {
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
             var rerunOnboarding by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunOnboarding
+            // Cold-start brand intro over the loading content (plain remember:
+            // rotation must not replay it, and content loads underneath).
+            var showIntro by remember { mutableStateOf(true) }
 
             SideEffect {
                 val controller = WindowCompat.getInsetsController(window, window.decorView)
@@ -216,6 +222,13 @@ class MainActivity : ComponentActivity() {
                                 onEnableSystemSound = { requestSystemCaptureAndRecord() },
                                 onRequestMicPermission = { requestMicAndRecord(it) }
                             )
+                        }
+
+                        AnimatedVisibility(
+                            visible = showIntro,
+                            exit = fadeOut()
+                        ) {
+                            IntroSplash(onDone = { showIntro = false })
                         }
                     }
 

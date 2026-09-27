@@ -464,7 +464,7 @@ fun HomeScreen(
             ) {
                 AnimatedContent(
                     targetState = isAtTop,
-                    transitionSpec = { fadeIn(animationSpec = tween(150)) + fadeOut(animationSpec = tween(100)) },
+                    transitionSpec = { fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(100)) },
                     label = "fabExpand"
                 ) { expanded ->
                     if (expanded) {

@@ -28,6 +28,12 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE id = :id LIMIT 1")
     fun observeById(id: Long): Flow<Recording?>
 
+    @Query("SELECT filePath FROM recordings")
+    suspend fun getAllPaths(): List<String>
+
+    @Query("SELECT enhancedPath FROM recordings WHERE enhancedPath != ''")
+    suspend fun getAllEnhancedPaths(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(recording: Recording): Long
 

@@ -155,6 +155,7 @@ class PlaybackController(private val context: Context) {
     private fun startTicker() {
         ticker?.cancel()
         ticker = scope.launch {
+            var ticks = 0
             while (isActive) {
                 val p = player
                 if (p != null) {
@@ -166,6 +167,19 @@ class PlaybackController(private val context: Context) {
                     )
                     // Emit only on change: a paused player otherwise recomposes every tick.
                     if (next != _state.value) _state.value = next
+                    // Guard the playing file every ~2s: an externally deleted
+                    // file must stop playback and release the player now,
+                    // not keep a dead handle.
+                    ticks++
+                    if (ticks % 16 == 0) {
+                        val path = currentPath
+                        if (path != null && !AudioFileStore.exists(context, path)) {
+                            _error.value = "Audio file was deleted outside the app — playback stopped."
+                            release()
+                            _state.value = PlaybackState(speed = _state.value.speed, currentPath = null)
+                            return@launch
+                        }
+                    }
                 }
                 delay(120)
             }

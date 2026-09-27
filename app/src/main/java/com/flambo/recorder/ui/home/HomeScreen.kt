@@ -216,6 +216,10 @@ fun HomeScreen(
     var recolorGroup by remember { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = selectionMode) { selection = emptySet() }
+    BackHandler(enabled = !selectionMode && uiState.showTrash) {
+        snackbarHostState.currentSnackbarData?.dismiss()
+        viewModel.toggleTrash(false)
+    }
     // Groups page back stack: folder first, then the page itself.
     BackHandler(enabled = !selectionMode && openGroup != null) { openGroup = null }
     BackHandler(enabled = !selectionMode && openGroup == null && showGroups) { showGroups = false }
@@ -280,6 +284,8 @@ fun HomeScreen(
     val playbackError by playback.error.collectAsState()
     LaunchedEffect(playbackError) {
         val err = playbackError ?: return@LaunchedEffect
+        // Externally deleted file: refresh missing flags so cards update.
+        viewModel.refreshFileStates()
         snackbarHostState.showSnackbar(err, withDismissAction = true)
         playback.clearError()
     }
@@ -402,11 +408,16 @@ fun HomeScreen(
                             onClick = {
                                 if (recorderState.isRecording) return@IconButton
                                 selection = emptySet()
+                                snackbarHostState.currentSnackbarData?.dismiss()
                                 viewModel.toggleTrash(!uiState.showTrash)
                             },
                             enabled = !recorderState.isRecording
                         ) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Trash")
+                            if (uiState.showTrash) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to recordings")
+                            } else {
+                                Icon(Icons.Filled.Delete, contentDescription = "Trash")
+                            }
                         }
                         IconButton(onClick = onOpenSettings) {
                             Icon(Icons.Filled.Settings, contentDescription = "Settings")
@@ -630,6 +641,7 @@ fun HomeScreen(
                                 recording = rec,
                                 onRestore = { viewModel.restoreFromTrash(rec.id) },
                                 onDeleteForever = {
+                                    snackbarHostState.currentSnackbarData?.dismiss()
                                     playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                                     viewModel.permanentDelete(rec.id)
                                 },
@@ -663,13 +675,12 @@ fun HomeScreen(
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
-                                onClick = {
+                                onToggle = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
-                                    } else {
-                                        onOpenDetail(rec.id)
                                     }
                                 },
+                                onOpen = { onOpenDetail(rec.id) },
                                 onLongClick = { selection = selection + rec.id },
                                 modifier = Modifier.animateItem(
                                     fadeInSpec = null,
@@ -690,13 +701,12 @@ fun HomeScreen(
                                 recording = rec,
                                 playback = playback,
                                 fileMissing = rec.id in uiState.missingIds,
-                                onClick = {
+                                onToggle = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
-                                    } else {
-                                        onOpenDetail(rec.id)
                                     }
                                 },
+                                onOpen = { onOpenDetail(rec.id) },
                                 onFavorite = { viewModel.toggleFavorite(rec.id) },
                                 onDelete = {
                                     playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
@@ -872,13 +882,12 @@ fun HomeScreen(
                                     sharedTransitionScope = sharedTransitionScope,
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
-                                    onClick = {
+                                    onToggle = {
                                         if (selectionMode) {
                                             selection = if (rec.id in selection) selection - rec.id else selection + rec.id
-                                        } else {
-                                            onOpenDetail(rec.id)
                                         }
                                     },
+                                    onOpen = { onOpenDetail(rec.id) },
                                     onLongClick = { selection = selection + rec.id },
                                     modifier = Modifier.animateItem(
                                         fadeInSpec = null,
@@ -899,13 +908,12 @@ fun HomeScreen(
                                     recording = rec,
                                     playback = playback,
                                     fileMissing = rec.id in uiState.missingIds,
-                                    onClick = {
+                                    onToggle = {
                                         if (selectionMode) {
                                             selection = if (rec.id in selection) selection - rec.id else selection + rec.id
-                                        } else {
-                                            onOpenDetail(rec.id)
                                         }
                                     },
+                                    onOpen = { onOpenDetail(rec.id) },
                                     onFavorite = { viewModel.toggleFavorite(rec.id) },
                                     onDelete = {
                                         playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
@@ -955,6 +963,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    snackbarHostState.currentSnackbarData?.dismiss()
                     playback.stopIfCurrent(*uiState.trash.flatMap { listOf(it.filePath, it.enhancedPath) }.toTypedArray())
                     viewModel.emptyTrash()
                     showEmptyTrashConfirm = false
@@ -975,6 +984,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    snackbarHostState.currentSnackbarData?.dismiss()
                     val doomed = (uiState.recordings + uiState.trash)
                         .filter { it.id in selection }
                         .flatMap { listOf(it.filePath, it.enhancedPath) }

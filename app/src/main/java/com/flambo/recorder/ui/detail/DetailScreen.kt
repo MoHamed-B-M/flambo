@@ -184,7 +184,7 @@ fun DetailScreen(
     val progress = if (isCurrentTrack && playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
     val duration = if (isCurrentTrack && playbackState.durationMs > 0) playbackState.durationMs else rec.durationMs
     val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
-    val fileMissing = remember(rec.filePath) {
+    val fileMissing = remember(rec.filePath, isCurrentTrack) {
         !com.flambo.recorder.data.AudioFileStore.exists(context, rec.filePath)
     }
 

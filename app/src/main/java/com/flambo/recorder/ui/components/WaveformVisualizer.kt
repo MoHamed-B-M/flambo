@@ -2,16 +2,23 @@ package com.flambo.recorder.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -88,9 +95,37 @@ fun StaticWaveform(
     progress: Float,
     modifier: Modifier = Modifier,
     playedColor: Color = MaterialTheme.colorScheme.primary,
-    remainingColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest
+    remainingColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    /** Fraction 0..1 tapped/dragged. Null keeps the preview non-interactive. */
+    onSeek: ((Float) -> Unit)? = null
 ) {
-    Canvas(modifier = modifier.fillMaxWidth().height(48.dp)) {
+    var widthPx by remember { mutableStateOf(0) }
+    Canvas(modifier = modifier
+        .fillMaxWidth()
+        .height(48.dp)
+        .onSizeChanged { widthPx = it.width }
+        .then(
+            if (onSeek != null) {
+                Modifier.pointerInput(onSeek) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            if (widthPx > 0) onSeek((offset.x / widthPx).coerceIn(0f, 1f))
+                        }
+                    )
+                }
+            } else Modifier
+        )
+        .then(
+            if (onSeek != null) {
+                Modifier.pointerInput(onSeek) {
+                    detectHorizontalDragGestures { change, _ ->
+                        change.consume()
+                        if (widthPx > 0) onSeek((change.position.x / widthPx).coerceIn(0f, 1f))
+                    }
+                }
+            } else Modifier
+        )
+    ) {
         if (peaks.isEmpty()) {
             drawRoundRect(
                 color = remainingColor,

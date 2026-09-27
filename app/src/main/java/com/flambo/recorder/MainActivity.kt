@@ -262,6 +262,13 @@ class MainActivity : ComponentActivity() {
         handleShortcutIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Returning from a file manager or sharesheet: pick up restored,
+        // added or deleted audio before the library paints.
+        lifecycleScope.launch { runCatching { app.syncStorage() } }
+    }
+
     private fun handleShortcutIntent(intent: Intent?) {
         val action = intent?.action ?: return
         if (action != RecordingShortcut.ACTION_START_RECORDING &&

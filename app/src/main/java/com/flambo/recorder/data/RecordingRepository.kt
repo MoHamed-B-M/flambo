@@ -3,6 +3,7 @@ package com.flambo.recorder.data
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -214,6 +215,88 @@ class RecordingRepository(
             .filter { it.filePath.isNotBlank() && !File(it.filePath).exists() }
             .map { it.id }.toSet()
         recordings.filter { !AudioFileStore.exists(ctx, it.filePath) }.map { it.id }.toSet()
+    }
+
+    /** Bumped after every storage sync so file-missing flags recompute. */
+    val storageTick = MutableStateFlow(0)
+
+    private val audioExtensions = setOf("m4a", "wav", "mp3", "ogg", "opus", "aac", "flac")
+
+    /**
+     * Indexes audio files placed into the library from outside (restored or
+     * copied via a file manager) that have no DB row yet. Covers the app
+     * recordings dir and the custom SAF tree. Returns newly indexed count.
+     */
+    suspend fun syncExternalFiles(context: Context): Int = withContext(Dispatchers.IO) {
+        return@withContext runCatching {
+            val known = (dao.getAllPaths() + dao.getAllEnhancedPaths()).toMutableSet()
+            var added = 0
+            val dir = recordingsDir()
+            if (dir.isDirectory) {
+                dir.listFiles()?.forEach { file ->
+                    if (!file.isFile || file.extension.lowercase() !in audioExtensions) return@forEach
+                    // Never adopt an in-progress take: finalized files are
+                    // renamed to the title, temps keep the FLAMBO_ prefix.
+                    if (file.name.startsWith("FLAMBO_")) return@forEach
+                    if (!known.add(file.absolutePath)) return@forEach
+                    insertForeignFile(
+                        title = file.nameWithoutExtension,
+                        path = file.absolutePath,
+                        lastModified = file.lastModified(),
+                        durationMs = readDuration(context, file.absolutePath)
+                    )
+                    added++
+                }
+            }
+            val treeUri = runCatching { customFolderUriProvider?.invoke() }.getOrNull().orEmpty()
+            if (treeUri.isNotBlank()) {
+                runCatching {
+                    val tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, android.net.Uri.parse(treeUri))
+                    tree?.listFiles()?.forEach { doc ->
+                        if (!doc.isFile) return@forEach
+                        val name = doc.name ?: return@forEach
+                        if (name.substringAfterLast('.', "").lowercase() !in audioExtensions) return@forEach
+                        val uri = doc.uri.toString()
+                        if (!known.add(uri)) return@forEach
+                        insertForeignFile(
+                            title = name.substringBeforeLast('.'),
+                            path = uri,
+                            lastModified = doc.lastModified().takeIf { it > 0 } ?: System.currentTimeMillis(),
+                            durationMs = readDuration(context, uri)
+                        )
+                        added++
+                    }
+                }
+            }
+            storageTick.value++
+            added
+        }.getOrDefault(0)
+    }
+
+    private suspend fun insertForeignFile(title: String, path: String, lastModified: Long, durationMs: Long) {
+        val clean = title.ifBlank { "Recording" }
+        dao.insert(
+            Recording(
+                title = clean,
+                filePath = path,
+                durationMs = durationMs,
+                createdAt = lastModified,
+                quality = "HIGH"
+            )
+        )
+    }
+
+    private fun readDuration(context: Context, path: String): Long {
+        return runCatching {
+            android.media.MediaMetadataRetriever().use { retriever ->
+                if (AudioFileStore.isContentUri(path)) {
+                    retriever.setDataSource(context, android.net.Uri.parse(path))
+                } else {
+                    retriever.setDataSource(path)
+                }
+                retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            }
+        }.getOrDefault(0L)
     }
 
     fun recordingsDir(): File = dirProvider().apply { if (!exists()) runCatching { mkdirs() } }

@@ -5,6 +5,7 @@ import com.flambo.recorder.data.AppDatabase
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.RecordingRepository
 import com.flambo.recorder.data.StorageVolumes
+import com.flambo.recorder.data.StorageWatcher
 import com.flambo.recorder.record.RecordingController
 import com.flambo.recorder.stt.TranscriptionManager
 import com.flambo.recorder.ui.settings.AppIconManager
@@ -41,6 +42,20 @@ class FlamboApp : Application() {
 
     internal val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private val storageWatcher by lazy {
+        StorageWatcher(recordingsDir(), appScope) {
+            appScope.launch { runCatching { repository.syncExternalFiles(this@FlamboApp) } }
+        }
+    }
+
+    /** Re-scan storage (e.g. returning from a file manager) and re-arm the watcher. */
+    fun syncStorage() {
+        appScope.launch {
+            runCatching { repository.syncExternalFiles(this@FlamboApp) }
+            runCatching { storageWatcher.start() }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         appScope.launch {
@@ -58,6 +73,12 @@ class FlamboApp : Application() {
         // Auto-purge trashed recordings older than 7 days (deletes both primary and SAF copies)
         appScope.launch {
             runCatching { repository.purgeOldTrash(7) }
+        }
+        // Adopt audio files placed from outside (restored/copied via a file
+        // manager) and watch the library dir for live add/delete events.
+        appScope.launch {
+            runCatching { repository.syncExternalFiles(this@FlamboApp) }
+            runCatching { storageWatcher.start() }
         }
         // Re-apply the chosen launcher icon (component state persists, this guards fresh installs).
         appScope.launch {

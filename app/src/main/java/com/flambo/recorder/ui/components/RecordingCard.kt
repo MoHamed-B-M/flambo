@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
@@ -40,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +65,8 @@ import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 fun RecordingCard(
     recording: Recording,
     playback: PlaybackController,
-    onClick: () -> Unit,
+    onToggle: () -> Unit,
+    onOpen: () -> Unit,
     onFavorite: () -> Unit,
     onDelete: () -> Unit,
     onRename: () -> Unit,
@@ -122,7 +125,10 @@ fun RecordingCard(
             // Inline content changes (selection check, waveform, tags) resize
             // with heavy-mass physics so siblings glide instead of snapping.
             .animateContentSize(animationSpec = FlamboMotion.ContainerSizeSpring)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            // Tap selects in selection mode and does nothing otherwise:
+            // navigation lives on the dedicated Open button so scrubbing the
+            // waveform never misfires into the Playback screen.
+            .combinedClickable(onClick = onToggle, onLongClick = onLongClick),
         shape = ShapeLargeIncreased,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
@@ -208,11 +214,19 @@ fun RecordingCard(
                 // Parsed once per recording: peakList splits + parses ~120 floats,
                 // and cards recompose on every playback tick while playing.
                 val peaks = remember(recording.amplitudePeaks) { recording.peakList }
+                val seekOnCard = rememberCardSeek(
+                    recording = recording,
+                    playback = playback,
+                    isCurrent = isCurrent,
+                    durationMs = playbackState.durationMs,
+                    fileMissing = fileMissing
+                )
                 if (peaks.isNotEmpty()) {
                     StaticWaveform(
                         peaks = peaks,
                         progress = progress,
-                        modifier = Modifier.padding(top = 6.dp)
+                        modifier = Modifier.padding(top = 6.dp),
+                        onSeek = seekOnCard
                     )
                 }
                 if (recording.tagList.isNotEmpty()) {
@@ -239,6 +253,14 @@ fun RecordingCard(
                     imageVector = if (recording.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = "Favorite",
                     tint = if (recording.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(onClick = onOpen) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = "Open",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -303,7 +325,8 @@ fun RecordingGridTile(
     recording: Recording,
     playback: PlaybackController,
     selected: Boolean,
-    onClick: () -> Unit,
+    onToggle: () -> Unit,
+    onOpen: () -> Unit,
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     fileMissing: Boolean = false,
@@ -337,7 +360,7 @@ fun RecordingGridTile(
             .fillMaxWidth()
             .clip(ShapeLargeIncreased)
             .animateContentSize(animationSpec = FlamboMotion.ContainerSizeSpring)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .combinedClickable(onClick = onToggle, onLongClick = onLongClick),
         shape = ShapeLargeIncreased,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
@@ -388,6 +411,14 @@ fun RecordingGridTile(
                         modifier = Modifier.size(18.dp)
                     )
                 }
+                IconButton(onClick = onOpen, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = "Open",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
             Text(
                 text = recording.title,
@@ -414,9 +445,50 @@ fun RecordingGridTile(
                 StaticWaveform(
                     peaks = gridPeaks,
                     progress = gridProgress,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
+                    onSeek = rememberCardSeek(
+                        recording = recording,
+                        playback = playback,
+                        isCurrent = isCurrent,
+                        durationMs = playbackState.durationMs,
+                        fileMissing = fileMissing
+                    )
                 )
             }
         }
     }
+}
+
+/**
+ * Card scrub handler: seeks the live track, or starts it and applies the
+ * scrub once prepared (seekTo clamps to zero pre-prepare, so a pending
+ * fraction is required for cold starts).
+ */
+@Composable
+private fun rememberCardSeek(
+    recording: Recording,
+    playback: PlaybackController,
+    isCurrent: Boolean,
+    durationMs: Long,
+    fileMissing: Boolean
+): ((Float) -> Unit)? {
+    // Hooks stay unconditional; only the returned lambda is gated.
+    var pending by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(isCurrent, durationMs, pending) {
+        val frac = pending
+        if (frac != null && isCurrent && durationMs > 0) {
+            playback.seekTo((frac * durationMs).toLong())
+            pending = null
+        }
+    }
+    val seek: (Float) -> Unit = remember(isCurrent) { { frac: Float ->
+        val dur = playback.state.value.durationMs
+        if (isCurrent && dur > 0) {
+            playback.seekTo((frac * dur).toLong())
+        } else if (!isCurrent) {
+            pending = frac
+            playback.play(recording.filePath)
+        }
+    } }
+    return if (fileMissing) null else seek
 }

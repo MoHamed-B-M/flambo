@@ -41,7 +41,7 @@ class HomeViewModel(
     private val recordingsFlow = queryFlow.flatMapLatest { q -> repository.search(q) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val missingIdsFlow = recordingsFlow
+    private val missingIdsFlow = combine(recordingsFlow, repository.storageTick) { list, _ -> list }
         .mapLatest { list -> repository.findMissingIds(list) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
@@ -102,6 +102,9 @@ class HomeViewModel(
         viewModelScope.launch { onDone(repository.removeTagFromAll(tag)) }
 
     fun restoreFromTrash(id: Long) = viewModelScope.launch { repository.restore(id) }
+
+    /** Force file-missing flags to recompute (e.g. after an external delete). */
+    fun refreshFileStates() { repository.storageTick.value++ }
 
     fun rename(id: Long, newTitle: String) = viewModelScope.launch { repository.rename(id, newTitle) }
 }

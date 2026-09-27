@@ -8,6 +8,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -63,7 +64,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -260,14 +260,15 @@ fun HomeScreen(
             }
     }
 
-    // Scroll state for adaptive FAB - must be at top level to be accessible in floatingActionButton
+    // Scroll state for the FAB overlay - top level so table slots can read it.
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
-    val isAtTop by remember {
+    // Immediately sensitive: collapsed on any scroll offset, expanded only
+    // at the exact top. Covers the list and grid layouts.
+    val isScrolled by remember(homeLayout) {
         derivedStateOf {
-            val listAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-            val gridAtTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
-            (homeLayout == "list" && listAtTop) || (homeLayout == "grid" && gridAtTop)
+            if (homeLayout == "list") listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+            else gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0
         }
     }
     // Scroll-driven header fade: 0 at origin → 1 after ~60dp. A plain
@@ -468,102 +469,19 @@ fun HomeScreen(
                 )
             )
         },
-        floatingActionButton = {
-            // Expressive Record morph: flat tonal pill, everything gliding
-            // on slow ease-in-out tweens — size, corners, icon and label
-            // share one curve with zero overshoot, so the morph reads as
-            // one smooth motion. Scroll state comes from derivedStateOf,
-            // so flings never recompose per-frame. Touch target is 76dp.
-            val recordEaseDp = tween<Dp>(
-                durationMillis = 500,
-                easing = FlamboMotion.Emphasized
-            )
-            val corner by animateDpAsState(
-                targetValue = if (isAtTop) 28.dp else 38.dp,
-                animationSpec = recordEaseDp,
-                label = "recordCorner"
-            )
-            val iconSize by animateDpAsState(
-                targetValue = if (isAtTop) 32.dp else 24.dp,
-                animationSpec = recordEaseDp,
-                label = "recordIconSize"
-            )
-            val iconTint by animateColorAsState(
-                targetValue = if (isAtTop) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.primary,
-                animationSpec = tween(200),
-                label = "recordIconTint"
-            )
-            AnimatedVisibility(
-                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
-                enter = fadeIn(tween(150)) + scaleIn(tween(300), initialScale = 0.85f),
-                exit = fadeOut(tween(120)) + scaleOut(tween(200), targetScale = 0.85f),
-                label = "recordFab"
-            ) {
-                Surface(
-                    onClick = { startRecording() },
-                    shape = RoundedCornerShape(corner),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shadowElevation = 0.dp,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier
-                        .height(76.dp)
-                        .animateContentSize(
-                            animationSpec = tween(
-                                durationMillis = 500,
-                                easing = FlamboMotion.Emphasized
-                            )
-                        )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 28.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Mic,
-                            contentDescription = null,
-                            tint = iconTint,
-                            modifier = Modifier.size(iconSize)
-                        )
-                        AnimatedVisibility(
-                            visible = isAtTop,
-                            enter = fadeIn(tween(150)) + expandHorizontally(
-                                expandFrom = Alignment.Start,
-                                animationSpec = tween(
-                                    durationMillis = 500,
-                                    easing = FlamboMotion.Emphasized
-                                )
-                            ),
-                            exit = fadeOut(tween(120)) + shrinkHorizontally(
-                                shrinkTowards = Alignment.Start,
-                                animationSpec = tween(
-                                    durationMillis = 350,
-                                    easing = FlamboMotion.Emphasized
-                                )
-                            ),
-                            label = "recordLabel"
-                        ) {
-                            Text(
-                                "Record",
-                                style = MaterialTheme.typography.titleLarge,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        floatingActionButtonPosition = if (isAtTop) FabPosition.Center else FabPosition.End,
+        floatingActionButton = {},
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
                 .headerFadeOverlay(
                     surface = MaterialTheme.colorScheme.surface,
                     alpha = headerFadeAlpha
@@ -1042,6 +960,119 @@ fun HomeScreen(
                 }
             }
             }
+        }
+
+        // Record overlay: a single Box row whose spacer-weight glide carries
+        // the pill center<->end on the same ease-in-out curve as the morph,
+        // so position and size travel as one motion with no clipping. The
+        // row itself is touch-transparent; only the pill consumes taps.
+        // Lifts above the snackbar while one is shown, like the old slot did.
+        val endWeight by animateFloatAsState(
+            // 0.0001f, not 0f: RowScope.weight requires a positive value.
+            targetValue = if (isScrolled) 0.0001f else 1f,
+            animationSpec = tween(
+                durationMillis = 500,
+                easing = FlamboMotion.Emphasized
+            ),
+            label = "recordPosition"
+        )
+        val fabLift by animateDpAsState(
+            targetValue = if (snackbarHostState.currentSnackbarData != null) 88.dp else 16.dp,
+            animationSpec = tween(300),
+            label = "recordLift"
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = fabLift),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(Modifier.weight(1f))
+            // Flat tonal pill: size, corners, icon and label share one slow
+            // ease-in-out curve with zero overshoot.
+            val recordEaseDp = tween<Dp>(
+                durationMillis = 500,
+                easing = FlamboMotion.Emphasized
+            )
+            val corner by animateDpAsState(
+                targetValue = if (!isScrolled) 28.dp else 38.dp,
+                animationSpec = recordEaseDp,
+                label = "recordCorner"
+            )
+            val iconSize by animateDpAsState(
+                targetValue = if (!isScrolled) 32.dp else 24.dp,
+                animationSpec = recordEaseDp,
+                label = "recordIconSize"
+            )
+            val iconTint by animateColorAsState(
+                targetValue = if (!isScrolled) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.primary,
+                animationSpec = tween(200),
+                label = "recordIconTint"
+            )
+            AnimatedVisibility(
+                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
+                enter = fadeIn(tween(150)) + scaleIn(tween(300), initialScale = 0.85f),
+                exit = fadeOut(tween(120)) + scaleOut(tween(200), targetScale = 0.85f),
+                label = "recordFab"
+            ) {
+                Surface(
+                    onClick = { startRecording() },
+                    shape = RoundedCornerShape(corner),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier
+                        .height(76.dp)
+                        .animateContentSize(
+                            animationSpec = tween(
+                                durationMillis = 500,
+                                easing = FlamboMotion.Emphasized
+                            )
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 28.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = null,
+                            tint = iconTint,
+                            modifier = Modifier.size(iconSize)
+                        )
+                        AnimatedVisibility(
+                            visible = !isScrolled,
+                            enter = fadeIn(tween(150)) + expandHorizontally(
+                                expandFrom = Alignment.Start,
+                                animationSpec = tween(
+                                    durationMillis = 500,
+                                    easing = FlamboMotion.Emphasized
+                                )
+                            ),
+                            exit = fadeOut(tween(120)) + shrinkHorizontally(
+                                shrinkTowards = Alignment.Start,
+                                animationSpec = tween(
+                                    durationMillis = 350,
+                                    easing = FlamboMotion.Emphasized
+                                )
+                            ),
+                            label = "recordLabel"
+                        ) {
+                            Text(
+                                "Record",
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.weight(endWeight))
+        }
         }
     }
 

@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -102,6 +103,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.unit.IntSize
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.update.ReleaseNotes
@@ -456,13 +458,15 @@ fun HomeScreen(
                     shape = RoundedCornerShape(32.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shadowElevation = 6.dp,
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
                     modifier = Modifier
                         .height(76.dp)
                         .animateContentSize(
-                            animationSpec = tween(
-                                durationMillis = 450,
-                                easing = FlamboMotion.EmphasizedDecelerate
+                            animationSpec = spring(
+                                dampingRatio = 0.7f,
+                                stiffness = 300f,
+                                visibilityThreshold = IntSize.VisibilityThreshold
                             )
                         )
                 ) {
@@ -478,16 +482,16 @@ fun HomeScreen(
                         )
                         AnimatedVisibility(
                             visible = isAtTop,
-                            enter = fadeIn(tween(300)) + expandHorizontally(
+                            enter = fadeIn(tween(200, delayMillis = 100)) + expandHorizontally(
                                 animationSpec = tween(
                                     durationMillis = 450,
                                     easing = FlamboMotion.EmphasizedDecelerate
                                 )
                             ),
-                            exit = fadeOut(tween(200)) + shrinkHorizontally(
+                            exit = fadeOut(tween(120)) + shrinkHorizontally(
                                 animationSpec = tween(
-                                    durationMillis = 400,
-                                    easing = FlamboMotion.EmphasizedDecelerate
+                                    durationMillis = 300,
+                                    easing = FlamboMotion.EmphasizedAccelerate
                                 )
                             ),
                             label = "recordLabel"

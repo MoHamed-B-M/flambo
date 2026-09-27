@@ -6,6 +6,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
@@ -113,6 +116,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.domain.RecordingQuality
@@ -444,28 +448,60 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            // Scroll-adaptive Record button: one big pill that shrinks to
-            // icon-only on scroll. Size animates on a slow emphasized
-            // tween (450ms) so the resize glides instead of snapping.
+            // Expressive Record morph: one pill driven entirely by
+            // LowBouncy/MediumLow springs — size, corners, elevation,
+            // icon and label all ride the same physics, so collapse and
+            // expand land with a subtle tactile bounce instead of snapping.
+            // Scroll state comes from derivedStateOf, so flings never
+            // recompose per-frame. Touch target stays 76dp in both states.
+            val recordSpringFloat = spring<Float>(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+            val recordSpringDp = spring<Dp>(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+            val corner by animateDpAsState(
+                targetValue = if (isAtTop) 28.dp else 38.dp,
+                animationSpec = recordSpringDp,
+                label = "recordCorner"
+            )
+            val fabElevation by animateDpAsState(
+                targetValue = if (isAtTop) 6.dp else 3.dp,
+                animationSpec = recordSpringDp,
+                label = "recordElevation"
+            )
+            val iconSize by animateDpAsState(
+                targetValue = if (isAtTop) 32.dp else 24.dp,
+                animationSpec = recordSpringDp,
+                label = "recordIconSize"
+            )
+            val iconTint by animateColorAsState(
+                targetValue = if (isAtTop) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.primary,
+                animationSpec = tween(200),
+                label = "recordIconTint"
+            )
             AnimatedVisibility(
                 visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
-                enter = fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.85f),
+                enter = fadeIn(tween(150)) + scaleIn(recordSpringFloat, initialScale = 0.85f),
                 exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.85f),
                 label = "recordFab"
             ) {
                 Surface(
                     onClick = { startRecording() },
-                    shape = RoundedCornerShape(32.dp),
+                    shape = RoundedCornerShape(corner),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shadowElevation = 0.dp,
+                    shadowElevation = fabElevation,
                     tonalElevation = 0.dp,
                     modifier = Modifier
                         .height(76.dp)
                         .animateContentSize(
                             animationSpec = spring(
-                                dampingRatio = 0.7f,
-                                stiffness = 300f
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessMediumLow
                             )
                         )
                 ) {
@@ -477,22 +513,23 @@ fun HomeScreen(
                         Icon(
                             Icons.Filled.Mic,
                             contentDescription = null,
-                            modifier = Modifier.size(32.dp)
+                            tint = iconTint,
+                            modifier = Modifier.size(iconSize)
                         )
                         AnimatedVisibility(
                             visible = isAtTop,
-                            enter = expandHorizontally(
+                            enter = fadeIn(tween(150)) + expandHorizontally(
                                 expandFrom = Alignment.Start,
-                                animationSpec = tween(
-                                    durationMillis = 450,
-                                    easing = FlamboMotion.EmphasizedDecelerate
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
                                 )
                             ),
-                            exit = shrinkHorizontally(
+                            exit = fadeOut(tween(150)) + shrinkHorizontally(
                                 shrinkTowards = Alignment.Start,
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    easing = FlamboMotion.EmphasizedAccelerate
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
                                 )
                             ),
                             label = "recordLabel"

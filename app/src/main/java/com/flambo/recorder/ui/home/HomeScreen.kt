@@ -464,8 +464,8 @@ fun HomeScreen(
             ) {
                 AnimatedContent(
                     targetState = isAtTop,
-                    transitionSpec = { scope ->
-                        if (scope.targetState) {
+                    transitionSpec = { it ->
+                        if (it.targetState) {
                             expandHorizontally(animationSpec = FlamboMotion.ContainerSizeSpring) +
                                 fadeIn(animationSpec = tween(150))
                         } else {

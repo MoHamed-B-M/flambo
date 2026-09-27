@@ -254,6 +254,17 @@ fun HomeScreen(
             }
     }
 
+    // Scroll state for adaptive FAB - must be at top level to be accessible in floatingActionButton
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val isAtTop by remember {
+        derivedStateOf {
+            val listAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+            val gridAtTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+            (homeLayout == "list" && listAtTop) || (homeLayout == "grid" && gridAtTop)
+        }
+    }
+
     var whatsNewItems by remember { mutableStateOf<List<WhatsNewItem>?>(null) }
 
     LaunchedEffect(Unit) {
@@ -453,9 +464,14 @@ fun HomeScreen(
             ) {
                 AnimatedContent(
                     targetState = isAtTop,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(150)) + expandHorizontally(animationSpec = FlamboMotion.ContainerSizeSpring)
-                        fadeOut(animationSpec = tween(100)) + shrinkHorizontally(animationSpec = FlamboMotion.ContainerSizeSpring)
+                    transitionSpec = { targetState, _ ->
+                        if (targetState) {
+                            expandHorizontally(animationSpec = FlamboMotion.ContainerSizeSpring) +
+                                fadeIn(animationSpec = tween(150))
+                        } else {
+                            shrinkHorizontally(animationSpec = FlamboMotion.ContainerSizeSpring) +
+                                fadeOut(animationSpec = tween(100))
+                        }
                     },
                     label = "fabExpand"
                 ) { expanded ->
@@ -686,18 +702,6 @@ fun HomeScreen(
                     }
                 }
             } else if (!showGroups) {
-
-                val listState = rememberLazyListState()
-                val gridState = rememberLazyGridState()
-
-                // Derive scroll state for FAB: expanded at top, collapsed when scrolled
-                val isAtTop by remember {
-                    derivedStateOf {
-                        val listAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                        val gridAtTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
-                        (homeLayout == "list" && listAtTop) || (homeLayout == "grid" && gridAtTop)
-                    }
-                }
 
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
                     EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())

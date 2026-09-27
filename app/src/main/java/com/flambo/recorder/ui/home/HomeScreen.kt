@@ -103,7 +103,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.unit.IntSize
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.StorageVolumes
 import com.flambo.recorder.update.ReleaseNotes
@@ -465,8 +464,7 @@ fun HomeScreen(
                         .animateContentSize(
                             animationSpec = spring(
                                 dampingRatio = 0.7f,
-                                stiffness = 300f,
-                                visibilityThreshold = IntSize.VisibilityThreshold
+                                stiffness = 300f
                             )
                         )
                 ) {

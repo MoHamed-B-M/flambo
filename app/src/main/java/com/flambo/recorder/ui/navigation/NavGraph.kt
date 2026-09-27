@@ -212,6 +212,7 @@ fun FlamboNavGraph(
                 homeLayout = homeLayout,
                 onOpenDetail = { id -> debouncedNavigate(Dest.Detail.create(id)) },
                 onOpenSettings = { debouncedNavigate(Dest.Settings.route) },
+                onOpenUpdates = { debouncedNavigate(Dest.SettingsUpdates.route) },
                 onEnableSystemSound = onEnableSystemSound,
                 onRequestMicPermission = onRequestMicPermission,
                 sharedTransitionScope = sharedScope,

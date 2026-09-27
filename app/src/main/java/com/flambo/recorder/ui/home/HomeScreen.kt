@@ -147,6 +147,7 @@ fun HomeScreen(
     homeLayout: String = "list",
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenUpdates: () -> Unit = {},
     onEnableSystemSound: () -> Unit = {},
     onRequestMicPermission: (AudioSource) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -296,7 +297,7 @@ fun HomeScreen(
             actionLabel = "View",
             withDismissAction = true
         )
-        if (r == SnackbarResult.ActionPerformed) onOpenSettings()
+        if (r == SnackbarResult.ActionPerformed) onOpenUpdates()
     }
 
     val playbackError by playback.error.collectAsState()

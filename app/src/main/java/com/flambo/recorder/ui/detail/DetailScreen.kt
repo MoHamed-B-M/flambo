@@ -98,6 +98,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -186,6 +187,26 @@ fun DetailScreen(
     val positionForUi = if (isCurrentTrack) playbackState.positionMs else 0L
     val fileMissing = remember(rec.filePath, isCurrentTrack) {
         !com.flambo.recorder.data.AudioFileStore.exists(context, rec.filePath)
+    }
+    // Same tap/drag scrub as the home cards: seeks the live track, or
+    // starts it and applies the scrub once prepared (seekTo clamps to
+    // zero pre-prepare, so a pending fraction covers cold starts).
+    var detailPendingSeek by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(isCurrentTrack, playbackState.durationMs, detailPendingSeek) {
+        val frac = detailPendingSeek
+        if (frac != null && isCurrentTrack && playbackState.durationMs > 0) {
+            playback.seekTo((frac * playbackState.durationMs).toLong())
+            detailPendingSeek = null
+        }
+    }
+    val detailSeek: ((Float) -> Unit)? = if (fileMissing) null else { frac: Float ->
+        val dur = playback.state.value.durationMs
+        if (isCurrentTrack && dur > 0) {
+            playback.seekTo((frac * dur).toLong())
+        } else if (!isCurrentTrack) {
+            detailPendingSeek = frac
+            playback.play(rec.filePath)
+        }
     }
 
     val gestureEnabled by viewModel.gestureEnabled.collectAsState()
@@ -510,7 +531,8 @@ fun DetailScreen(
                             .graphicsLayer {
                                 clip = true
                                 shape = RoundedCornerShape(16.dp)
-                            }
+                            },
+                        onSeek = detailSeek
                     )
 
                     PlaybackProgressBar(

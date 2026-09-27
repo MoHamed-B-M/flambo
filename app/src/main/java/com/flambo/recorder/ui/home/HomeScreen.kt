@@ -5,12 +5,15 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -57,7 +61,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -439,23 +442,64 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            // Scroll-adaptive Record button: one EFAB whose built-in
-            // expand animation runs the shrink/grow (no subtree swap),
-            // with light fade/scale tweens so it stays at 60fps.
+            // Scroll-adaptive Record button: one big pill that shrinks to
+            // icon-only on scroll. Size animates on a slow emphasized
+            // tween (450ms) so the resize glides instead of snapping.
             AnimatedVisibility(
                 visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
                 enter = fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.85f),
                 exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.85f),
                 label = "recordFab"
             ) {
-                ExtendedFloatingActionButton(
+                Surface(
                     onClick = { startRecording() },
-                    expanded = isAtTop,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(32.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    icon = { Icon(Icons.Filled.Mic, contentDescription = null) },
-                    text = { Text("Record") }
-                )
+                    shadowElevation = 6.dp,
+                    modifier = Modifier
+                        .height(76.dp)
+                        .animateContentSize(
+                            animationSpec = tween(
+                                durationMillis = 450,
+                                easing = FlamboMotion.EmphasizedDecelerate
+                            )
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 28.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        AnimatedVisibility(
+                            visible = isAtTop,
+                            enter = fadeIn(tween(300)) + expandHorizontally(
+                                animationSpec = tween(
+                                    durationMillis = 450,
+                                    easing = FlamboMotion.EmphasizedDecelerate
+                                )
+                            ),
+                            exit = fadeOut(tween(200)) + shrinkHorizontally(
+                                animationSpec = tween(
+                                    durationMillis = 400,
+                                    easing = FlamboMotion.EmphasizedDecelerate
+                                )
+                            ),
+                            label = "recordLabel"
+                        ) {
+                            Text(
+                                "Record",
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
             }
         },
         floatingActionButtonPosition = if (isAtTop) FabPosition.Center else FabPosition.End,

@@ -9,11 +9,15 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,6 +41,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,6 +56,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
@@ -217,8 +224,17 @@ fun RecordingCard(
                     StaticWaveform(
                         peaks = peaks,
                         progress = progress,
-                        modifier = Modifier.weight(1f).padding(top = 6.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                         onSeek = seekOnCard
+                    )
+                } else if (isCurrent && !fileMissing) {
+                    // No stored peaks (e.g. files restored from outside):
+                    // expand with a seekable linear track so pressing play
+                    // always reveals a visible progress bar.
+                    SeekableLinearTrack(
+                        progress = progress,
+                        onSeek = seekOnCard,
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                     )
                 }
                 if (recording.tagList.isNotEmpty()) {
@@ -436,21 +452,28 @@ fun RecordingGridTile(
                 overflow = TextOverflow.Ellipsis
             )
             val gridPeaks = remember(recording.amplitudePeaks) { recording.peakList }
+            val gridProgress = if (isCurrent && playbackState.durationMs > 0) {
+                (playbackState.positionMs.toFloat() / playbackState.durationMs.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+            val gridSeek = rememberCardSeek(
+                recording = recording,
+                playback = playback,
+                isCurrent = isCurrent,
+                durationMs = playbackState.durationMs,
+                fileMissing = fileMissing
+            )
             if (gridPeaks.isNotEmpty()) {
-                val gridProgress = if (isCurrent && playbackState.durationMs > 0) {
-                    (playbackState.positionMs.toFloat() / playbackState.durationMs.toFloat()).coerceIn(0f, 1f)
-                } else 0f
                 StaticWaveform(
                     peaks = gridPeaks,
                     progress = gridProgress,
-                    modifier = Modifier.padding(top = 4.dp),
-                    onSeek = rememberCardSeek(
-                        recording = recording,
-                        playback = playback,
-                        isCurrent = isCurrent,
-                        durationMs = playbackState.durationMs,
-                        fileMissing = fileMissing
-                    )
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    onSeek = gridSeek
+                )
+            } else if (isCurrent && !fileMissing) {
+                SeekableLinearTrack(
+                    progress = gridProgress,
+                    onSeek = gridSeek,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                 )
             }
         }
@@ -489,4 +512,54 @@ private fun rememberCardSeek(
         }
     } }
     return if (fileMissing) null else seek
+}
+
+/**
+ * Seekable fallback track for cards without stored peaks (e.g. audio
+ * restored from outside). Fixed height + full width so it can never
+ * measure to zero; tap/drag seeks like the waveform.
+ */
+@Composable
+private fun SeekableLinearTrack(
+    progress: Float,
+    onSeek: ((Float) -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    var widthPx by remember { mutableStateOf(0) }
+    // Tall touch target, slim visual bar.
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .onSizeChanged { widthPx = it.width }
+            .then(
+                if (onSeek != null) {
+                    Modifier.pointerInput(onSeek) {
+                        detectTapGestures(
+                            onTap = { offset ->
+                                if (widthPx > 0) onSeek((offset.x / widthPx).coerceIn(0f, 1f))
+                            }
+                        )
+                    }
+                } else Modifier
+            )
+            .then(
+                if (onSeek != null) {
+                    Modifier.pointerInput(onSeek) {
+                        detectHorizontalDragGestures { change, _ ->
+                            change.consume()
+                            if (widthPx > 0) onSeek((change.position.x / widthPx).coerceIn(0f, 1f))
+                        }
+                    }
+                } else Modifier
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        LinearProgressIndicator(
+            progress = { progress.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(999.dp)),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        )
+    }
 }

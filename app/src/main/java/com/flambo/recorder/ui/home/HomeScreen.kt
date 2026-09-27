@@ -5,15 +5,12 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -54,8 +51,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -65,7 +60,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -359,14 +353,7 @@ fun HomeScreen(
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .nestedScroll(scrollListener),
         topBar = {
-            AnimatedVisibility(
-                visible = !listScrolling,
-                enter = expandVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
-                    fadeIn(animationSpec = FlamboMotion.ContentSpringFloat),
-                exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
-                    fadeOut(animationSpec = FlamboMotion.ContentSpringFloat),
-                label = "appBar"
-            ) {
+            // Pinned header: always on top, never ducks on scroll.
             LargeTopAppBar(
                 title = {
                     if (selectionMode) {
@@ -450,52 +437,25 @@ fun HomeScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             )
-            }
         },
         floatingActionButton = {
-            // Scroll-adaptive Record FAB: expanded pill at top, collapsed icon at bottom-right
-            val fabExpanded = !recorderState.isRecording && !selectionMode && !uiState.showTrash
-            val fabPosition = if (isAtTop) FabPosition.Center else FabPosition.End
-
+            // Scroll-adaptive Record button: one EFAB whose built-in
+            // expand animation runs the shrink/grow (no subtree swap),
+            // with light fade/scale tweens so it stays at 60fps.
             AnimatedVisibility(
-                visible = fabExpanded,
-                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
-                exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
+                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
+                enter = fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.85f),
+                exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.85f),
+                label = "recordFab"
             ) {
-                AnimatedContent(
-                    targetState = isAtTop,
-                    transitionSpec = { fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(100)) },
-                    label = "fabExpand"
-                ) { expanded ->
-                    if (expanded) {
-                        // Expanded: centered pill with Mic + "Record"
-                        ExtendedFloatingActionButton(
-                            onClick = { startRecording() },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.heightIn(min = ButtonDefaults.LargeContainerHeight)
-                        ) {
-                            Icon(
-                                Icons.Filled.Mic,
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
-                            )
-                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                            Text("Record", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
-                        }
-                    } else {
-                        // Collapsed: icon-only FAB at bottom-right
-                        FloatingActionButton(
-                            onClick = { startRecording() },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            shape = ShapeFull,
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(Icons.Filled.Mic, contentDescription = "Record", modifier = Modifier.size(24.dp))
-                        }
-                    }
-                }
+                ExtendedFloatingActionButton(
+                    onClick = { startRecording() },
+                    expanded = isAtTop,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    icon = { Icon(Icons.Filled.Mic, contentDescription = null) },
+                    text = { Text("Record") }
+                )
             }
         },
         floatingActionButtonPosition = if (isAtTop) FabPosition.Center else FabPosition.End,

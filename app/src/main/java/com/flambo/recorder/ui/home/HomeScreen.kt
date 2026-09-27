@@ -100,11 +100,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.StorageVolumes
@@ -265,6 +270,24 @@ fun HomeScreen(
             val listAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
             val gridAtTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
             (homeLayout == "list" && listAtTop) || (homeLayout == "grid" && gridAtTop)
+        }
+    }
+    // Scroll-driven header fade: 0 at origin → 1 after ~60dp. A plain
+    // lambda (not State) so it can be read in the draw phase, where it
+    // schedules redraws only — scrolling never recomposes for this.
+    val fadeRangePx = with(LocalDensity.current) { 60.dp.toPx() }
+    val headerFadeAlpha: () -> Float = remember(homeLayout, fadeRangePx) {
+        {
+            val index: Int
+            val offset: Int
+            if (homeLayout == "list") {
+                index = listState.firstVisibleItemIndex
+                offset = listState.firstVisibleItemScrollOffset
+            } else {
+                index = gridState.firstVisibleItemIndex
+                offset = gridState.firstVisibleItemScrollOffset
+            }
+            if (index > 0) 1f else (offset / fadeRangePx).coerceIn(0f, 1f)
         }
     }
 
@@ -553,6 +576,10 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .headerFadeOverlay(
+                    surface = MaterialTheme.colorScheme.surface,
+                    alpha = headerFadeAlpha
+                )
         ) {
             // Old position, back in the body: lists scroll internally below
             // it. Ducks on scroll exactly like the header and Record button.
@@ -1258,6 +1285,34 @@ fun HomeScreen(
 
 /** Intro (~3.3s) plus fade-out beat before What's New may pop. */
 private const val INTRO_SHEET_DELAY_MS = 3800L
+
+/**
+ * Scroll-driven top fade: 96dp surface→transparent gradient drawn over the
+ * content top so items slide under it. The alpha lambda is read in the draw
+ * phase, so scrolling schedules redraws of this node only — no
+ * recompositions, no layout passes, no clipping of the list itself.
+ */
+private fun Modifier.headerFadeOverlay(
+    surface: Color,
+    alpha: () -> Float
+): Modifier = this.drawWithContent {
+    drawContent()
+    val a = alpha()
+    if (a > 0f) {
+        val h = 96.dp.toPx()
+        drawRect(
+            brush = Brush.verticalGradient(
+                0f to surface,
+                1f to Color.Transparent,
+                startY = 0f,
+                endY = h
+            ),
+            topLeft = Offset.Zero,
+            size = Size(size.width, h),
+            alpha = a
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

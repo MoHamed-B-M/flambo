@@ -471,10 +471,10 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            // Expressive Record morph: one pill driven entirely by
-            // LowBouncy/MediumLow springs — size, corners, elevation,
-            // icon and label all ride the same physics, so collapse and
-            // expand land with a subtle tactile bounce instead of snapping.
+            // Expressive Record morph: flat tonal pill (no shadow), size and
+            // label driven by one calm spring. The label exits on a fast
+            // tween with no bounce while the container settles — nested
+            // bouncy springs fought each other and read as flicker.
             // Scroll state comes from derivedStateOf, so flings never
             // recompose per-frame. Touch target stays 76dp in both states.
             val recordSpringFloat = spring<Float>(
@@ -489,11 +489,6 @@ fun HomeScreen(
                 targetValue = if (isAtTop) 28.dp else 38.dp,
                 animationSpec = recordSpringDp,
                 label = "recordCorner"
-            )
-            val fabElevation by animateDpAsState(
-                targetValue = if (isAtTop) 6.dp else 3.dp,
-                animationSpec = recordSpringDp,
-                label = "recordElevation"
             )
             val iconSize by animateDpAsState(
                 targetValue = if (isAtTop) 32.dp else 24.dp,
@@ -517,13 +512,13 @@ fun HomeScreen(
                     shape = RoundedCornerShape(corner),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shadowElevation = fabElevation,
+                    shadowElevation = 0.dp,
                     tonalElevation = 0.dp,
                     modifier = Modifier
                         .height(76.dp)
                         .animateContentSize(
                             animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                dampingRatio = 0.9f,
                                 stiffness = Spring.StiffnessMediumLow
                             )
                         )
@@ -548,12 +543,9 @@ fun HomeScreen(
                                     stiffness = Spring.StiffnessMediumLow
                                 )
                             ),
-                            exit = fadeOut(tween(150)) + shrinkHorizontally(
+                            exit = fadeOut(tween(120)) + shrinkHorizontally(
                                 shrinkTowards = Alignment.Start,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
+                                animationSpec = tween(200)
                             ),
                             label = "recordLabel"
                         ) {

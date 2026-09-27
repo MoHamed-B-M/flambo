@@ -7,11 +7,13 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -28,10 +30,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -55,8 +62,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -433,33 +442,55 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
+            // Scroll-adaptive Record FAB: expanded pill at top, collapsed icon at bottom-right
+            val fabExpanded = !recorderState.isRecording && !selectionMode && !uiState.showTrash
+            val fabPosition = if (isAtTop) FabPosition.Center else FabPosition.End
+
             AnimatedVisibility(
-                visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash && !listScrolling,
+                visible = fabExpanded,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(dampingRatio = 0.8f)),
                 exit = scaleOut(spring(dampingRatio = 0.9f)) + fadeOut()
             ) {
-
-                Button(
-                    onClick = { startRecording() },
-                    shapes = ButtonDefaults.shapes(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    ),
-                    contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight),
-                    modifier = Modifier.heightIn(min = ButtonDefaults.LargeContainerHeight)
-                ) {
-                    Icon(
-                        Icons.Filled.Mic,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
-                    )
-                    Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
-                    Text("Record", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+                AnimatedContent(
+                    targetState = isAtTop,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(150)) + expandHorizontally(animationSpec = FlamboMotion.ContainerSizeSpring)
+                        fadeOut(animationSpec = tween(100)) + shrinkHorizontally(animationSpec = FlamboMotion.ContainerSizeSpring)
+                    },
+                    label = "fabExpand"
+                ) { expanded ->
+                    if (expanded) {
+                        // Expanded: centered pill with Mic + "Record"
+                        ExtendedFloatingActionButton(
+                            onClick = { startRecording() },
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.heightIn(min = ButtonDefaults.LargeContainerHeight)
+                        ) {
+                            Icon(
+                                Icons.Filled.Mic,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.LargeContainerHeight))
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Record", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+                        }
+                    } else {
+                        // Collapsed: icon-only FAB at bottom-right
+                        FloatingActionButton(
+                            onClick = { startRecording() },
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            shape = ShapeFull,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(Icons.Filled.Mic, contentDescription = "Record", modifier = Modifier.size(24.dp))
+                        }
+                    }
                 }
             }
         },
-        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButtonPosition = if (isAtTop) FabPosition.Center else FabPosition.End,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
@@ -656,10 +687,23 @@ fun HomeScreen(
                 }
             } else if (!showGroups) {
 
+                val listState = rememberLazyListState()
+                val gridState = rememberLazyGridState()
+
+                // Derive scroll state for FAB: expanded at top, collapsed when scrolled
+                val isAtTop by remember {
+                    derivedStateOf {
+                        val listAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                        val gridAtTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+                        (homeLayout == "list" && listAtTop) || (homeLayout == "grid" && gridAtTop)
+                    }
+                }
+
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
                     EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())
                 } else if (homeLayout == "grid") {
                     LazyVerticalGrid(
+                        state = gridState,
                         columns = GridCells.Fixed(2),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -692,6 +736,7 @@ fun HomeScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = listState,
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()

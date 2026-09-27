@@ -471,9 +471,9 @@ jobs:
           EOF
           if [[ -f changelogs.md ]]; then
             echo "" >> release_notes.md
-            # Current BASE_VERSION section only (up to the next ## [x) — the release
-            # page shows exactly what shipped in this version, never older notes.
-            sed -n "/## \\[$BASE_VERSION/,/## \\[/p" changelogs.md | head -n -1 >> release_notes.md
+            # Current BASE_VERSION section to end-of-file — old sections are
+            # pruned, so the release page is exactly what shipped here.
+            sed -n "/## \\[$BASE_VERSION/,\$p" changelogs.md >> release_notes.md
             echo "" >> release_notes.md
           fi
           echo "" >> release_notes.md

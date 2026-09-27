@@ -282,26 +282,44 @@ fun RecordingCard(
                             .width(208.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        IconButton(onClick = { showMenu = false; onFavorite() }) {
-                            Icon(
-                                imageVector = if (recording.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = "Favorite",
-                                tint = if (recording.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = { showMenu = false; onOpen() }) {
-                            Icon(
-                                imageVector = Icons.Filled.ChevronRight,
-                                contentDescription = "Open",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        FilledTonalButton(
-                            onClick = { showMenu = false; onRename() },
+                        Button(
+                            onClick = { showMenu = false; onOpen() },
                             shape = RoundedCornerShape(
                                 topStart = 16.dp, topEnd = 16.dp,
                                 bottomStart = 8.dp, bottomEnd = 8.dp
                             ),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Open details", modifier = Modifier.weight(1f))
+                        }
+                        Button(
+                            onClick = { showMenu = false; onFavorite() },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            ),
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                if (recording.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text(if (recording.isFavorite) "Unfavorite" else "Favorite", modifier = Modifier.weight(1f))
+                        }
+                        FilledTonalButton(
+                            onClick = { showMenu = false; onRename() },
+                            shape = RoundedCornerShape(8.dp),
                             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                             modifier = Modifier.fillMaxWidth()
                         ) {

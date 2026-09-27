@@ -480,13 +480,15 @@ fun HomeScreen(
                         )
                         AnimatedVisibility(
                             visible = isAtTop,
-                            enter = fadeIn(tween(200, delayMillis = 100)) + expandHorizontally(
+                            enter = expandHorizontally(
+                                expandFrom = Alignment.Start,
                                 animationSpec = tween(
                                     durationMillis = 450,
                                     easing = FlamboMotion.EmphasizedDecelerate
                                 )
                             ),
-                            exit = fadeOut(tween(120)) + shrinkHorizontally(
+                            exit = shrinkHorizontally(
+                                shrinkTowards = Alignment.Start,
                                 animationSpec = tween(
                                     durationMillis = 300,
                                     easing = FlamboMotion.EmphasizedAccelerate

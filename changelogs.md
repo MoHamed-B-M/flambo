@@ -6,7 +6,7 @@ Maintenance update focused on card stability, storage sync and recording-button 
 
 ### What's new
 
-- **Scroll-adaptive Record button** — Big 76dp pill with Mic + "Record" at the top of the library; collapses to an icon-only button in the bottom-right once you scroll down. Same action in both states, with a soft spring morph and staggered label.
+- **Scroll-adaptive Record button** — Big 76dp flat pill with Mic + "Record" at the top of the library; it glides to an icon-only button in the bottom-right once you scroll down, morphing size, corners and icon on one slow ease-in-out curve with zero overshoot. Same action in both states, and it lifts above snackbars instead of hiding under them.
 - **Card actions in one overflow menu** — Open details, Favorite, Rename and Delete now live under the 3-dot menu as full-width buttons in primary, tertiary, tonal and error colors, leaving Play/Pause, the waveform and the menu on the card row.
 - **Scrub inside Playback too** — The detail screen's waveform now seeks with the same tap/drag gesture as the cards.
 
@@ -18,6 +18,8 @@ Maintenance update focused on card stability, storage sync and recording-button 
 - **Real-time storage sync** — A debounced watcher on the library dir plus launch/resume re-scans adopts audio restored or copied in from outside (app dir and custom SAF tree, in-progress takes excluded, durations read).
 - **Trash navigation** — Back gesture exits Trash to the library, the top icon becomes a back arrow, and the "Moved to trash - Undo" snackbar is dismissed on Trash entry and on permanent deletes.
 - **Pinned header** — The app bar stays on top while scrolling instead of ducking away.
+- **Top fade on scroll** — A soft gradient melts list content into the header as you scroll down and vanishes back at the top; drawn on the GPU with no extra recompositions.
+- **Update shortcut** — The "New update ready" snackbar now opens the Updates page directly instead of generic Settings.
 - **Expand-on-play cards** — Pressing play always reveals a progress bar: the waveform when peaks exist, a seekable linear track for peak-less files (e.g. restored audio).
 
 ### Fixes
@@ -26,6 +28,7 @@ Maintenance update focused on card stability, storage sync and recording-button 
 - **Release-build stability** — Fixed the Record-button animation's `AnimatedContent` transition (`togetherWith` `ContentTransform`) that broke `compileReleaseKotlin`.
 - **Missing-file flags refresh** — Cards recompute missing state after syncs and playback errors without flicker.
 - **Waveform measured correctly** — The card progress bar uses full width with a fixed height instead of a conflicting vertical weight, so it can no longer collapse to zero.
+- **Flicker-free minimize** — The Record button's collapse no longer shimmers: the label tucks away on a fast curve while the container settles, with no shadow redraws mid-morph.
 
 ### Updating from 1.6.0
 

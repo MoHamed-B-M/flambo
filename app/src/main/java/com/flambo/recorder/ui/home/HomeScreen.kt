@@ -7,9 +7,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -471,28 +469,23 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            // Expressive Record morph: flat tonal pill (no shadow), size and
-            // label driven by one calm spring. The label exits on a fast
-            // tween with no bounce while the container settles — nested
-            // bouncy springs fought each other and read as flicker.
-            // Scroll state comes from derivedStateOf, so flings never
-            // recompose per-frame. Touch target stays 76dp in both states.
-            val recordSpringFloat = spring<Float>(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
-            val recordSpringDp = spring<Dp>(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessMediumLow
+            // Expressive Record morph: flat tonal pill, everything gliding
+            // on slow ease-in-out tweens — size, corners, icon and label
+            // share one curve with zero overshoot, so the morph reads as
+            // one smooth motion. Scroll state comes from derivedStateOf,
+            // so flings never recompose per-frame. Touch target is 76dp.
+            val recordEaseDp = tween<Dp>(
+                durationMillis = 500,
+                easing = FlamboMotion.Emphasized
             )
             val corner by animateDpAsState(
                 targetValue = if (isAtTop) 28.dp else 38.dp,
-                animationSpec = recordSpringDp,
+                animationSpec = recordEaseDp,
                 label = "recordCorner"
             )
             val iconSize by animateDpAsState(
                 targetValue = if (isAtTop) 32.dp else 24.dp,
-                animationSpec = recordSpringDp,
+                animationSpec = recordEaseDp,
                 label = "recordIconSize"
             )
             val iconTint by animateColorAsState(
@@ -503,8 +496,8 @@ fun HomeScreen(
             )
             AnimatedVisibility(
                 visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
-                enter = fadeIn(tween(150)) + scaleIn(recordSpringFloat, initialScale = 0.85f),
-                exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.85f),
+                enter = fadeIn(tween(150)) + scaleIn(tween(300), initialScale = 0.85f),
+                exit = fadeOut(tween(120)) + scaleOut(tween(200), targetScale = 0.85f),
                 label = "recordFab"
             ) {
                 Surface(
@@ -517,9 +510,9 @@ fun HomeScreen(
                     modifier = Modifier
                         .height(76.dp)
                         .animateContentSize(
-                            animationSpec = spring(
-                                dampingRatio = 0.9f,
-                                stiffness = Spring.StiffnessMediumLow
+                            animationSpec = tween(
+                                durationMillis = 500,
+                                easing = FlamboMotion.Emphasized
                             )
                         )
                 ) {
@@ -538,14 +531,17 @@ fun HomeScreen(
                             visible = isAtTop,
                             enter = fadeIn(tween(150)) + expandHorizontally(
                                 expandFrom = Alignment.Start,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
+                                animationSpec = tween(
+                                    durationMillis = 500,
+                                    easing = FlamboMotion.Emphasized
                                 )
                             ),
                             exit = fadeOut(tween(120)) + shrinkHorizontally(
                                 shrinkTowards = Alignment.Start,
-                                animationSpec = tween(200)
+                                animationSpec = tween(
+                                    durationMillis = 350,
+                                    easing = FlamboMotion.Emphasized
+                                )
                             ),
                             label = "recordLabel"
                         ) {

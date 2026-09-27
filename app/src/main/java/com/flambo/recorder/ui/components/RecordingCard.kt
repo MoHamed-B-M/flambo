@@ -174,19 +174,11 @@ fun RecordingCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = recording.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    if (recording.isFavorite) {
-                        Icon(
-                            imageVector = Icons.Filled.Favorite,
-                            contentDescription = "Favorite",
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (fileMissing) {
@@ -225,7 +217,7 @@ fun RecordingCard(
                     StaticWaveform(
                         peaks = peaks,
                         progress = progress,
-                        modifier = Modifier.padding(top = 6.dp),
+                        modifier = Modifier.weight(1f).padding(top = 6.dp),
                         onSeek = seekOnCard
                     )
                 }
@@ -256,14 +248,6 @@ fun RecordingCard(
                 )
             }
 
-            IconButton(onClick = onOpen) {
-                Icon(
-                    imageVector = Icons.Filled.ChevronRight,
-                    contentDescription = "Open",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
             androidx.compose.foundation.layout.Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "More")
@@ -282,6 +266,20 @@ fun RecordingCard(
                             .width(208.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        IconButton(onClick = { showMenu = false; onFavorite() }) {
+                            Icon(
+                                imageVector = if (recording.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (recording.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { showMenu = false; onOpen() }) {
+                            Icon(
+                                imageVector = Icons.Filled.ChevronRight,
+                                contentDescription = "Open",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         FilledTonalButton(
                             onClick = { showMenu = false; onRename() },
                             shape = RoundedCornerShape(

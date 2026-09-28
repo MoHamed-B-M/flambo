@@ -43,7 +43,6 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.Slider
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ZoomOutMap
@@ -332,7 +331,6 @@ fun AppearanceSettingsScreen(
                             value = when (transitionStyle) {
                                 "fade" -> "Fade • calm crossfade"
                                 "zoom-in" -> "Zoom in • forward motion"
-                                "zoom-out" -> "Zoom out • soft landing"
                                 else -> "Slide • classic pages"
                             },
                             onClick = { showTransitionDialog = true }
@@ -524,8 +522,7 @@ fun AppearanceSettingsScreen(
                     listOf(
                         Triple("slide", "Slide", "Classic pages sliding with fade"),
                         Triple("fade", "Fade", "Calm crossfade, no movement"),
-                        Triple("zoom-in", "Zoom in", "Pages grow in with fade"),
-                        Triple("zoom-out", "Zoom out", "Pages shrink in with fade")
+                        Triple("zoom-in", "Zoom in", "Pages grow in with fade")
                     ).forEachIndexed { index, (value, label, description) ->
                         ToggleButton(
                             checked = transitionStyle == value,
@@ -535,7 +532,7 @@ fun AppearanceSettingsScreen(
                             },
                             shapes = when (index) {
                                 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                3 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                2 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -544,7 +541,6 @@ fun AppearanceSettingsScreen(
                                 when (value) {
                                     "fade" -> Icons.Filled.BlurOn
                                     "zoom-in" -> Icons.Filled.ZoomIn
-                                    "zoom-out" -> Icons.Filled.ZoomOut
                                     else -> Icons.Filled.SwapHoriz
                                 },
                                 contentDescription = null,

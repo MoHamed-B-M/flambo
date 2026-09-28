@@ -78,94 +78,90 @@ private val fastFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 600f)
 // overrides below; everything else inherits these from the NavHost.
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenEnter() =
     slideInHorizontally(
-        initialOffsetX = { it / 4 },
-        animationSpec = tween(300)
+        initialOffsetX = { it },
+        animationSpec = tween(350)
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenExit() =
     slideOutHorizontally(
-        targetOffsetX = { -it / 4 },
-        animationSpec = tween(300)
+        targetOffsetX = { -it },
+        animationSpec = tween(350)
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenPopEnter() =
     slideInHorizontally(
-        initialOffsetX = { -it / 4 },
-        animationSpec = tween(300)
+        initialOffsetX = { -it },
+        animationSpec = tween(350)
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenPopExit() =
     slideOutHorizontally(
-        targetOffsetX = { it / 4 },
-        animationSpec = tween(300)
+        targetOffsetX = { it },
+        animationSpec = tween(350)
     )
 
 // Sub-settings zoom: the standard slide/fade plus a subtle 0.95 scale
 // morph, matching Android 14/15 back motion.
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsEnter() =
     slideInHorizontally(
-        initialOffsetX = { it / 4 },
-        animationSpec = tween(300)
+        initialOffsetX = { it },
+        animationSpec = tween(350)
     ) + scaleIn(
         initialScale = 0.95f,
-        animationSpec = tween(300)
+        animationSpec = tween(350)
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsExit() =
     slideOutHorizontally(
-        targetOffsetX = { -it / 4 },
-        animationSpec = tween(300)
+        targetOffsetX = { -it },
+        animationSpec = tween(350)
     ) + scaleOut(
         targetScale = 0.95f,
-        animationSpec = tween(300)
+        animationSpec = tween(350)
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsPopEnter() =
     slideInHorizontally(
-        initialOffsetX = { -it / 4 },
-        animationSpec = tween(300)
+        initialOffsetX = { -it },
+        animationSpec = tween(350)
     ) + scaleIn(
         initialScale = 0.95f,
-        animationSpec = tween(300)
+        animationSpec = tween(350)
     )
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsPopExit() =
     slideOutHorizontally(
-        targetOffsetX = { it / 4 },
-        animationSpec = tween(300)
+        targetOffsetX = { it },
+        animationSpec = tween(350)
     ) + scaleOut(
         targetScale = 0.95f,
-        animationSpec = tween(300)
+        animationSpec = tween(350)
     )
 
 // Style-driven variants for the Appearance "Page transitions" choice.
 // "slide" funnels back to the standard above; morph overrides elsewhere
 // are untouched so the card animation keeps riding its own transition.
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledEnter(style: String) = when (style) {
-    "fade" -> fadeIn(animationSpec = tween(300))
-    "zoom-in" -> scaleIn(animationSpec = tween(300), initialScale = 0.92f)
-    "zoom-out" -> scaleIn(animationSpec = tween(300), initialScale = 1.08f)
+    "fade" -> fadeIn(animationSpec = tween(350))
+    "zoom-in" -> scaleIn(animationSpec = tween(350), initialScale = 0.92f)
     else -> screenEnter()
 }
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledExit(style: String) = when (style) {
-    "fade" -> fadeOut(animationSpec = tween(300))
-    "zoom-in" -> scaleOut(animationSpec = tween(300), targetScale = 0.92f)
-    "zoom-out" -> scaleOut(animationSpec = tween(300), targetScale = 1.08f)
+    "fade" -> fadeOut(animationSpec = tween(350))
+    "zoom-in" -> scaleOut(animationSpec = tween(350), targetScale = 0.92f)
     else -> screenExit()
 }
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledPopEnter(style: String) = when (style) {
-    "fade" -> fadeIn(animationSpec = tween(300))
-    "zoom-in" -> scaleIn(animationSpec = tween(300), initialScale = 0.92f)
-    "zoom-out" -> scaleIn(animationSpec = tween(300), initialScale = 1.08f)
+    "fade" -> fadeIn(animationSpec = tween(350))
+    "zoom-in" -> scaleIn(animationSpec = tween(350), initialScale = 0.92f)
     else -> screenPopEnter()
 }
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledPopExit(style: String) = when (style) {
-    "fade" -> fadeOut(animationSpec = tween(300))
-    "zoom-in" -> scaleOut(animationSpec = tween(300), targetScale = 0.92f)
-    "zoom-out" -> scaleOut(animationSpec = tween(300), targetScale = 1.08f)
+    "fade" -> fadeOut(animationSpec = tween(350))
+    "zoom-in" -> scaleOut(animationSpec = tween(350), targetScale = 0.92f)
     else -> screenPopExit()
 }
 

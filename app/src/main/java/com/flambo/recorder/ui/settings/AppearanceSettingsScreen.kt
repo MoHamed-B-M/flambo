@@ -39,7 +39,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SettingsBrightness
-import androidx.compose.material.icons.filled.SwapHorizontally
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
@@ -323,7 +323,7 @@ fun AppearanceSettingsScreen(
                     }
                     item {
                         PreferenceValueItem(
-                            icon = Icons.Filled.SwapHorizontally,
+                            icon = Icons.Filled.SwapHoriz,
                             title = "Page transitions",
                             value = when (transitionStyle) {
                                 "fade" -> "Fade • calm crossfade"
@@ -505,7 +505,7 @@ fun AppearanceSettingsScreen(
                                     "fade" -> Icons.Filled.BlurOn
                                     "zoom-in" -> Icons.Filled.ZoomIn
                                     "zoom-out" -> Icons.Filled.ZoomOut
-                                    else -> Icons.Filled.SwapHorizontally
+                                    else -> Icons.Filled.SwapHoriz
                                 },
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)

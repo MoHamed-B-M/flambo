@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -101,6 +102,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -552,6 +554,57 @@ fun DetailScreen(
                         Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
+                    // Elastic push row: the tapped button swells (1.3) while its
+                    // neighbors compress (0.6), relaxing to 1.0 after ~280ms.
+                    // One bouncy spring spec drives all three weights.
+                    var lastTransportTap by remember { mutableStateOf<Int?>(null) }
+                    LaunchedEffect(lastTransportTap) {
+                        if (lastTransportTap != null) {
+                            kotlinx.coroutines.delay(280)
+                            lastTransportTap = null
+                        }
+                    }
+                    val pushSpring = spring<Float>(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                    fun pushWeight(id: Int): Float = when (lastTransportTap) {
+                        null -> 1f
+                        id -> 1.3f
+                        else -> 0.6f
+                    }
+                    val backWeight by animateFloatAsState(
+                        targetValue = pushWeight(0),
+                        animationSpec = pushSpring,
+                        label = "backWeight"
+                    )
+                    val playWeight by animateFloatAsState(
+                        targetValue = pushWeight(1),
+                        animationSpec = pushSpring,
+                        label = "playWeight"
+                    )
+                    val fwdWeight by animateFloatAsState(
+                        targetValue = pushWeight(2),
+                        animationSpec = pushSpring,
+                        label = "fwdWeight"
+                    )
+                    // Squircle while playing, full pill while paused.
+                    val playCorner by animateDpAsState(
+                        targetValue = if (isThisPlaying) 22.dp else 50.dp,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "playCorner"
+                    )
+                    // Skip debounce: drops accidental double-taps inside 250ms.
+                    var lastSkipAt by remember { mutableLongStateOf(0L) }
+                    fun acceptSkip(): Boolean {
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (now - lastSkipAt < 250) return false
+                        lastSkipAt = now
+                        return true
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -559,7 +612,11 @@ fun DetailScreen(
                     ) {
                         val skipBackPress = rememberTransportPress(enabled = isCurrentTrack && !fileMissing)
                         FilledTonalButton(
-                            onClick = { if (isCurrentTrack) playback.skip(-5000) },
+                            onClick = {
+                                if (!isCurrentTrack || !acceptSkip()) return@FilledTonalButton
+                                lastTransportTap = 0
+                                playback.skip(-5000)
+                            },
                             enabled = isCurrentTrack && !fileMissing,
                             shape = RoundedCornerShape(
                                 topStart = 20.dp, topEnd = 8.dp,
@@ -568,7 +625,7 @@ fun DetailScreen(
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
                             interactionSource = skipBackPress.interaction,
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(backWeight)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
                                 .then(skipBackPress.modifier)
                         ) {
@@ -583,11 +640,12 @@ fun DetailScreen(
                         androidx.compose.material3.Button(
                             onClick = {
                                 if (fileMissing) return@Button
+                                lastTransportTap = 1
                                 if (isThisPlaying) playback.pause()
                                 else playback.play(rec.filePath)
                             },
                             enabled = !fileMissing,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(playCorner),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -595,7 +653,7 @@ fun DetailScreen(
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
                             interactionSource = playPress.interaction,
                             modifier = Modifier
-                                .weight(1.4f)
+                                .weight(playWeight)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
                                 .then(playPress.modifier)
                         ) {
@@ -617,7 +675,11 @@ fun DetailScreen(
 
                         val skipForwardPress = rememberTransportPress(enabled = isCurrentTrack && !fileMissing)
                         FilledTonalButton(
-                            onClick = { if (isCurrentTrack) playback.skip(5000) },
+                            onClick = {
+                                if (!isCurrentTrack || !acceptSkip()) return@FilledTonalButton
+                                lastTransportTap = 2
+                                playback.skip(5000)
+                            },
                             enabled = isCurrentTrack && !fileMissing,
                             shape = RoundedCornerShape(
                                 topStart = 8.dp, topEnd = 20.dp,
@@ -626,7 +688,7 @@ fun DetailScreen(
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
                             interactionSource = skipForwardPress.interaction,
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(fwdWeight)
                                 .heightIn(min = ButtonDefaults.MediumContainerHeight)
                                 .then(skipForwardPress.modifier)
                         ) {

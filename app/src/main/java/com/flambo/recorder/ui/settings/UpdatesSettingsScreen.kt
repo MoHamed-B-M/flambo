@@ -325,7 +325,19 @@ fun UpdatesSettingsScreen(
                                                         updateDownload.downloadedFile?.takeIf { it.name != asset.name }?.let { runCatching { it.delete() } }
                                                         updateDownload.progress = 0f
                                                         updateDownload.job = scope.launch {
-                                                            val res = ApkInstaller.download(context.applicationContext, asset.url, asset.name) { updateDownload.progress = it }
+                                                            var lastValue = -1f
+                                                            var lastReport = 0L
+                                                            val res = ApkInstaller.download(context.applicationContext, asset.url, asset.name) { frac ->
+                                                                // Fires per 64KB chunk on the IO thread: throttle
+                                                                // to ~1% / 200ms so every chunk doesn't schedule
+                                                                // its own recomposition and stall the UI thread.
+                                                                val now = android.os.SystemClock.uptimeMillis()
+                                                                if (frac >= 1f || frac - lastValue >= 0.01f || now - lastReport >= 200) {
+                                                                    lastValue = frac
+                                                                    lastReport = now
+                                                                    updateDownload.progress = frac
+                                                                }
+                                                            }
                                                             updateDownload.progress = null
                                                             updateDownload.job = null
                                                             res.onSuccess { file ->

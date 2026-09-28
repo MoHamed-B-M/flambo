@@ -7,6 +7,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
@@ -55,6 +56,11 @@ object ApkInstaller {
             }
             onProgress(1f)
             Result.success(dest)
+        } catch (e: CancellationException) {
+            // Never swallow cancellation (navigating away, re-check): delete
+            // the partial file and let the coroutine end cancelled.
+            runCatching { dest.delete() }
+            throw e
         } catch (e: Exception) {
             runCatching { dest.delete() }
             Result.failure(IllegalStateException(e.message ?: "Download failed."))

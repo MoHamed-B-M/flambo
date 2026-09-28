@@ -14,7 +14,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -72,47 +71,71 @@ private val expressiveSpring = spring<Float>(
     dampingRatio = 0.85f,
     stiffness = 400f
 )
-private val expressiveSpringOffset = spring<IntOffset>(
-    dampingRatio = 0.9f,
-    stiffness = 380f
-)
-
 private val fastFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 600f)
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveEnter() =
+// Standard screen transitions (Material predictive-back style): partial
+// slides with 300ms fades, no springs. Home/Detail keep their morph-aware
+// overrides below; everything else inherits these from the NavHost.
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenEnter() =
     slideInHorizontally(
-        initialOffsetX = { it / 5 },
-        animationSpec = expressiveSpringOffset
-    ) + fadeIn(animationSpec = spring(dampingRatio = 0.8f)) + scaleIn(
-        initialScale = 0.96f,
-        animationSpec = expressiveSpring
-    )
+        initialOffsetX = { it / 4 },
+        animationSpec = tween(300)
+    ) + fadeIn(animationSpec = tween(300))
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressiveExit() =
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenExit() =
     slideOutHorizontally(
-        targetOffsetX = { -it / 6 },
-        animationSpec = expressiveSpringOffset
-    ) + fadeOut(animationSpec = fastFadeSpring) + scaleOut(
-        targetScale = 0.98f,
-        animationSpec = fastFadeSpring
-    )
+        targetOffsetX = { -it / 4 },
+        animationSpec = tween(300)
+    ) + fadeOut(animationSpec = tween(300))
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopEnter() =
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenPopEnter() =
     slideInHorizontally(
-        initialOffsetX = { -it / 5 },
-        animationSpec = expressiveSpringOffset
-    ) + fadeIn(animationSpec = fastFadeSpring) + scaleIn(
-        initialScale = 0.98f,
-        animationSpec = fastFadeSpring
-    )
+        initialOffsetX = { -it / 4 },
+        animationSpec = tween(300)
+    ) + fadeIn(animationSpec = tween(300))
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.expressivePopExit() =
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.screenPopExit() =
     slideOutHorizontally(
         targetOffsetX = { it / 4 },
-        animationSpec = expressiveSpringOffset
-    ) + fadeOut(animationSpec = fastFadeSpring) + scaleOut(
-        targetScale = 0.96f,
-        animationSpec = fastFadeSpring
+        animationSpec = tween(300)
+    ) + fadeOut(animationSpec = tween(300))
+
+// Sub-settings zoom: the standard slide/fade plus a subtle 0.95 scale
+// morph, matching Android 14/15 back motion.
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsEnter() =
+    slideInHorizontally(
+        initialOffsetX = { it / 4 },
+        animationSpec = tween(300)
+    ) + fadeIn(animationSpec = tween(300)) + scaleIn(
+        initialScale = 0.95f,
+        animationSpec = tween(300)
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsExit() =
+    slideOutHorizontally(
+        targetOffsetX = { -it / 4 },
+        animationSpec = tween(300)
+    ) + fadeOut(animationSpec = tween(300)) + scaleOut(
+        targetScale = 0.95f,
+        animationSpec = tween(300)
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsPopEnter() =
+    slideInHorizontally(
+        initialOffsetX = { -it / 4 },
+        animationSpec = tween(300)
+    ) + fadeIn(animationSpec = tween(300)) + scaleIn(
+        initialScale = 0.95f,
+        animationSpec = tween(300)
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsPopExit() =
+    slideOutHorizontally(
+        targetOffsetX = { it / 4 },
+        animationSpec = tween(300)
+    ) + fadeOut(animationSpec = tween(300)) + scaleOut(
+        targetScale = 0.95f,
+        animationSpec = tween(300)
     )
 
 @Composable
@@ -188,10 +211,10 @@ fun FlamboNavGraph(
             navController = navController,
             startDestination = Dest.Home.route,
 
-            enterTransition = { expressiveEnter() },
-            exitTransition = { expressiveExit() },
-            popEnterTransition = { expressivePopEnter() },
-            popExitTransition = { expressivePopExit() }
+            enterTransition = { screenEnter() },
+            exitTransition = { screenExit() },
+            popEnterTransition = { screenPopEnter() },
+            popExitTransition = { screenPopExit() }
         ) {
         composable(
             route = Dest.Home.route,
@@ -200,14 +223,14 @@ fun FlamboNavGraph(
             // back into place. None freezes progress and the morph snaps.
             enterTransition = {
                 if (app.cardExpandAnim && initialState.destination.route == Dest.Detail.route) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.98f, animationSpec = fastFadeSpring)
-                else expressivePopEnter()
+                else screenPopEnter()
             },
             // When the card morph is active it rides the route transition: home
             // gently fades and settles on a spring while the card takes over.
             // None would freeze transition progress and snap the morph.
             exitTransition = {
                 if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) fadeOut(animationSpec = fastFadeSpring)
-                else expressiveExit()
+                else screenExit()
             }
         ) {
             val animScope = this
@@ -277,11 +300,7 @@ fun FlamboNavGraph(
         }
 
         composable(
-            route = Dest.Settings.route,
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            route = Dest.Settings.route
         ) {
             SettingsScreen(
                 prefs = app.prefs,
@@ -302,60 +321,60 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsRecording.route,
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            enterTransition = { subSettingsEnter() },
+            exitTransition = { subSettingsExit() },
+            popEnterTransition = { subSettingsPopEnter() },
+            popExitTransition = { subSettingsPopExit() }
         ) {
             RecordingSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsAppearance.route,
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            enterTransition = { subSettingsEnter() },
+            exitTransition = { subSettingsExit() },
+            popEnterTransition = { subSettingsPopEnter() },
+            popExitTransition = { subSettingsPopExit() }
         ) {
             AppearanceSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsStt.route,
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            enterTransition = { subSettingsEnter() },
+            exitTransition = { subSettingsExit() },
+            popEnterTransition = { subSettingsPopEnter() },
+            popExitTransition = { subSettingsPopExit() }
         ) {
             SttSettingsScreen(prefs = app.prefs, scope = scope, transcription = app.transcription, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsStorage.route,
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            enterTransition = { subSettingsEnter() },
+            exitTransition = { subSettingsExit() },
+            popEnterTransition = { subSettingsPopEnter() },
+            popExitTransition = { subSettingsPopExit() }
         ) {
             StorageSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsUpdates.route,
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            enterTransition = { subSettingsEnter() },
+            exitTransition = { subSettingsExit() },
+            popEnterTransition = { subSettingsPopEnter() },
+            popExitTransition = { subSettingsPopExit() }
         ) {
             UpdatesSettingsScreen(prefs = app.prefs, scope = scope, updateDownload = updateDownload, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsAbout.route,
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            enterTransition = { subSettingsEnter() },
+            exitTransition = { subSettingsExit() },
+            popEnterTransition = { subSettingsPopEnter() },
+            popExitTransition = { subSettingsPopExit() }
         ) {
             AboutSettingsScreen(prefs = app.prefs, onBack = { debouncedPop() }, onRerunOnboarding = onRerunOnboarding)
         }

@@ -801,7 +801,7 @@ fun DetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Move to trash?") },
-            text = { Text("\"${rec.title}\" will be moved to trash and auto-deleted after 2 days. You can restore it from the Home trash view.") },
+            text = { Text("\"${rec.title}\" will be moved to trash and auto-deleted after 7 days. You can restore it from the Home trash view.") },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false

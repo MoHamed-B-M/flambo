@@ -138,6 +138,37 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsPopExit
         animationSpec = tween(300)
     )
 
+// Style-driven variants for the Appearance "Page transitions" choice.
+// "slide" funnels back to the standard above; morph overrides elsewhere
+// are untouched so the card animation keeps riding its own transition.
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledEnter(style: String) = when (style) {
+    "fade" -> fadeIn(animationSpec = tween(300))
+    "zoom-in" -> scaleIn(animationSpec = tween(300), initialScale = 0.92f) + fadeIn(animationSpec = tween(300))
+    "zoom-out" -> scaleIn(animationSpec = tween(300), initialScale = 1.08f) + fadeIn(animationSpec = tween(300))
+    else -> screenEnter()
+}
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledExit(style: String) = when (style) {
+    "fade" -> fadeOut(animationSpec = tween(300))
+    "zoom-in" -> scaleOut(animationSpec = tween(300), targetScale = 0.92f) + fadeOut(animationSpec = tween(300))
+    "zoom-out" -> scaleOut(animationSpec = tween(300), targetScale = 1.08f) + fadeOut(animationSpec = tween(300))
+    else -> screenExit()
+}
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledPopEnter(style: String) = when (style) {
+    "fade" -> fadeIn(animationSpec = tween(300))
+    "zoom-in" -> scaleIn(animationSpec = tween(300), initialScale = 0.92f) + fadeIn(animationSpec = tween(300))
+    "zoom-out" -> scaleIn(animationSpec = tween(300), initialScale = 1.08f) + fadeIn(animationSpec = tween(300))
+    else -> screenPopEnter()
+}
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledPopExit(style: String) = when (style) {
+    "fade" -> fadeOut(animationSpec = tween(300))
+    "zoom-in" -> scaleOut(animationSpec = tween(300), targetScale = 0.92f) + fadeOut(animationSpec = tween(300))
+    "zoom-out" -> scaleOut(animationSpec = tween(300), targetScale = 1.08f) + fadeOut(animationSpec = tween(300))
+    else -> screenPopExit()
+}
+
 @Composable
 fun FlamboNavGraph(
     onRerunOnboarding: () -> Unit = {},
@@ -202,6 +233,7 @@ fun FlamboNavGraph(
     }
 
     val cardExpandAnim by app.prefs.cardExpandAnimFlow.collectAsState(initial = true)
+    val transitionStyle by app.prefs.transitionStyleFlow.collectAsState(initial = "slide")
 
     SharedTransitionLayout {
         // The layout's scope, handed down explicitly (no CompositionLocal for
@@ -211,10 +243,10 @@ fun FlamboNavGraph(
             navController = navController,
             startDestination = Dest.Home.route,
 
-            enterTransition = { screenEnter() },
-            exitTransition = { screenExit() },
-            popEnterTransition = { screenPopEnter() },
-            popExitTransition = { screenPopExit() }
+            enterTransition = { styledEnter(transitionStyle) },
+            exitTransition = { styledExit(transitionStyle) },
+            popEnterTransition = { styledPopEnter(transitionStyle) },
+            popExitTransition = { styledPopExit(transitionStyle) }
         ) {
         composable(
             route = Dest.Home.route,
@@ -223,14 +255,14 @@ fun FlamboNavGraph(
             // back into place. None freezes progress and the morph snaps.
             enterTransition = {
                 if (app.cardExpandAnim && initialState.destination.route == Dest.Detail.route) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.98f, animationSpec = fastFadeSpring)
-                else screenPopEnter()
+                else styledPopEnter(transitionStyle)
             },
             // When the card morph is active it rides the route transition: home
             // gently fades and settles on a spring while the card takes over.
             // None would freeze transition progress and snap the morph.
             exitTransition = {
                 if (app.cardExpandAnim && targetState.destination.route == Dest.Detail.route) fadeOut(animationSpec = fastFadeSpring)
-                else screenExit()
+                else styledExit(transitionStyle)
             }
         ) {
             val animScope = this
@@ -272,10 +304,10 @@ fun FlamboNavGraph(
             // GPU-cheap) while the slow bounds morph carries the motion.
             // None freezes progress and the card would just snap open.
             // Otherwise classic slides.
-            enterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
-            popEnterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
-            popExitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+            enterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else styledEnter(transitionStyle) },
+            exitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else styledExit(transitionStyle) },
+            popEnterTransition = { if (app.cardExpandAnim) fadeIn(animationSpec = fastFadeSpring) + scaleIn(initialScale = 0.94f, animationSpec = expressiveSpring) else styledPopEnter(transitionStyle) },
+            popExitTransition = { if (app.cardExpandAnim) fadeOut(animationSpec = fastFadeSpring) + scaleOut(targetScale = 0.96f, animationSpec = fastFadeSpring) else styledPopExit(transitionStyle) }
         ) { backStackEntry ->
             val animScope = this
             val id = backStackEntry.arguments?.getLong("id") ?: return@composable
@@ -321,60 +353,60 @@ fun FlamboNavGraph(
 
         composable(
             route = Dest.SettingsRecording.route,
-            enterTransition = { subSettingsEnter() },
-            exitTransition = { subSettingsExit() },
-            popEnterTransition = { subSettingsPopEnter() },
-            popExitTransition = { subSettingsPopExit() }
+            enterTransition = { if (transitionStyle == "slide") subSettingsEnter() else styledEnter(transitionStyle) },
+            exitTransition = { if (transitionStyle == "slide") subSettingsExit() else styledExit(transitionStyle) },
+            popEnterTransition = { if (transitionStyle == "slide") subSettingsPopEnter() else styledPopEnter(transitionStyle) },
+            popExitTransition = { if (transitionStyle == "slide") subSettingsPopExit() else styledPopExit(transitionStyle) }
         ) {
             RecordingSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsAppearance.route,
-            enterTransition = { subSettingsEnter() },
-            exitTransition = { subSettingsExit() },
-            popEnterTransition = { subSettingsPopEnter() },
-            popExitTransition = { subSettingsPopExit() }
+            enterTransition = { if (transitionStyle == "slide") subSettingsEnter() else styledEnter(transitionStyle) },
+            exitTransition = { if (transitionStyle == "slide") subSettingsExit() else styledExit(transitionStyle) },
+            popEnterTransition = { if (transitionStyle == "slide") subSettingsPopEnter() else styledPopEnter(transitionStyle) },
+            popExitTransition = { if (transitionStyle == "slide") subSettingsPopExit() else styledPopExit(transitionStyle) }
         ) {
             AppearanceSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsStt.route,
-            enterTransition = { subSettingsEnter() },
-            exitTransition = { subSettingsExit() },
-            popEnterTransition = { subSettingsPopEnter() },
-            popExitTransition = { subSettingsPopExit() }
+            enterTransition = { if (transitionStyle == "slide") subSettingsEnter() else styledEnter(transitionStyle) },
+            exitTransition = { if (transitionStyle == "slide") subSettingsExit() else styledExit(transitionStyle) },
+            popEnterTransition = { if (transitionStyle == "slide") subSettingsPopEnter() else styledPopEnter(transitionStyle) },
+            popExitTransition = { if (transitionStyle == "slide") subSettingsPopExit() else styledPopExit(transitionStyle) }
         ) {
             SttSettingsScreen(prefs = app.prefs, scope = scope, transcription = app.transcription, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsStorage.route,
-            enterTransition = { subSettingsEnter() },
-            exitTransition = { subSettingsExit() },
-            popEnterTransition = { subSettingsPopEnter() },
-            popExitTransition = { subSettingsPopExit() }
+            enterTransition = { if (transitionStyle == "slide") subSettingsEnter() else styledEnter(transitionStyle) },
+            exitTransition = { if (transitionStyle == "slide") subSettingsExit() else styledExit(transitionStyle) },
+            popEnterTransition = { if (transitionStyle == "slide") subSettingsPopEnter() else styledPopEnter(transitionStyle) },
+            popExitTransition = { if (transitionStyle == "slide") subSettingsPopExit() else styledPopExit(transitionStyle) }
         ) {
             StorageSettingsScreen(prefs = app.prefs, scope = scope, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsUpdates.route,
-            enterTransition = { subSettingsEnter() },
-            exitTransition = { subSettingsExit() },
-            popEnterTransition = { subSettingsPopEnter() },
-            popExitTransition = { subSettingsPopExit() }
+            enterTransition = { if (transitionStyle == "slide") subSettingsEnter() else styledEnter(transitionStyle) },
+            exitTransition = { if (transitionStyle == "slide") subSettingsExit() else styledExit(transitionStyle) },
+            popEnterTransition = { if (transitionStyle == "slide") subSettingsPopEnter() else styledPopEnter(transitionStyle) },
+            popExitTransition = { if (transitionStyle == "slide") subSettingsPopExit() else styledPopExit(transitionStyle) }
         ) {
             UpdatesSettingsScreen(prefs = app.prefs, scope = scope, updateDownload = updateDownload, onBack = { debouncedPop() })
         }
 
         composable(
             route = Dest.SettingsAbout.route,
-            enterTransition = { subSettingsEnter() },
-            exitTransition = { subSettingsExit() },
-            popEnterTransition = { subSettingsPopEnter() },
-            popExitTransition = { subSettingsPopExit() }
+            enterTransition = { if (transitionStyle == "slide") subSettingsEnter() else styledEnter(transitionStyle) },
+            exitTransition = { if (transitionStyle == "slide") subSettingsExit() else styledExit(transitionStyle) },
+            popEnterTransition = { if (transitionStyle == "slide") subSettingsPopEnter() else styledPopEnter(transitionStyle) },
+            popExitTransition = { if (transitionStyle == "slide") subSettingsPopExit() else styledPopExit(transitionStyle) }
         ) {
             AboutSettingsScreen(prefs = app.prefs, onBack = { debouncedPop() }, onRerunOnboarding = onRerunOnboarding)
         }

@@ -48,6 +48,7 @@ class PreferencesManager(private val context: Context) {
         val CARD_EXPAND_ANIM = booleanPreferencesKey("card_expand_anim")
         val INTRO_ANIM = booleanPreferencesKey("intro_anim")
         val INTRO_SEEN = booleanPreferencesKey("intro_seen")
+        val TRANSITION_STYLE = stringPreferencesKey("transition_style")
         val APP_ICON = stringPreferencesKey("app_icon")
         val PROGRESS_STYLE = stringPreferencesKey("progress_style")
     }
@@ -299,6 +300,14 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setIntroAnim(enabled: Boolean) {
         context.dataStore.edit { it[Keys.INTRO_ANIM] = enabled }
+    }
+
+    /** Page-to-page animation: slide, fade, zoom-in or zoom-out. */
+    val transitionStyleFlow: Flow<String> =
+        context.dataStore.data.map { it[Keys.TRANSITION_STYLE] ?: "slide" }
+
+    suspend fun setTransitionStyle(style: String) {
+        context.dataStore.edit { it[Keys.TRANSITION_STYLE] = style }
     }
 
     /** True once the full brand intro has played at least once. */

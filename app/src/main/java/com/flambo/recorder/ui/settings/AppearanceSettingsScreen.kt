@@ -39,6 +39,10 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SettingsBrightness
+import androidx.compose.material.icons.filled.SwapHorizontally
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.AlertDialog
@@ -116,9 +120,11 @@ fun AppearanceSettingsScreen(
     val gestureEnabled by prefs.gestureEnabledFlow.collectAsState(initial = true)
     val appIcon by prefs.appIconFlow.collectAsState(initial = AppIconManager.ICON_DEFAULT)
     val progressStyle by prefs.progressStyleFlow.collectAsState(initial = ProgressBarStyle.SLIDER)
+    val transitionStyle by prefs.transitionStyleFlow.collectAsState(initial = "slide")
 
     var showAppThemeDialog by remember { mutableStateOf(false) }
     var showLayoutDialog by remember { mutableStateOf(false) }
+    var showTransitionDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showProgressBarDialog by remember { mutableStateOf(false) }
 
@@ -315,6 +321,19 @@ fun AppearanceSettingsScreen(
                             }
                         )
                     }
+                    item {
+                        PreferenceValueItem(
+                            icon = Icons.Filled.SwapHorizontally,
+                            title = "Page transitions",
+                            value = when (transitionStyle) {
+                                "fade" -> "Fade • calm crossfade"
+                                "zoom-in" -> "Zoom in • forward motion"
+                                "zoom-out" -> "Zoom out • soft landing"
+                                else -> "Slide • classic pages"
+                            },
+                            onClick = { showTransitionDialog = true }
+                        )
+                    }
                 }
             }
 
@@ -454,6 +473,56 @@ fun AppearanceSettingsScreen(
             }
         }
     }
+    }
+
+    if (showTransitionDialog) {
+        AlertDialog(
+            onDismissRequest = { showTransitionDialog = false },
+            title = { Text("Page transitions", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        Triple("slide", "Slide", "Classic pages sliding with fade"),
+                        Triple("fade", "Fade", "Calm crossfade, no movement"),
+                        Triple("zoom-in", "Zoom in", "Pages grow in with fade"),
+                        Triple("zoom-out", "Zoom out", "Pages shrink in with fade")
+                    ).forEachIndexed { index, (value, label, description) ->
+                        ToggleButton(
+                            checked = transitionStyle == value,
+                            onCheckedChange = {
+                                scope.launch { prefs.setTransitionStyle(value) }
+                                showTransitionDialog = false
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                3 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                when (value) {
+                                    "fade" -> Icons.Filled.BlurOn
+                                    "zoom-in" -> Icons.Filled.ZoomIn
+                                    "zoom-out" -> Icons.Filled.ZoomOut
+                                    else -> Icons.Filled.SwapHorizontally
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
+                                Text(label, style = MaterialTheme.typography.titleMedium)
+                                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTransitionDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+            },
+            shape = ShapeLargeIncreased
+        )
     }
 
     if (showLayoutDialog) {

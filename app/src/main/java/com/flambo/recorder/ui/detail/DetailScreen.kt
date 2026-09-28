@@ -122,6 +122,7 @@ import com.flambo.recorder.stt.FileTranscription
 import com.flambo.recorder.stt.VoskModelManager
 import com.flambo.recorder.ui.components.PlaybackProgressBar
 import com.flambo.recorder.ui.components.StaticWaveform
+import com.flambo.recorder.ui.haptics.AppHaptics
 import com.flambo.recorder.ui.theme.FlamboMotion
 import com.flambo.recorder.ui.theme.ShapeFull
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
@@ -614,6 +615,7 @@ fun DetailScreen(
                         FilledTonalButton(
                             onClick = {
                                 if (!isCurrentTrack || !acceptSkip()) return@FilledTonalButton
+                                AppHaptics.tap(context)
                                 lastTransportTap = 0
                                 playback.skip(-5000)
                             },
@@ -640,6 +642,7 @@ fun DetailScreen(
                         androidx.compose.material3.Button(
                             onClick = {
                                 if (fileMissing) return@Button
+                                AppHaptics.tap(context)
                                 lastTransportTap = 1
                                 if (isThisPlaying) playback.pause()
                                 else playback.play(rec.filePath)
@@ -677,6 +680,7 @@ fun DetailScreen(
                         FilledTonalButton(
                             onClick = {
                                 if (!isCurrentTrack || !acceptSkip()) return@FilledTonalButton
+                                AppHaptics.tap(context)
                                 lastTransportTap = 2
                                 playback.skip(5000)
                             },

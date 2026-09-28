@@ -58,12 +58,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.domain.formatDuration
 import com.flambo.recorder.domain.formatRelativeTime
 import com.flambo.recorder.playback.PlaybackController
+import com.flambo.recorder.ui.haptics.AppHaptics
 import com.flambo.recorder.ui.theme.FlamboMotion
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 
@@ -86,6 +88,7 @@ fun RecordingCard(
     expandAnimationEnabled: Boolean = true
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val playbackState by playback.state.collectAsState()
     val isCurrent = playbackState.currentPath == recording.filePath
     val isPlaying = isCurrent && playbackState.isPlaying
@@ -165,6 +168,7 @@ fun RecordingCard(
                 color = if (isPlaying) MaterialTheme.colorScheme.primary else if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier.size(48.dp),
                 onClick = {
+                    AppHaptics.tap(context)
                     if (isPlaying) playback.pause()
                     else playback.play(recording.filePath)
                 }
@@ -367,6 +371,7 @@ fun RecordingGridTile(
     expandAnimationEnabled: Boolean = true
 ) {
     val playbackState by playback.state.collectAsState()
+    val context = LocalContext.current
     val isCurrent = playbackState.currentPath == recording.filePath
     val isPlaying = isCurrent && playbackState.isPlaying
     // Same shared key as the list card: only one layout is visible at a time.
@@ -417,6 +422,7 @@ fun RecordingGridTile(
                     color = if (isPlaying) MaterialTheme.colorScheme.primary else if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
                     modifier = Modifier.size(44.dp),
                     onClick = {
+                        AppHaptics.tap(context)
                         if (isPlaying) playback.pause()
                         else playback.play(recording.filePath)
                     }

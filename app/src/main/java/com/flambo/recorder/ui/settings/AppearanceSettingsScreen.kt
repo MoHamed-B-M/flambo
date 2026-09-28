@@ -41,8 +41,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material3.Slider
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.AlertDialog
@@ -87,8 +89,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.FlamboApp
+import com.flambo.recorder.ui.haptics.AppHaptics
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.ui.components.PlaybackProgressBar
 import com.flambo.recorder.ui.components.ProgressBarStyle
@@ -397,6 +401,42 @@ fun AppearanceSettingsScreen(
                                         { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
                                     } else null
                                 )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                        )
+                    }
+                    item {
+                        val hapticLevel by prefs.hapticLevelFlow.collectAsState(initial = AppHaptics.DEFAULT_LEVEL)
+                        var hapticDraft by remember(hapticLevel) { mutableStateOf(hapticLevel) }
+                        val hapticsContext = LocalContext.current
+                        ListItem(
+                            headlineContent = { Text("Haptic feedback", style = MaterialTheme.typography.titleMedium) },
+                            supportingContent = {
+                                Column {
+                                    Text(
+                                        if (hapticDraft <= 0) "Off — silent presses"
+                                        else "${AppHaptics.labelFor(hapticDraft)} • $hapticDraft",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Slider(
+                                        value = hapticDraft / 100f,
+                                        onValueChange = { hapticDraft = (it * 100).roundToInt() },
+                                        onValueChangeFinished = {
+                                            val level = hapticDraft
+                                            scope.launch {
+                                                prefs.setHapticLevel(level)
+                                                (hapticsContext.applicationContext as? FlamboApp)?.hapticLevel = level
+                                            }
+                                            AppHaptics.tap(hapticsContext)
+                                        },
+                                        valueRange = 0f..1f,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            },
+                            leadingContent = {
+                                Icon(Icons.Filled.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                             },
                             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         )

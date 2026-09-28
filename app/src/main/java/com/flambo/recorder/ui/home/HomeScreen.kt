@@ -110,6 +110,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.data.StorageVolumes
+import com.flambo.recorder.ui.haptics.AppHaptics
 import com.flambo.recorder.update.ReleaseNotes
 import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateNotifier
@@ -229,6 +230,11 @@ fun HomeScreen(
     var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
     var recolorGroup by remember { mutableStateOf<String?>(null) }
 
+    // While recording, back backgrounds the app (device home) instead of
+    // finishing the activity: the take keeps running and state is retained.
+    // Registered first so selection/trash/groups/search handlers below win.
+    val activity = context as? android.app.Activity
+    BackHandler(enabled = recorderState.isRecording) { activity?.moveTaskToBack(true) }
     BackHandler(enabled = selectionMode) { selection = emptySet() }
     BackHandler(enabled = !selectionMode && uiState.showTrash) {
         snackbarHostState.currentSnackbarData?.dismiss()
@@ -991,7 +997,10 @@ fun HomeScreen(
                 label = "recordFab"
             ) {
                 Surface(
-                    onClick = { startRecording() },
+                    onClick = {
+                        AppHaptics.tap(context)
+                        startRecording()
+                    },
                     shape = RoundedCornerShape(corner),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,

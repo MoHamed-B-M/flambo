@@ -49,6 +49,7 @@ class PreferencesManager(private val context: Context) {
         val INTRO_ANIM = booleanPreferencesKey("intro_anim")
         val INTRO_SEEN = booleanPreferencesKey("intro_seen")
         val TRANSITION_STYLE = stringPreferencesKey("transition_style")
+        val HAPTIC_LEVEL = intPreferencesKey("haptic_level")
         val APP_ICON = stringPreferencesKey("app_icon")
         val PROGRESS_STYLE = stringPreferencesKey("progress_style")
     }
@@ -308,6 +309,17 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setTransitionStyle(style: String) {
         context.dataStore.edit { it[Keys.TRANSITION_STYLE] = style }
+    }
+
+    /** Press haptics 0-100. Capped low by design; 0 is off. */
+    val hapticLevelFlow: Flow<Int> =
+        context.dataStore.data.map { it[Keys.HAPTIC_LEVEL] ?: 30 }
+
+    suspend fun hapticLevel(): Int =
+        context.dataStore.data.map { it[Keys.HAPTIC_LEVEL] ?: 30 }.first()
+
+    suspend fun setHapticLevel(level: Int) {
+        context.dataStore.edit { it[Keys.HAPTIC_LEVEL] = level.coerceIn(0, 100) }
     }
 
     /** True once the full brand intro has played at least once. */

@@ -307,7 +307,7 @@ fun AppearanceSettingsScreen(
                         PreferenceSwitchItem(
                             icon = Icons.Filled.PlayArrow,
                             title = "Intro animation",
-                            subtitle = if (introAnim) "Brand animation plays on every launch"
+                            subtitle = if (introAnim) "Full animation on first launch, quick flash after"
                             else "Skip straight to your recordings",
                             checked = introAnim,
                             onCheckedChange = { enabled ->

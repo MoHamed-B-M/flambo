@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -452,7 +454,7 @@ fun HomeScreen(
                             enabled = !recorderState.isRecording
                         ) {
                             if (uiState.showTrash) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to recordings")
+                                Icon(Icons.Filled.Home, contentDescription = "Home")
                             } else {
                                 Icon(Icons.Filled.Delete, contentDescription = "Trash")
                             }
@@ -651,7 +653,7 @@ fun HomeScreen(
                     }
                 } else {
                     LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(uiState.trash, key = { it.id }) { rec ->
@@ -985,7 +987,10 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = fabLift),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = fabLift)
+                // Clear the system gesture bar so edge swipes home without
+                // grazing the pill (content padding excludes the bottom bar).
+                .navigationBarsPadding(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Spacer(Modifier.weight(1f))

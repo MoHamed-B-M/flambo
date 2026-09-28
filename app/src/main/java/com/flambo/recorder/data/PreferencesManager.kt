@@ -47,6 +47,7 @@ class PreferencesManager(private val context: Context) {
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
         val CARD_EXPAND_ANIM = booleanPreferencesKey("card_expand_anim")
         val INTRO_ANIM = booleanPreferencesKey("intro_anim")
+        val INTRO_SEEN = booleanPreferencesKey("intro_seen")
         val APP_ICON = stringPreferencesKey("app_icon")
         val PROGRESS_STYLE = stringPreferencesKey("progress_style")
     }
@@ -298,6 +299,14 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setIntroAnim(enabled: Boolean) {
         context.dataStore.edit { it[Keys.INTRO_ANIM] = enabled }
+    }
+
+    /** True once the full brand intro has played at least once. */
+    val introSeenFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.INTRO_SEEN] ?: false }
+
+    suspend fun setIntroSeen() {
+        context.dataStore.edit { it[Keys.INTRO_SEEN] = true }
     }
 
     suspend fun cardExpandAnim(): Boolean =

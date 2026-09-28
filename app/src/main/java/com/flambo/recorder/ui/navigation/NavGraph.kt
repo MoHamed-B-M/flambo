@@ -16,12 +16,16 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.flambo.recorder.domain.RecordingQuality
@@ -124,6 +128,22 @@ fun FlamboNavGraph(
     val scope = rememberCoroutineScope()
 
     val playback = remember { PlaybackController(context) }
+    // Pause playback when the app backgrounds so audio never keeps playing
+    // behind the launcher and no stray gesture scrubs land mid-minimize.
+    // Skipped on rotation (config change recreates without stopping).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, playback) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                val activity = context as? android.app.Activity
+                if (activity?.isChangingConfigurations != true) {
+                    playback.pause()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     // Stop any playing audio the moment a recording starts — on every start
     // path (UI, shortcuts, automation). Posted to Main: start() may run on a
     // background thread, and player calls belong on Main.

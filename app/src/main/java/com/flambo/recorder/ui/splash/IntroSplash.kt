@@ -39,6 +39,10 @@ private const val INTRO_TOTAL_MS = 3100
 /** Warm-up beat: lets cold-start class loading settle before frame one. */
 private const val INTRO_WARMUP_MS = 180
 
+/** Returning launch: the same staging compressed to a quick flash. */
+private const val INTRO_FAST_TOTAL_MS = 380
+private const val INTRO_FAST_WARMUP_MS = 30
+
 private const val TOP_PATH =
     "M400,500 C477.32,500 540,437.32 540,360 L540,220 C540,142.68 477.32,80 400,80 " +
         "C322.68,80 260,142.68 260,220 L260,360 C260,437.32 322.68,500 400,500 Z " +
@@ -66,13 +70,22 @@ private fun phase(tMs: Float, startMs: Int, durationMs: Int): Float =
  * text 2.3-3.1s). Tap or back skips.
  */
 @Composable
-fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
+fun IntroSplash(
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** First launch plays the full sequence; returns get a ~380ms flash. */
+    fast: Boolean = false
+) {
     BackHandler(onBack = onDone)
+    val totalMs = if (fast) INTRO_FAST_TOTAL_MS else INTRO_TOTAL_MS
+    // Scale every staged phase onto the shortened timeline so the fast
+    // version plays the same choreography, just compressed.
+    val sc: (Int) -> Int = { ms -> (ms * totalMs / INTRO_TOTAL_MS).coerceAtLeast(1) }
     val clock = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         // Don't race app start: parser/shader warm-up happens here, off the clock.
-        delay(INTRO_WARMUP_MS.toLong())
-        clock.animateTo(1f, tween(INTRO_TOTAL_MS, easing = LinearEasing))
+        delay((if (fast) INTRO_FAST_WARMUP_MS else INTRO_WARMUP_MS).toLong())
+        clock.animateTo(1f, tween(totalMs, easing = LinearEasing))
         onDone()
     }
 
@@ -113,7 +126,7 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
             )
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val tMs = clock.value * INTRO_TOTAL_MS
+            val tMs = clock.value * totalMs
             val s = minOf(size.width / 800f, size.height / 900f)
             val tx = (size.width - 800f * s) / 2f
             val ty = (size.height - 900f * s) / 2f - 20f * s
@@ -127,18 +140,18 @@ fun IntroSplash(onDone: () -> Unit, modifier: Modifier = Modifier) {
                     brush = brush,
                     measure = measure,
                     segment = segment,
-                    drawFrac = DrawEase.transform(phase(tMs, 200, 1100)),
-                    fillFrac = LinearOutSlowInEasing.transform(phase(tMs, 1200, 500))
+                    drawFrac = DrawEase.transform(phase(tMs, sc(200), sc(1100))),
+                    fillFrac = LinearOutSlowInEasing.transform(phase(tMs, sc(1200), sc(500)))
                 )
                 drawMorphPath(
                     path = bottomPath,
                     brush = brush,
                     measure = measure,
                     segment = segment,
-                    drawFrac = DrawEase.transform(phase(tMs, 1200, 1100)),
-                    fillFrac = LinearOutSlowInEasing.transform(phase(tMs, 2100, 600))
+                    drawFrac = DrawEase.transform(phase(tMs, sc(1200), sc(1100))),
+                    fillFrac = LinearOutSlowInEasing.transform(phase(tMs, sc(2100), sc(600)))
                 )
-                val textFrac = LinearOutSlowInEasing.transform(phase(tMs, 2300, 800))
+                val textFrac = LinearOutSlowInEasing.transform(phase(tMs, sc(2300), sc(800)))
                 if (textFrac > 0f) {
                     // drawText has no alpha param: bake it into the brush.
                     val fadedBrush = Brush.linearGradient(

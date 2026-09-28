@@ -188,9 +188,11 @@ class MainActivity : ComponentActivity() {
             var rerunOnboarding by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunOnboarding
             val introEnabled by app.prefs.introAnimFlow.collectAsState(initial = true)
+            val introSeen by app.prefs.introSeenFlow.collectAsState(initial = null)
             // Cold-start brand intro over the loading content (plain remember:
             // rotation must not replay it, and content loads underneath).
-            // Shown only when enabled in Appearance settings.
+            // Shown only when enabled in Appearance settings. Full sequence
+            // on first launch, quick flash on returns.
             var showIntro by remember { mutableStateOf(true) }
             val introVisible = showIntro && introEnabled
 
@@ -232,7 +234,13 @@ class MainActivity : ComponentActivity() {
                             visible = introVisible,
                             exit = fadeOut()
                         ) {
-                            IntroSplash(onDone = { showIntro = false })
+                            IntroSplash(
+                                onDone = {
+                                    showIntro = false
+                                    lifecycleScope.launch { runCatching { app.prefs.setIntroSeen() } }
+                                },
+                                fast = introSeen == true
+                            )
                         }
                     }
 

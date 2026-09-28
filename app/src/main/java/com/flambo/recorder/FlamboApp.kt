@@ -73,9 +73,9 @@ class FlamboApp : Application() {
             runCatching { ApkInstaller.cleanupStale(this@FlamboApp, pending) }
             if (pending != null) runCatching { prefs.clearPendingApkDelete() }
         }
-        // Auto-purge trashed recordings older than 7 days (deletes both primary and SAF copies)
+        // Auto-purge trashed recordings older than 2 days (deletes both primary and SAF copies)
         appScope.launch {
-            runCatching { repository.purgeOldTrash(7) }
+            runCatching { repository.purgeOldTrash(2) }
         }
         // Adopt audio files placed from outside (restored/copied via a file
         // manager) and watch the library dir for live add/delete events.

@@ -193,7 +193,7 @@ class RecordingRepository(
         }
     }
 
-    suspend fun purgeOldTrash(days: Int = 7) = withContext(Dispatchers.IO) {
+    suspend fun purgeOldTrash(days: Int = 2) = withContext(Dispatchers.IO) {
         val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
         val old = dao.getTrash().filter { (it.trashedAt ?: 0L) < cutoff }
         old.forEach { rec ->

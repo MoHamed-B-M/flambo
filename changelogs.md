@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.6.6] - 2026-10-01
+## [1.7.0] - 2026-10-01
 
 ### Added
 
@@ -17,3 +17,4 @@
 - Update downloads no longer stall or crash
 - Pages slide the full width instead of stopping halfway
 - Folders can't be swiped away by accident
+- Library is list-only now — grid view and its picker are gone

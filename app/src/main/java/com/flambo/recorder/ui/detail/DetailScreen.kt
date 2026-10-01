@@ -356,11 +356,11 @@ fun DetailScreen(
                         IconButton(onClick = { safeBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
                     },
                     actions = {
-                        IconButton(onClick = { showDetailsCard = !showDetailsCard }) {
+                        IconButton(onClick = { AppHaptics.tap(context); showDetailsCard = !showDetailsCard }) {
                             Icon(Icons.Filled.Info, contentDescription = "Details", tint = if (showDetailsCard) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         IconButton(
-                            onClick = { viewModel.toggleFavorite() },
+                            onClick = { AppHaptics.tap(context); viewModel.toggleFavorite() },
                             modifier = Modifier.graphicsLayer {
                                 scaleX = favPop
                                 scaleY = favPop
@@ -372,10 +372,10 @@ fun DetailScreen(
                                 tint = if (rec.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = { shareAudio(rec.filePath, "Share recording") }, enabled = !fileMissing) {
+                        IconButton(onClick = { AppHaptics.tap(context); shareAudio(rec.filePath, "Share recording") }, enabled = !fileMissing) {
                             Icon(Icons.Filled.Share, contentDescription = "Share")
                         }
-                        IconButton(onClick = { showDeleteConfirm = true }) {
+                        IconButton(onClick = { AppHaptics.tap(context); showDeleteConfirm = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     },
@@ -486,7 +486,7 @@ fun DetailScreen(
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { viewModel.setEditTitle(null) }) { Text("Cancel") }
-                            FilledTonalButton(onClick = { viewModel.saveTitle() }, shape = ShapeFull) { Text("Save") }
+                            FilledTonalButton(onClick = { AppHaptics.tap(context); viewModel.saveTitle() }, shape = ShapeFull) { Text("Save") }
                         }
                     } else {
                         Text(
@@ -498,7 +498,7 @@ fun DetailScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        TextButton(onClick = { viewModel.setEditTitle(rec.title) }) { Text("Rename") }
+                        TextButton(onClick = { AppHaptics.tap(context); viewModel.setEditTitle(rec.title) }) { Text("Rename") }
                     }
                     if (rec.tagList.isNotEmpty() || true) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
@@ -511,7 +511,7 @@ fun DetailScreen(
                                 )
                             }
                             AssistChip(
-                                onClick = { tagInput = rec.tagList.joinToString(", "); showTagDialog = true },
+                                onClick = { AppHaptics.tap(context); tagInput = rec.tagList.joinToString(", "); showTagDialog = true },
                                 label = { Text(if (rec.tagList.isEmpty()) "Add tags" else "Edit tags") },
                                 shape = ShapeFull
                             )
@@ -726,7 +726,7 @@ fun DetailScreen(
                             )
                             ToggleButton(
                                 checked = selected,
-                                onCheckedChange = { playback.setSpeed(speed) },
+                                onCheckedChange = { AppHaptics.tap(context); playback.setSpeed(speed) },
                                 shapes = when (index) {
                                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                                     speeds.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
@@ -747,11 +747,12 @@ fun DetailScreen(
             TranscriptSection(
                 savedTranscript = rec.transcriptText,
                 transcriptionUi = transcriptionUi,
-                onTranscribe = { showTranscribeSheet = true },
-                onCancelWork = { viewModel.cancelTranscription() },
+                onTranscribe = { AppHaptics.tap(context); showTranscribeSheet = true },
+                onCancelWork = { AppHaptics.tap(context); viewModel.cancelTranscription() },
                 onDismiss = { viewModel.dismissTranscription() },
                 onCopy = { text -> clipboard.setText(AnnotatedString(text)) },
                 onShareText = { text ->
+                    AppHaptics.tap(context)
                     runCatching {
                         context.startActivity(
                             Intent.createChooser(
@@ -764,9 +765,9 @@ fun DetailScreen(
                         )
                     }
                 },
-                onEdit = { text -> showTranscriptEditor = text },
-                onSave = { text -> viewModel.saveTranscript(text) },
-                onClearSaved = { viewModel.clearSavedTranscript() },
+                onEdit = { text -> AppHaptics.tap(context); showTranscriptEditor = text },
+                onSave = { text -> AppHaptics.tap(context); viewModel.saveTranscript(text) },
+                onClearSaved = { AppHaptics.tap(context); viewModel.clearSavedTranscript() },
                 fileMissing = fileMissing
             )
 
@@ -775,17 +776,17 @@ fun DetailScreen(
                 enhanceUi = enhanceUi,
                 strengthLabel = EnhanceStrength.fromPref(enhanceStrength).label,
                 playback = playback,
-                onEnhance = { viewModel.enhance() },
-                onCancel = { viewModel.cancelEnhance() },
+                onEnhance = { AppHaptics.tap(context); viewModel.enhance() },
+                onCancel = { AppHaptics.tap(context); viewModel.cancelEnhance() },
                 onDismiss = { viewModel.dismissEnhance() },
-                onShareEnhanced = { path -> shareAudio(path, "Share cleaned recording") },
-                onDeleteEnhanced = { viewModel.deleteEnhanced() },
+                onShareEnhanced = { path -> AppHaptics.tap(context); shareAudio(path, "Share cleaned recording") },
+                onDeleteEnhanced = { AppHaptics.tap(context); viewModel.deleteEnhanced() },
                 fileMissing = fileMissing,
                 progressStyle = progressStyle
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                FilledTonalButton(onClick = { showDeleteConfirm = true }, shape = ShapeFull, modifier = Modifier.weight(1f)) {
+                FilledTonalButton(onClick = { AppHaptics.tap(context); showDeleteConfirm = true }, shape = ShapeFull, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Move to trash")
@@ -804,6 +805,7 @@ fun DetailScreen(
             text = { Text("\"${rec.title}\" will be moved to trash and auto-deleted after 7 days. You can restore it from the Home trash view.") },
             confirmButton = {
                 TextButton(onClick = {
+                    AppHaptics.tap(context)
                     showDeleteConfirm = false
                     playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                     viewModel.softDelete()
@@ -833,6 +835,7 @@ fun DetailScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    AppHaptics.tap(context)
                     val tags = tagInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                     viewModel.updateTags(tags)
                     showTagDialog = false
@@ -848,6 +851,7 @@ fun DetailScreen(
             languageTag = languagePref,
             onLanguageChange = { viewModel.setLanguage(it) },
             onStart = {
+                AppHaptics.tap(context)
                 showTranscribeSheet = false
                 viewModel.transcribe()
             },

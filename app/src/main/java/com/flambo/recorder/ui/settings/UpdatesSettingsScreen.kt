@@ -67,6 +67,7 @@ import com.flambo.recorder.update.ApkInstaller
 import com.flambo.recorder.update.UpdateCheck
 import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateDownloadState
+import com.flambo.recorder.ui.haptics.AppHaptics
 import com.flambo.recorder.ui.settings.components.SectionHeader
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import java.io.File
@@ -287,6 +288,7 @@ fun UpdatesSettingsScreen(
                                                 Text("Downloaded ${savedFile.name} — kept until you install.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f))
                                                 FilledTonalButton(
                                                     onClick = {
+                                                        AppHaptics.tap(context)
                                                         if (!ApkInstaller.canInstall(context)) {
                                                             needsUnknownSources = true
                                                             context.startActivity(ApkInstaller.unknownSourcesIntent(context))
@@ -303,6 +305,7 @@ fun UpdatesSettingsScreen(
                                                     Text("Install update")
                                                 }
                                                 TextButton(onClick = {
+                                                    AppHaptics.tap(context)
                                                     runCatching { savedFile.delete() }
                                                     updateDownload.downloadedFile = null
                                                     updateDownload.downloadedAssetName = null
@@ -311,6 +314,7 @@ fun UpdatesSettingsScreen(
                                             } else {
                                                 FilledTonalButton(
                                                     onClick = {
+                                                        AppHaptics.tap(context)
                                                         if (asset == null) {
                                                             downloadError = "No APK attached to this release yet."
                                                             return@FilledTonalButton
@@ -365,6 +369,7 @@ fun UpdatesSettingsScreen(
                         }
                         FilledTonalButton(
                             onClick = {
+                                AppHaptics.tap(context)
                                 checkingUpdate = true
                                 updateResult = null
                                 updateDownload.job?.cancel()

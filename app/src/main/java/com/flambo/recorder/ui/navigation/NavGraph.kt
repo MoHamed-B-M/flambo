@@ -186,7 +186,6 @@ fun FlamboNavGraph(
     val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val audioSource by app.prefs.audioSourceFlow.collectAsState(initial = "mic")
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
-    val homeLayout by app.prefs.homeLayoutFlow.collectAsState(initial = "list")
 
     val updateDownload = remember { UpdateDownloadState() }
 
@@ -263,7 +262,6 @@ fun FlamboNavGraph(
                 quality = quality,
                 audioSource = audioSource,
                 noiseReduction = noiseReduction,
-                homeLayout = homeLayout,
                 onOpenDetail = { id -> debouncedNavigate(Dest.Detail.create(id)) },
                 onOpenSettings = { debouncedNavigate(Dest.Settings.route) },
                 onOpenUpdates = { debouncedNavigate(Dest.SettingsUpdates.route) },

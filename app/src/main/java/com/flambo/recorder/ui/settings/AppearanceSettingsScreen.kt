@@ -33,7 +33,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Palette
@@ -44,7 +43,6 @@ import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.Slider
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -117,7 +115,6 @@ fun AppearanceSettingsScreen(
     val dynamicColor by prefs.dynamicColorFlow.collectAsState(initial = true)
     val themeSeed by prefs.themeSeedFlow.collectAsState(initial = "ember")
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = "system")
-    val homeLayout by prefs.homeLayoutFlow.collectAsState(initial = "list")
     val tipsEnabled by prefs.tipsEnabledFlow.collectAsState(initial = true)
     val colorSchemeStyle by prefs.colorSchemeFlow.collectAsState(initial = "NOTHING")
     val gestureEnabled by prefs.gestureEnabledFlow.collectAsState(initial = true)
@@ -126,7 +123,6 @@ fun AppearanceSettingsScreen(
     val transitionStyle by prefs.transitionStyleFlow.collectAsState(initial = "slide")
 
     var showAppThemeDialog by remember { mutableStateOf(false) }
-    var showLayoutDialog by remember { mutableStateOf(false) }
     var showTransitionDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showProgressBarDialog by remember { mutableStateOf(false) }
@@ -286,14 +282,6 @@ fun AppearanceSettingsScreen(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader(title = "Layout")
                 SegmentedPreferenceGroup {
-                    item {
-                        PreferenceValueItem(
-                            icon = if (homeLayout == "grid") Icons.Filled.GridView else Icons.Filled.ViewList,
-                            title = "Library layout",
-                            value = if (homeLayout == "grid") "Grid • compact tap-to-open cards" else "List • full rows with actions",
-                            onClick = { showLayoutDialog = true }
-                        )
-                    }
                     item {
                         val cardExpandAnim by prefs.cardExpandAnimFlow.collectAsState(initial = true)
                         val appContext = LocalContext.current.applicationContext
@@ -556,44 +544,6 @@ fun AppearanceSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showTransitionDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
-            },
-            shape = ShapeLargeIncreased
-        )
-    }
-
-    if (showLayoutDialog) {
-        AlertDialog(
-            onDismissRequest = { showLayoutDialog = false },
-            title = { Text("Library layout", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        Triple("list", "List", "Full rows with play, favorite and actions"),
-                        Triple("grid", "Grid", "Compact tap-to-open cards, two columns")
-                    ).forEachIndexed { index, (value, label, description) ->
-                        ToggleButton(
-                            checked = homeLayout == value,
-                            onCheckedChange = {
-                                scope.launch { prefs.setHomeLayout(value) }
-                                showLayoutDialog = false
-                            },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(if (value == "grid") Icons.Filled.GridView else Icons.Filled.ViewList, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
-                                Text(label, style = MaterialTheme.typography.titleMedium)
-                                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showLayoutDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
             },
             shape = ShapeLargeIncreased
         )

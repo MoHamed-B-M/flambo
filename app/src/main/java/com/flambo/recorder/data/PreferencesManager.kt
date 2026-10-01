@@ -39,7 +39,6 @@ class PreferencesManager(private val context: Context) {
         val TIP_INDEX = intPreferencesKey("tip_index")
         val TIPS_ENABLED = booleanPreferencesKey("tips_enabled")
         val RECORDING_PREFIX = stringPreferencesKey("recording_prefix")
-        val HOME_LAYOUT = stringPreferencesKey("home_layout")
         val CUSTOM_FOLDER_URI = stringPreferencesKey("custom_folder_uri")
         val GROUP_COLORS = stringPreferencesKey("group_colors")
         val CUSTOM_COLORS = stringPreferencesKey("custom_colors")
@@ -214,13 +213,6 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun recordingPrefix(): String =
         context.dataStore.data.map { it[Keys.RECORDING_PREFIX] ?: "Recording" }.first()
-
-    val homeLayoutFlow: Flow<String> =
-        context.dataStore.data.map { it[Keys.HOME_LAYOUT] ?: "list" }
-
-    suspend fun setHomeLayout(layout: String) {
-        context.dataStore.edit { it[Keys.HOME_LAYOUT] = if (layout == "grid") "grid" else "list" }
-    }
 
     val customFolderUriFlow: Flow<String> =
         context.dataStore.data.map { it[Keys.CUSTOM_FOLDER_URI] ?: "" }

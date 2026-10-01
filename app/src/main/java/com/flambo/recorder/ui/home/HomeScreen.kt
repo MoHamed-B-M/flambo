@@ -34,13 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.material.icons.Icons
@@ -132,7 +126,6 @@ import com.flambo.recorder.ui.components.GroupColorRow
 import com.flambo.recorder.ui.components.GroupFolder
 import com.flambo.recorder.ui.components.GroupFolderCard
 import com.flambo.recorder.ui.components.RecordingCard
-import com.flambo.recorder.ui.components.RecordingGridTile
 import com.flambo.recorder.ui.components.WaveformVisualizer
 import com.flambo.recorder.ui.theme.FlamboMotion
 import com.flambo.recorder.ui.theme.ShapeFull
@@ -148,7 +141,6 @@ fun HomeScreen(
     quality: RecordingQuality = RecordingQuality.HIGH,
     audioSource: String = "mic",
     noiseReduction: Boolean = true,
-    homeLayout: String = "list",
     onOpenDetail: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenUpdates: () -> Unit = {},
@@ -264,30 +256,21 @@ fun HomeScreen(
 
     // Scroll state for the FAB overlay - top level so table slots can read it.
     val listState = rememberLazyListState()
-    val gridState = rememberLazyGridState()
     // Immediately sensitive: collapsed on any scroll offset, expanded only
-    // at the exact top. Covers the list and grid layouts.
-    val isScrolled by remember(homeLayout) {
+    // at the exact top.
+    val isScrolled by remember {
         derivedStateOf {
-            if (homeLayout == "list") listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
-            else gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
         }
     }
     // Scroll-driven header fade: 0 at origin → 1 after ~60dp. A plain
     // lambda (not State) so it can be read in the draw phase, where it
     // schedules redraws only — scrolling never recomposes for this.
     val fadeRangePx = with(LocalDensity.current) { 60.dp.toPx() }
-    val headerFadeAlpha: () -> Float = remember(homeLayout, fadeRangePx) {
+    val headerFadeAlpha: () -> Float = remember(fadeRangePx) {
         {
-            val index: Int
-            val offset: Int
-            if (homeLayout == "list") {
-                index = listState.firstVisibleItemIndex
-                offset = listState.firstVisibleItemScrollOffset
-            } else {
-                index = gridState.firstVisibleItemIndex
-                offset = gridState.firstVisibleItemScrollOffset
-            }
+            val index = listState.firstVisibleItemIndex
+            val offset = listState.firstVisibleItemScrollOffset
             if (index > 0) 1f else (offset / fadeRangePx).coerceIn(0f, 1f)
         }
     }
@@ -349,14 +332,11 @@ fun HomeScreen(
     }
 
     // Search bar ducks only while the library itself is genuinely scrolling:
-    // list/grid scroll state reflects drags captured by the list, never the
+    // list scroll state reflects drags captured by the list, never the
     // raw deltas of a swipe-up-to-home gesture passing through nested scroll.
-    // (Report formula, plus index>0 so the bar can't flash back at an item
-    // boundary mid-fling.)
     val listScrolling by remember {
         derivedStateOf {
-            (listState.isScrollInProgress && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)) ||
-            (gridState.isScrollInProgress && (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0))
+            listState.isScrollInProgress && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
         }
     }
 
@@ -389,20 +369,21 @@ fun HomeScreen(
                 },
                 actions = {
                     if (selectionMode) {
-                        IconButton(onClick = { groupText = ""; groupColorDraft = null; showGroupDialog = true }) {
+                        IconButton(onClick = { AppHaptics.tap(context); groupText = ""; groupColorDraft = null; showGroupDialog = true }) {
                             Icon(Icons.Filled.Group, contentDescription = "Group")
                         }
-                        IconButton(onClick = { showMoveDialog = true }) {
+                        IconButton(onClick = { AppHaptics.tap(context); showMoveDialog = true }) {
                             Icon(Icons.Filled.DriveFileMove, contentDescription = "Move")
                         }
-                        IconButton(onClick = { showBulkDeleteConfirm = true }) {
+                        IconButton(onClick = { AppHaptics.tap(context); showBulkDeleteConfirm = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete")
                         }
-                        IconButton(onClick = { selection = emptySet() }) {
+                        IconButton(onClick = { AppHaptics.tap(context); selection = emptySet() }) {
                             Icon(Icons.Filled.Close, contentDescription = "Clear selection")
                         }
                     } else {
                         IconButton(onClick = {
+                            AppHaptics.tap(context)
                             installedVersion?.let {
                                 whatsNewVersion = it
                                 if (whatsNewItems == null) {
@@ -415,6 +396,7 @@ fun HomeScreen(
                         // Appears once the first group is created; opens the groups page.
                         if (groups.isNotEmpty()) {
                             IconButton(onClick = {
+                                AppHaptics.tap(context)
                                 viewModel.clearQuery()
                                 openGroup = null
                                 showGroups = true
@@ -425,6 +407,7 @@ fun HomeScreen(
                         IconButton(
                             onClick = {
                                 if (recorderState.isRecording) return@IconButton
+                                AppHaptics.tap(context)
                                 selection = emptySet()
                                 snackbarHostState.currentSnackbarData?.dismiss()
                                 viewModel.toggleTrash(!uiState.showTrash)
@@ -437,7 +420,7 @@ fun HomeScreen(
                                 Icon(Icons.Filled.Delete, contentDescription = "Trash")
                             }
                         }
-                        IconButton(onClick = onOpenSettings) {
+                        IconButton(onClick = { AppHaptics.tap(context); onOpenSettings() }) {
                             Icon(Icons.Filled.Settings, contentDescription = "Settings")
                         }
                     }
@@ -487,7 +470,7 @@ fun HomeScreen(
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                         trailingIcon = {
                             if (uiState.query.isNotEmpty()) {
-                                IconButton(onClick = viewModel::clearQuery) {
+                                IconButton(onClick = { AppHaptics.tap(context); viewModel.clearQuery() }) {
                                     Icon(Icons.Filled.Close, contentDescription = "Clear")
                                 }
                             }
@@ -573,8 +556,8 @@ fun HomeScreen(
                 TipCard(
                     tip = tip,
                     position = "${tipIndex.mod(AppTips.size) + 1} of ${AppTips.size}",
-                    onNext = { scope.launch { prefs.setTipIndex(tipIndex + 1) } },
-                    onHide = { scope.launch { prefs.setTipsEnabled(false) } },
+                    onNext = { AppHaptics.tap(context); scope.launch { prefs.setTipIndex(tipIndex + 1) } },
+                    onHide = { AppHaptics.tap(context); scope.launch { prefs.setTipsEnabled(false) } },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
@@ -594,9 +577,9 @@ fun HomeScreen(
                     peaks = recorderState.peaks,
                     isPaused = recorderState.isPaused,
                     source = recorderState.source,
-                    onPauseResume = { if (recorderState.isPaused) recorder.resume() else recorder.pause() },
-                    onStop = { recorder.stop() },
-                    onCancel = { recorder.cancel() }
+                    onPauseResume = { AppHaptics.tap(context); if (recorderState.isPaused) recorder.resume() else recorder.pause() },
+                    onStop = { AppHaptics.tap(context); recorder.stop() },
+                    onCancel = { AppHaptics.tap(context); recorder.cancel() }
                 )
             }
 
@@ -618,11 +601,11 @@ fun HomeScreen(
                     ) {
                         if (uiState.trash.isNotEmpty()) {
                             FilledTonalButton(
-                                onClick = { showEmptyTrashConfirm = true },
+                                onClick = { AppHaptics.tap(context); showEmptyTrashConfirm = true },
                                 shapes = ButtonDefaults.shapes()
                             ) { Text("Empty trash") }
                         }
-                        TextButton(onClick = { viewModel.toggleTrash(false) }) { Text("Done") }
+                        TextButton(onClick = { AppHaptics.tap(context); viewModel.toggleTrash(false) }) { Text("Done") }
                     }
                 }
                 if (uiState.trash.isEmpty()) {
@@ -637,8 +620,9 @@ fun HomeScreen(
                         items(uiState.trash, key = { it.id }) { rec ->
                             TrashRow(
                                 recording = rec,
-                                onRestore = { viewModel.restoreFromTrash(rec.id) },
+                                onRestore = { AppHaptics.tap(context); viewModel.restoreFromTrash(rec.id) },
                                 onDeleteForever = {
+                                    AppHaptics.tap(context)
                                     snackbarHostState.currentSnackbarData?.dismiss()
                                     playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                                     viewModel.permanentDelete(rec.id)
@@ -655,42 +639,7 @@ fun HomeScreen(
             } else if (!showGroups) {
 
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
-                    EmptyState(onRecord = { startRecording() }, modifier = Modifier.fillMaxSize())
-                } else if (homeLayout == "grid") {
-                    LazyVerticalGrid(
-                        state = gridState,
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(uiState.recordings, key = { it.id }) { rec ->
-                            RecordingGridTile(
-                                recording = rec,
-                                playback = playback,
-                                selected = rec.id in selection,
-                                fileMissing = rec.id in uiState.missingIds,
-                                sharedTransitionScope = sharedTransitionScope,
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
-                                onToggle = {
-                                    if (selectionMode) {
-                                        selection = if (rec.id in selection) selection - rec.id else selection + rec.id
-                                    } else {
-                                        onOpenDetail(rec.id)
-                                    }
-                                },
-                                onOpen = { onOpenDetail(rec.id) },
-                                onLongClick = { selection = selection + rec.id },
-                                modifier = Modifier.animateItem(
-                                    fadeInSpec = null,
-                                    placementSpec = FlamboMotion.PlacementSpring,
-                                    fadeOutSpec = null
-                                )
-                            )
-                        }
-                    }
+                    EmptyState(onRecord = { AppHaptics.tap(context); startRecording() }, modifier = Modifier.fillMaxSize())
                 } else {
                     LazyColumn(
                         state = listState,
@@ -707,16 +656,19 @@ fun HomeScreen(
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
                                     } else {
+                                        AppHaptics.tap(context)
                                         onOpenDetail(rec.id)
                                     }
                                 },
-                                onOpen = { onOpenDetail(rec.id) },
-                                onFavorite = { viewModel.toggleFavorite(rec.id) },
+                                onOpen = { AppHaptics.tap(context); onOpenDetail(rec.id) },
+                                onFavorite = { AppHaptics.tap(context); viewModel.toggleFavorite(rec.id) },
                                 onDelete = {
+                                    AppHaptics.tap(context)
                                     playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                                     viewModel.softDelete(rec)
                                 },
                                 onRename = {
+                                    AppHaptics.tap(context)
                                     showRenameDialog = rec
                                     renameText = rec.title
                                 },
@@ -781,7 +733,7 @@ fun HomeScreen(
                             items(groups, key = { it.name }) { folder ->
                                 GroupFolderCard(
                                     group = folder,
-                                    onOpen = { openGroup = folder.name },
+                                    onOpen = { AppHaptics.tap(context); openGroup = folder.name },
                                     onRecolor = {
                                         recolorGroup = folder.name
                                         groupColorDraft = folder.colorArgb
@@ -840,40 +792,6 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    } else if (homeLayout == "grid") {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(members, key = { it.id }) { rec ->
-                                RecordingGridTile(
-                                    recording = rec,
-                                    playback = playback,
-                                    selected = rec.id in selection,
-                                    fileMissing = rec.id in uiState.missingIds,
-                                    sharedTransitionScope = sharedTransitionScope,
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    expandAnimationEnabled = cardExpandAnimEnabled && cardExpandAnim,
-                                    onToggle = {
-                                        if (selectionMode) {
-                                            selection = if (rec.id in selection) selection - rec.id else selection + rec.id
-                                        } else {
-                                            onOpenDetail(rec.id)
-                                        }
-                                    },
-                                    onOpen = { onOpenDetail(rec.id) },
-                                    onLongClick = { selection = selection + rec.id },
-                                    modifier = Modifier.animateItem(
-                                        fadeInSpec = null,
-                                        placementSpec = FlamboMotion.PlacementSpring,
-                                        fadeOutSpec = null
-                                    )
-                                )
-                            }
-                        }
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
@@ -889,16 +807,19 @@ fun HomeScreen(
                                         if (selectionMode) {
                                             selection = if (rec.id in selection) selection - rec.id else selection + rec.id
                                         } else {
+                                            AppHaptics.tap(context)
                                             onOpenDetail(rec.id)
                                         }
                                     },
-                                    onOpen = { onOpenDetail(rec.id) },
-                                    onFavorite = { viewModel.toggleFavorite(rec.id) },
+                                    onOpen = { AppHaptics.tap(context); onOpenDetail(rec.id) },
+                                    onFavorite = { AppHaptics.tap(context); viewModel.toggleFavorite(rec.id) },
                                     onDelete = {
+                                        AppHaptics.tap(context)
                                         playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                                         viewModel.softDelete(rec)
                                     },
                                     onRename = {
+                                        AppHaptics.tap(context)
                                         showRenameDialog = rec
                                         renameText = rec.title
                                     },
@@ -1061,6 +982,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    AppHaptics.tap(context)
                     snackbarHostState.currentSnackbarData?.dismiss()
                     playback.stopIfCurrent(*uiState.trash.flatMap { listOf(it.filePath, it.enhancedPath) }.toTypedArray())
                     viewModel.emptyTrash()
@@ -1082,6 +1004,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    AppHaptics.tap(context)
                     snackbarHostState.currentSnackbarData?.dismiss()
                     val doomed = (uiState.recordings + uiState.trash)
                         .filter { it.id in selection }
@@ -1107,6 +1030,7 @@ fun HomeScreen(
                     volumes.forEach { volume ->
                         FilledTonalButton(
                             onClick = {
+                                AppHaptics.tap(context)
                                 val ids = selection
                                 val label = volume.label
                                 showMoveDialog = false
@@ -1176,6 +1100,7 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        AppHaptics.tap(context)
                         val ids = selection
                         val tag = groupText
                         val color = groupColorDraft
@@ -1223,6 +1148,7 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        AppHaptics.tap(context)
                         val color = groupColorDraft
                         recolorGroup = null
                         if (color != null) {
@@ -1255,6 +1181,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    AppHaptics.tap(context)
                     if (renameText.isNotBlank()) {
                         viewModel.rename(rec.id, renameText)
                     }

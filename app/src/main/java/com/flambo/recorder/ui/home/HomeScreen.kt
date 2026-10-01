@@ -102,8 +102,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -116,7 +114,6 @@ import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateNotifier
 import com.flambo.recorder.update.WhatsNewItem
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -351,43 +348,21 @@ fun HomeScreen(
         else viewModel.dismissUndo()
     }
 
-    // Record button ducks while the library scrolls and comes back 2s
-    // after the last scroll frame (flings included).
-    var listScrolling by remember { mutableStateOf(false) }
-    var scrollIdleJob by remember { mutableStateOf<Job?>(null) }
-    val scrollListener = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y != 0f) {
-                    if (!listScrolling) listScrolling = true
-                    scrollIdleJob?.cancel()
-                    scrollIdleJob = scope.launch {
-                        delay(2000)
-                        listScrolling = false
-                    }
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                // Pulled past the top edge: chrome comes back now, no 2s wait.
-                if (available.y > 0f) {
-                    scrollIdleJob?.cancel()
-                    if (listScrolling) listScrolling = false
-                }
-                return Offset.Zero
-            }
+    // Search bar ducks only while the library itself is genuinely scrolling:
+    // list/grid scroll state reflects drags captured by the list, never the
+    // raw deltas of a swipe-up-to-home gesture passing through nested scroll.
+    // (Report formula, plus index>0 so the bar can't flash back at an item
+    // boundary mid-fling.)
+    val listScrolling by remember {
+        derivedStateOf {
+            (listState.isScrollInProgress && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)) ||
+            (gridState.isScrollInProgress && (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0))
         }
     }
 
     Scaffold(
         modifier = modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .nestedScroll(scrollListener),
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             // Pinned header: always on top, never ducks on scroll.
             LargeTopAppBar(
@@ -702,6 +677,8 @@ fun HomeScreen(
                                 onToggle = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                    } else {
+                                        onOpenDetail(rec.id)
                                     }
                                 },
                                 onOpen = { onOpenDetail(rec.id) },
@@ -729,6 +706,8 @@ fun HomeScreen(
                                 onToggle = {
                                     if (selectionMode) {
                                         selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                    } else {
+                                        onOpenDetail(rec.id)
                                     }
                                 },
                                 onOpen = { onOpenDetail(rec.id) },
@@ -881,6 +860,8 @@ fun HomeScreen(
                                     onToggle = {
                                         if (selectionMode) {
                                             selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                        } else {
+                                            onOpenDetail(rec.id)
                                         }
                                     },
                                     onOpen = { onOpenDetail(rec.id) },
@@ -907,6 +888,8 @@ fun HomeScreen(
                                     onToggle = {
                                         if (selectionMode) {
                                             selection = if (rec.id in selection) selection - rec.id else selection + rec.id
+                                        } else {
+                                            onOpenDetail(rec.id)
                                         }
                                     },
                                     onOpen = { onOpenDetail(rec.id) },

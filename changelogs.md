@@ -1,35 +1,29 @@
 # Changelog
 
-## [1.6.5] - 2026-09-27
+## [1.6.6] - 2026-10-01
 
-Maintenance update focused on card stability, storage sync and recording-button polish. No migrations — just update.
+Small, steady update: playback keeps going when you leave the app, cards open on tap, and page motion is yours to choose. Just update.
 
 ### What's new
 
-- **Scroll-adaptive Record button** — Big 76dp flat pill with Mic + "Record" at the top of the library; it glides to an icon-only button in the bottom-right once you scroll down, morphing size, corners and icon on one slow ease-in-out curve with zero overshoot. Same action in both states, and it lifts above snackbars instead of hiding under them.
-- **Card actions in one overflow menu** — Open details, Favorite, Rename and Delete now live under the 3-dot menu as full-width buttons in primary, tertiary, tonal and error colors, leaving Play/Pause, the waveform and the menu on the card row.
-- **Scrub inside Playback too** — The detail screen's waveform now seeks with the same tap/drag gesture as the cards.
+- **Playback keeps playing** — Audio continues in the background through a proper media session, with headset and lock-screen controls.
+- **Tap a card to open it** — Card taps open the recording again; the waveform still scrubs without misfires.
+- **Page transitions** — Pick Slide, Fade or Zoom in under Appearance → Page transitions.
 
 ### Improvements
 
-- **Waveform fills the card** — The progress bar takes the full available width with tap/drag scrubbing across the whole bar; scrubbing a resting card starts it and applies the position once prepared.
-- **Smarter card tap** — Tapping a card toggles selection only; a dedicated Open action navigates to Playback, so scrubbing never misfires into the detail screen.
-- **Compact title row** — Title is single-line ellipsis at `bodyMedium` with duration and date on one compact metadata row, fixing "Reco..." truncation and horizontal clipping.
-- **Real-time storage sync** — A debounced watcher on the library dir plus launch/resume re-scans adopts audio restored or copied in from outside (app dir and custom SAF tree, in-progress takes excluded, durations read).
-- **Trash navigation** — Back gesture exits Trash to the library, the top icon becomes a back arrow, and the "Moved to trash - Undo" snackbar is dismissed on Trash entry and on permanent deletes.
-- **Pinned header** — The app bar stays on top while scrolling instead of ducking away.
-- **Top fade on scroll** — A soft gradient melts list content into the header as you scroll down and vanishes back at the top; drawn on the GPU with no extra recompositions.
-- **Update shortcut** — The "New update ready" snackbar now opens the Updates page directly instead of generic Settings.
-- **Expand-on-play cards** — Pressing play always reveals a progress bar: the waveform when peaks exist, a seekable linear track for peak-less files (e.g. restored audio).
+- **Calmer search bar** — It only hides while the list itself scrolls, so system swipes no longer collapse it mid-gesture.
+- **Lively transport buttons** — The tapped button swells while its neighbors squeeze in, and Play morphs its corners as it toggles.
+- **Gentle press haptics** — Subtle tap feedback with its own slider in Appearance → Gestures.
+- **Back behaves while recording** — Back sends the app home instead of closing it mid-take.
+- **Update downloads fixed** — Fetching an update no longer stalls or crashes the app.
+- **No more accidental group deletes** — Folders can't be swiped away anymore.
 
 ### Fixes
 
-- **External-delete guard** — Playback checks the file every ~2s; a file deleted in a file manager stops playback immediately, releases the player and marks the card missing.
-- **Release-build stability** — Fixed the Record-button animation's `AnimatedContent` transition (`togetherWith` `ContentTransform`) that broke `compileReleaseKotlin`.
-- **Missing-file flags refresh** — Cards recompute missing state after syncs and playback errors without flicker.
-- **Waveform measured correctly** — The card progress bar uses full width with a fixed height instead of a conflicting vertical weight, so it can no longer collapse to zero.
-- **Flicker-free minimize** — The Record button's collapse no longer shimmers: the label tucks away on a fast curve while the container settles, with no shadow redraws mid-morph.
+- Full-width page slides that travel edge to edge.
+- Minimizing the Record button no longer flickers.
 
-### Updating from 1.6.0
+### Updating from 1.6.5
 
-Just update — no extra steps. Your layout, icon and progress bar choices carry over.
+Just update — no extra steps.

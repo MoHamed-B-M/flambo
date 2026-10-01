@@ -156,6 +156,15 @@
             android:exported="false"
             android:foregroundServiceType="microphone|mediaPlayback|mediaProjection" />
 
+        <service
+            android:name=".playback.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
         <!-- Headless automation entry: Key Mapper / Tasker "send broadcast"
              with one of the actions below. Exported on purpose; no activity
              opens and the screen is left alone. -->

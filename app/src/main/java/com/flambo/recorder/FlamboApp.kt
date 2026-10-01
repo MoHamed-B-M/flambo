@@ -26,7 +26,7 @@ class FlamboApp : Application() {
     /** Mirrors the card-expand toggle for nav transitions, which can't collect flows. */
     @Volatile var cardExpandAnim: Boolean = true
     /** Mirrors the haptics slider so taps never wait on DataStore. */
-    @Volatile var hapticLevel: Int = 30
+    @Volatile var hapticLevel: Int = 50
 
     fun recordingsDir(): File = StorageVolumes.resolveDir(this, storageVolumeId)
 
@@ -65,7 +65,7 @@ class FlamboApp : Application() {
             recordingPrefix = runCatching { prefs.recordingPrefix() }.getOrDefault("Recording")
             customFolderUri = runCatching { prefs.customFolderUri() }.getOrDefault("")
             cardExpandAnim = runCatching { prefs.cardExpandAnim() }.getOrDefault(true)
-            hapticLevel = runCatching { prefs.hapticLevel() }.getOrDefault(30)
+            hapticLevel = runCatching { prefs.hapticLevel() }.getOrDefault(50)
         }
 
         appScope.launch {

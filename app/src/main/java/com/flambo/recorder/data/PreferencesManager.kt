@@ -311,12 +311,12 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[Keys.TRANSITION_STYLE] = style }
     }
 
-    /** Press haptics 0-100. Capped low by design; 0 is off. */
+    /** Press haptics 0-100. Capped below max by design; 0 is off. */
     val hapticLevelFlow: Flow<Int> =
-        context.dataStore.data.map { it[Keys.HAPTIC_LEVEL] ?: 30 }
+        context.dataStore.data.map { it[Keys.HAPTIC_LEVEL] ?: 50 }
 
     suspend fun hapticLevel(): Int =
-        context.dataStore.data.map { it[Keys.HAPTIC_LEVEL] ?: 30 }.first()
+        context.dataStore.data.map { it[Keys.HAPTIC_LEVEL] ?: 50 }.first()
 
     suspend fun setHapticLevel(level: Int) {
         context.dataStore.edit { it[Keys.HAPTIC_LEVEL] = level.coerceIn(0, 100) }

@@ -15,11 +15,11 @@ import com.flambo.recorder.FlamboApp
  */
 object AppHaptics {
 
-    const val DEFAULT_LEVEL = 30
+    const val DEFAULT_LEVEL = 50
 
-    /** Hard ceiling: never buzz hard no matter what the slider says. */
-    private const val MAX_AMPLITUDE = 110
-    private const val TAP_MS = 20L
+    /** Hard ceiling: firm but never full-strength. */
+    private const val MAX_AMPLITUDE = 180
+    private const val TAP_MS = 25L
 
     fun levelOf(context: Context): Int =
         (context.applicationContext as? FlamboApp)?.hapticLevel ?: DEFAULT_LEVEL

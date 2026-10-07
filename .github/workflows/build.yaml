@@ -308,15 +308,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          echo "Cleaning up older beta-preview releases (keeping tag beta-latest)..."
-          # List prereleases with tag beta-preview or beta-latest, delete all except the one we will (re)create
-          # We keep the release with tag 'beta-latest' and will overwrite it; delete any dated beta-preview-* tags
+          echo "Cleaning up older beta-preview releases..."
+          # List prereleases with tag beta-preview or beta-latest, delete dated ones outright
           gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease == true) | .tagName' | while read -r tag; do
             if [[ "$tag" == beta-preview-* ]]; then
               echo "→ Deleting old preview tag $tag"
               gh release delete "$tag" --yes --cleanup-tag || true
             fi
           done
+          # Recreate (not update) beta-latest below so it sorts as the newest
+          # release with the current commit — in-place updates keep the
+          # original creation date and the wrong target forever.
+          echo "→ Deleting beta-latest for a fresh recreate"
+          gh release delete beta-latest --yes --cleanup-tag || true
 
           # Delete old workflow runs for beta to keep Actions tab tidy (keeps storage low)
           # Keep last 3 runs
@@ -326,20 +330,11 @@ jobs:
             gh run delete "$runId" || true
           done || true
 
-      - name: Clear old assets from rolling release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # softprops only appends — wipe stale APKs so beta-latest keeps exactly one
-          for a in $(gh release view beta-latest --json assets --jq '.assets[].name' 2>/dev/null || true); do
-            echo "→ Removing old asset $a"
-            gh release delete-asset beta-latest "$a" --yes || true
-          done
-
-      - name: Create / update rolling preview release (beta-latest)
+      - name: Create rolling preview release (beta-latest, fresh)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: beta-latest
+          target_commitish: ${{ github.sha }}
           name: "Flambo ${{ needs.build.outputs.version_name }}"
           prerelease: true
           generate_release_notes: true

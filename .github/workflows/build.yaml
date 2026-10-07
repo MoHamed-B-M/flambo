@@ -335,7 +335,7 @@ jobs:
         with:
           tag_name: beta-latest
           target_commitish: ${{ github.sha }}
-          name: "Flambo ${{ needs.build.outputs.version_name }}"
+          name: "Flambo ${{ needs.build.outputs.version_name }} — DEV"
           prerelease: true
           generate_release_notes: true
           make_latest: false
@@ -343,9 +343,13 @@ jobs:
             ./dist/Flambo-*.apk
             ./dist/Flambo-*.apk.sha256
           body: |
-            ### Flambo — Beta Preview
+            ### Flambo — Beta Preview (DEV)
 
-            > ⚡ **Rolling preview** — this release is **overwritten on every push to `beta`**.
+            > ⚠️ **Development version** — this build comes straight from the
+            > `beta` branch and may contain bugs, crashes and unfinished code.
+            > For daily use, install the latest stable release instead.
+
+            > ⚡ **Rolling preview** — this release is **recreated on every push to `beta`**.
             > The previous preview APK is automatically deleted when a new commit lands.
 
             **Branch:** `beta` @ `${{ github.sha }}`

@@ -4,9 +4,9 @@
 
 ### Added
 
-- Background playback notification with play/pause controls
-- Key Mapper shortcuts: Record, Pause, Stop, Toggle record/pause, Toggle record/stop
+- Shortcut picker: creating a Key Mapper shortcut now shows Record, Pause, Stop and both toggles to choose from
 
 ### Fixed
 
-- Relative-time label no longer truncates mid-playback
+- Playback notification now shows a proper status-bar icon instead of blank space
+- Relative-time label no longer truncates to "3 min a…" during playback

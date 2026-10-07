@@ -2,13 +2,13 @@ name: Build Flambo
 
 on:
   push:
-    branches: [main, beta]
+    branches: [main, dev]
     # Docs-only pushes (README, screenshots) skip CI entirely — no APKs to build.
     paths-ignore:
       - 'README.md'
       - 'screenshots/**'
   pull_request:
-    branches: [main, beta]
+    branches: [main, dev]
     paths-ignore:
       - 'README.md'
       - 'screenshots/**'
@@ -21,7 +21,7 @@ on:
         type: choice
         options: [auto, preview, release]
 
-# Cancel previous beta preview runs when a new commit lands on the same branch
+# Cancel previous dev preview runs when a new commit lands on the same branch
 # -> preview APK from the old run is automatically superseded.
 concurrency:
   group: flambo-${{ github.ref }}
@@ -116,7 +116,7 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          # Version name: tag if pushing a tag, pinned stable on main, dev preview on beta.
+          # Version name: tag if pushing a tag, pinned stable on main, dev preview on dev.
           # Stable follows MAJOR.MINOR.PATCH+BUILD with build starting at STABLE_BUILD.
           # Beta tracks BASE_VERSION (e.g. 1.0.1-dev(#N)) so it always follows
           # the current stable line, with codes above any stable build.
@@ -230,8 +230,8 @@ jobs:
           echo "friendly=$FRIENDLY" >> "$GITHUB_OUTPUT"
           ls -lh Flambo-*.apk*
 
-      - name: Upload preview artifact (beta) — auto-expires
-        if: github.ref == 'refs/heads/beta' || (github.event_name == 'pull_request' && github.base_ref == 'beta')
+      - name: Upload preview artifact (dev) — auto-expires
+        if: github.ref == 'refs/heads/dev' || (github.event_name == 'pull_request' && github.base_ref == 'dev')
         uses: actions/upload-artifact@v4
         with:
           name: Flambo-preview-${{ steps.version.outputs.name }}-build${{ github.run_number }}
@@ -274,13 +274,13 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
-  # Beta preview: rolling prerelease that is overwritten on every push
+  # Dev preview: rolling prerelease that is overwritten on every push
   # New push => old preview APK/link is replaced automatically.
   # ---------------------------------------------------------------------------
   preview-release:
-    name: Publish beta preview (auto-replace)
+    name: Publish dev preview (auto-replace)
     needs: build
-    if: github.ref == 'refs/heads/beta' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -322,10 +322,10 @@ jobs:
           echo "→ Deleting beta-latest for a fresh recreate"
           gh release delete beta-latest --yes --cleanup-tag || true
 
-          # Delete old workflow runs for beta to keep Actions tab tidy (keeps storage low)
+          # Delete old workflow runs for dev to keep Actions tab tidy (keeps storage low)
           # Keep last 3 runs
-          echo "Pruning old beta workflow runs (keep 3)..."
-          gh run list --branch beta --limit 100 --json databaseId,status --jq '.[] | select(.status == "completed") | .databaseId' | tail -n +4 | while read -r runId; do
+          echo "Pruning old dev workflow runs (keep 3)..."
+          gh run list --branch dev --limit 100 --json databaseId,status --jq '.[] | select(.status == "completed") | .databaseId' | tail -n +4 | while read -r runId; do
             echo "→ Deleting run $runId"
             gh run delete "$runId" || true
           done || true
@@ -346,13 +346,13 @@ jobs:
             ### Flambo — Beta Preview (DEV)
 
             > ⚠️ **Development version** — this build comes straight from the
-            > `beta` branch and may contain bugs, crashes and unfinished code.
+            > `dev` branch and may contain bugs, crashes and unfinished code.
             > For daily use, install the latest stable release instead.
 
-            > ⚡ **Rolling preview** — this release is **recreated on every push to `beta`**.
+            > ⚡ **Rolling preview** — this release is **recreated on every push to `dev`**.
             > The previous preview APK is automatically deleted when a new commit lands.
 
-            **Branch:** `beta` @ `${{ github.sha }}`
+            **Branch:** `dev` @ `${{ github.sha }}`
             **Version:** `${{ needs.build.outputs.version_name }}` · **Build:** `#${{ github.run_number }}`
             **Commit:** `${{ github.event.head_commit.message }}`
 
@@ -372,12 +372,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Find open PR that has beta as head
-          PR=$(gh pr list --head beta --state open --json number --jq '.[0].number' || true)
+          # Find open PR that has dev as head
+          PR=$(gh pr list --head dev --state open --json number --jq '.[0].number' || true)
           if [[ -n "$PR" && "$PR" != "null" ]]; then
             gh pr comment "$PR" --body "### ✅ Preview APK ready
           **Version:** \`${{ needs.build.outputs.version_name }}\` · **Build:** \`#${{ github.run_number }}\`
-          Download from the [beta-latest prerelease](https://github.com/${{ github.repository }}/releases/tag/beta-latest) — this link always points to the newest beta build (old previews are auto-deleted)."
+          Download from the [beta-latest prerelease](https://github.com/${{ github.repository }}/releases/tag/beta-latest) — this link always points to the newest dev build (old previews are auto-deleted)."
           fi || true
 
   # ---------------------------------------------------------------------------
@@ -414,7 +414,7 @@ jobs:
           A calm yet expressive voice recorder — crafted with Material 3 Expressive.
 
           > [!WARNING]
-          > Coming from a beta build? **Uninstall the beta first.** Beta builds carry
+          > Coming from a DEV preview build? **Uninstall it first.** Dev builds carry
           > higher version codes, and Android refuses to install over them with a
           > lower one. Back up anything you want to keep via Share before uninstalling.
 
@@ -452,7 +452,7 @@ jobs:
             ./dist/Flambo-*.apk.sha256
           fail_on_unmatched_files: false
 
-      - name: Mark previous beta prerelease as outdated (optional)
+      - name: Mark previous dev prerelease as outdated (optional)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

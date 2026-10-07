@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.7.1] - 2026-10-06
+## [1.7.2] - 2026-10-07
 
 ### Added
 
@@ -9,4 +9,4 @@
 
 ### Fixed
 
-- Relative-time label no longer flickers mid-playback
+- Relative-time label no longer truncates mid-playback

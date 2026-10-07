@@ -24,6 +24,9 @@ object RecordingShortcut {
     const val ID_START = "start_recording"
     const val ID_PAUSE = "pause_recording"
 
+    /** Extra carrying the chosen discrete action into ShortcutHandlerActivity. */
+    const val EXTRA_ACTION = "com.flambo.recorder.EXTRA_SHORTCUT_ACTION"
+
     fun startIntent(context: Context): Intent =
         Intent(context, MainActivity::class.java).apply {
             action = ACTION_START_RECORDING

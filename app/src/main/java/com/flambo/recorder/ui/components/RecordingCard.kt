@@ -204,7 +204,9 @@ fun RecordingCard(
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontFeatureSettings = "tnum"
                             ),
-                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                     Text("•", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
@@ -213,7 +215,8 @@ fun RecordingCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                 }
                 // Parsed once per recording: peakList splits + parses ~120 floats,

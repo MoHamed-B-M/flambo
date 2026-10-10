@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -199,14 +201,24 @@ fun RecordingCard(
                             color = MaterialTheme.colorScheme.error
                         )
                     } else {
+                        // Pre-measure the max duration width once per recording to avoid
+                        // flicker at loop boundaries: measure "total / total" (worst case)
+                        // and lock the duration text to that exact width.
+                        val textMeasurer = rememberTextMeasurer()
+                        val durationStyle = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")
+                        val maxDurationWidthPx = remember(recording.durationMs) {
+                            val total = formatDuration(recording.durationMs)
+                            textMeasurer.measure(text = "$total / $total", style = durationStyle).size.width
+                        }
+                        val density = LocalDensity.current
+
                         Text(
                             text = displayedDuration,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontFeatureSettings = "tnum"
-                            ),
+                            style = durationStyle,
                             color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            softWrap = false
+                            softWrap = false,
+                            modifier = Modifier.width(with(density) { maxDurationWidthPx.toDp() })
                         )
                     }
                     Text("•", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)

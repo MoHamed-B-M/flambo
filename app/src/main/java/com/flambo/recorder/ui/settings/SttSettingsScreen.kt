@@ -355,7 +355,11 @@ fun SttSettingsScreen(
                             "nl" to "Dutch", "pl" to "Polish", "vi" to "Vietnamese", "th" to "Thai", "ms" to "Malay",
                             "fa" to "Persian", "ur" to "Urdu"
                         )
-                        items(whisperLangs, key = { it.first.ifBlank { "auto" } }) { (code, label) ->
+                        items(
+                            whisperLangs,
+                            key = { it.first.ifBlank { "auto" } },
+                            contentType = { "stt-lang" }
+                        ) { (code, label) ->
                             ToggleButton(
                                 checked = sttLanguage == code,
                                 onCheckedChange = {
@@ -378,7 +382,11 @@ fun SttSettingsScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) { Text("Best installed model") }
                         }
-                        items(VoskModelManager.CATALOG, key = { it.code }) { model ->
+                        items(
+                            VoskModelManager.CATALOG,
+                            key = { it.code },
+                            contentType = { "vosk-model" }
+                        ) { model ->
                             ToggleButton(
                                 checked = sttLanguage == model.code,
                                 onCheckedChange = {

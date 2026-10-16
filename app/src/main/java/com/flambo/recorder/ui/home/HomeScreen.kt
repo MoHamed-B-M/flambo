@@ -617,7 +617,7 @@ fun HomeScreen(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.trash, key = { it.id }) { rec ->
+                        items(uiState.trash, key = { it.id }, contentType = { "trash" }) { rec ->
                             TrashRow(
                                 recording = rec,
                                 onRestore = { AppHaptics.tap(context); viewModel.restoreFromTrash(rec.id) },
@@ -647,7 +647,7 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(uiState.recordings, key = { it.id }) { rec ->
+                        items(uiState.recordings, key = { it.id }, contentType = { "recording" }) { rec ->
                             RecordingCard(
                                 recording = rec,
                                 playback = playback,
@@ -730,7 +730,7 @@ fun HomeScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(groups, key = { it.name }) { folder ->
+                            items(groups, key = { it.name }, contentType = { "group" }) { folder ->
                                 GroupFolderCard(
                                     group = folder,
                                     onOpen = { AppHaptics.tap(context); openGroup = folder.name },
@@ -798,7 +798,7 @@ fun HomeScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(members, key = { it.id }) { rec ->
+                            items(members, key = { it.id }, contentType = { "recording" }) { rec ->
                                 RecordingCard(
                                     recording = rec,
                                     playback = playback,

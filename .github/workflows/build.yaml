@@ -41,8 +41,8 @@ env:
   # installing a beta over stable always counts as an update for Android.
   # STABLE_BUILD must keep increasing across stables — Android refuses to
   # install an update whose versionCode is not higher than the installed one.
-  BASE_VERSION: "1.7.2"
-  STABLE_BUILD: "12"
+  BASE_VERSION: "1.7.3"
+  STABLE_BUILD: "13"
   BETA_CODE_OFFSET: "100000"
   # Codename for the stable release title, e.g. "Rhyolite" → "Flambo 1.5.0+6 — Rhyolite".
   # Empty for a maintenance release with no codename.
@@ -303,7 +303,7 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Delete older beta prereleases (keep only latest)
+      - name: Prune older previews and workflow runs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -316,11 +316,9 @@ jobs:
               gh release delete "$tag" --yes --cleanup-tag || true
             fi
           done
-          # Recreate (not update) beta-latest below so it sorts as the newest
-          # release with the current commit — in-place updates keep the
-          # original creation date and the wrong target forever.
-          echo "→ Deleting beta-latest for a fresh recreate"
-          gh release delete beta-latest --yes --cleanup-tag || true
+          # beta-latest is deliberately NOT deleted: deleting and recreating the
+          # release would reset its publish time. It is refreshed in place below
+          # so its timestamp stays fixed while the APK is replaced.
 
           # Delete old workflow runs for dev to keep Actions tab tidy (keeps storage low)
           # Keep last 3 runs
@@ -330,11 +328,35 @@ jobs:
             gh run delete "$runId" || true
           done || true
 
-      - name: Create rolling preview release (beta-latest, fresh)
+      - name: Refresh beta-latest in place (fixed publish time)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          # Drop the previous APK assets so only the newest build remains. Dev
+          # asset names embed the build number, so --clobber cannot match them.
+          if gh release view beta-latest >/dev/null 2>&1; then
+            echo "→ Clearing previous preview assets"
+            gh release view beta-latest --json assets --jq '.assets[].name' | while read -r name; do
+              [[ -n "$name" ]] || continue
+              echo "→ Removing stale asset $name"
+              gh release delete-asset beta-latest "$name" --yes || true
+            done
+          else
+            echo "→ beta-latest does not exist yet; it will be created by the next step"
+          fi
+
+          # Move the rolling tag to this commit. A release's target_commitish is
+          # ignored once the tag already exists, so the tag itself has to be
+          # force-moved to keep a fixed-time release pointing at the newest build.
+          git push --force origin "HEAD:refs/tags/beta-latest" || true
+
+      - name: Publish rolling preview release (beta-latest, reusing the fixed-time release)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: beta-latest
-          target_commitish: ${{ github.sha }}
+          # No target_commitish: the tag is force-moved in the step above, and
+          # GitHub ignores target_commitish once the tag already exists.
           name: "Flambo ${{ needs.build.outputs.version_name }} — DEV"
           prerelease: true
           generate_release_notes: true
@@ -349,8 +371,8 @@ jobs:
             > `dev` branch and may contain bugs, crashes and unfinished code.
             > For daily use, install the latest stable release instead.
 
-            > ⚡ **Rolling preview** — this release is **recreated on every push to `dev`**.
-            > The previous preview APK is automatically deleted when a new commit lands.
+            > ⚡ **Rolling preview** — this release is **refreshed in place on every push to `dev`**.
+            > Its publish date stays fixed; only the APK below is replaced with the newest build.
 
             **Branch:** `dev` @ `${{ github.sha }}`
             **Version:** `${{ needs.build.outputs.version_name }}` · **Build:** `#${{ github.run_number }}`
@@ -365,7 +387,7 @@ jobs:
             ${{ github.event.head_commit.message }}
 
             ---
-            *Artifact retention: 7 days · Old previews are pruned automatically.*
+            *Artifact retention: 7 days · Only the newest preview APK is kept.*
 
       - name: Comment preview link on associated PR (if any)
         if: github.event_name == 'push'
@@ -377,7 +399,7 @@ jobs:
           if [[ -n "$PR" && "$PR" != "null" ]]; then
             gh pr comment "$PR" --body "### ✅ Preview APK ready
           **Version:** \`${{ needs.build.outputs.version_name }}\` · **Build:** \`#${{ github.run_number }}\`
-          Download from the [beta-latest prerelease](https://github.com/${{ github.repository }}/releases/tag/beta-latest) — this link always points to the newest dev build (old previews are auto-deleted)."
+          Download from the [beta-latest prerelease](https://github.com/${{ github.repository }}/releases/tag/beta-latest) — this link always points to the newest dev build."
           fi || true
 
   # ---------------------------------------------------------------------------

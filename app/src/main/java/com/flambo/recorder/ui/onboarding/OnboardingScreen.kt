@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
@@ -66,6 +67,11 @@ private val pages = listOf(
         "Private by design.",
         "Everything lives on your phone — recordings, transcripts, favorites. No account, no cloud, no surprises."
     ) to @Composable { MaterialTheme.colorScheme.tertiaryContainer },
+    Triple(
+        Icons.Filled.Bolt,
+        "Automate it.",
+        "Long-press the Flambo icon for quick Start and Pause shortcuts — or trigger recording from Key Mapper, Tasker, and other automation apps without opening the app."
+    ) to @Composable { MaterialTheme.colorScheme.primaryContainer },
 )
 
 private val bouncy = spring<Float>(

@@ -29,6 +29,7 @@
 - **Playback** with waveform scrubber, 0.5x–2x speed pills, 5 s / 10 s skips, and a floating mini-player
 - **Library** — inline rename, tags, favorites, full-text search, soft delete with Undo, auto-purging Trash
 - **Onboarding tour** on first launch, replayable anytime from Settings → About
+- **Shortcuts & automation** — long-press the launcher icon for Start / Pause, or fire recording actions from Key Mapper, Tasker, and other automation apps entirely headlessly
 - **Self-updates** — Settings checks the beta rolling preview (by build number) or stable releases (by version), downloads and installs in-app with auto-cleanup; optional launch-time check pings you once per version via notification + snackbar
 - **Material 3 Expressive throughout** — dynamic Material You color, tonal surfaces instead of shadows, morphing shapes, bouncy spring motion, edge-to-edge layout
 
@@ -47,12 +48,7 @@
 [![Get it on Orion Store](https://raw.githubusercontent.com/RookieEnough/Orion-Store/refs/heads/main/assets/orion-badge.png)](https://rookieenough.github.io/Orion-Data/redirect.html?id=flambo)
 <a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
 
-<<<<<<< HEAD
-Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.1.0-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
-=======
-
-Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.2.1-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
->>>>>>> beta
+Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.7.3-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
 
 | File suffix | Architecture | Most devices |
 |---|---|---|
@@ -68,7 +64,7 @@ Grab the APK matching your device from the [latest beta pre-release](https://git
 ```bash
 git clone https://github.com/MoHamed-B-M/flambo.git
 cd flambo
-git checkout beta            # active development happens here
+git checkout dev             # active development happens here
 ./gradlew :app:assembleRelease
 ```
 
@@ -76,9 +72,9 @@ Debug keystore fallback means `assembleRelease` works locally with no secrets co
 
 ## How releases work
 
-[`build.yaml`](.github/workflows/build.yaml) builds every push to `beta` and `main`:
+[`build.yaml`](.github/workflows/build.yaml) builds every push to `dev` and `main`:
 
-- **`beta`** → signed dev build `1.2.1-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
+- **`dev`** → signed dev build `1.7.3-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
 - **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
 
 Pushes touching only `README.md` or `screenshots/` skip CI entirely (no code changed, nothing to build).
@@ -113,7 +109,7 @@ Format examples:
 - `2.0.0+120` → complete UI redesign + new audio engine
 - `2.0.1+121` → rebuilt with updated libraries
 
-Beta builds follow the stable line with a dev tag: `1.2.1-dev(#N)`, where `N` is the CI run number (e.g. `1.2.1-dev(#42)`). When stable moves to `1.2.2`, beta becomes `1.2.2-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
+Beta builds follow the stable line with a dev tag: `1.7.3-dev(#N)`, where `N` is the CI run number (e.g. `1.7.3-dev(#42)`). When stable moves to `1.7.4`, beta becomes `1.7.4-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
 
 Beta version codes sit `100000` above the run number, so installing a beta over a stable release always counts as an update for Android (which requires the code to increase).
 
@@ -150,6 +146,14 @@ MVVM throughout: `ViewModel` + `StateFlow` UI state, repository pattern, thin pl
 
 > [!IMPORTANT]
 > When enabling system-sound capture, Android shows a *screen-recording* consent dialog. Flambo only captures audio — no pixels are ever read (the codebase contains no virtual display; the MediaProjection token feeds `AudioPlaybackCaptureConfiguration` exclusively).
+
+## Shortcuts & automation
+
+Recording is reachable without opening the app:
+
+- **Launcher shortcuts** — long-press the Flambo icon for **Start recording** and **Pause / Resume**.
+- **Key Mapper / Tasker** — pick Flambo from an automation app's "launch app shortcut" list and choose one of five discrete actions: **Record**, **Pause**, **Stop**, **Toggle record/pause**, or **Toggle record/stop**. They run headlessly — no activity is foregrounded, even from the lock screen.
+- **Broadcasts** — apps that send intents can target the exported `RecordingReceiver` with `com.flambo.recorder.ACTION_START`, `com.flambo.recorder.ACTION_STOP`, or `com.flambo.recorder.ACTION_TOGGLE`.
 
 ## Tech stack
 

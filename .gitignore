@@ -37,6 +37,10 @@ screenshotsissue/
 .agents/
 skills-lock.json
 
+# Local agent working files (fix reference patches, session handoff notes)
+fixes/
+session.md
+
 # Generated at build time from the repo-root changelogs.md (see syncChangelogAsset)
 app/src/main/assets/changelogs.md
 

@@ -137,7 +137,7 @@ class RecordingService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(getString(R.string.recording_notification_text))
-            .setSmallIcon(R.drawable.ic_stat_flambo)
+            .setSmallIcon(R.drawable.ic_stat_recording)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(pending)

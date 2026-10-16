@@ -28,7 +28,7 @@ class PlaybackService : MediaSessionService() {
                 .setChannelId("flambo_playback")
                 .setChannelName(R.string.playback_channel_name)
                 .build()
-                .apply { setSmallIcon(R.drawable.ic_notification) }
+                .apply { setSmallIcon(R.drawable.ic_stat_playback) }
         )
         val player = ExoPlayer.Builder(this)
             .setAudioAttributes(

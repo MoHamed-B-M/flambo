@@ -37,7 +37,7 @@ object UpdateNotifier {
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_flambo)
+            .setSmallIcon(R.drawable.ic_stat_update)
             .setContentTitle("Flambo update ready")
             .setContentText("v${release.version} is available — tap to view")
             .setContentIntent(openApp)

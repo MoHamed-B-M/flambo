@@ -101,6 +101,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -528,7 +529,7 @@ fun DetailScreen(
                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     StaticWaveform(
                         peaks = remember(rec.peakList) { rec.peakList.ifEmpty { List(40) { 0.35f + (Math.random().toFloat() * 0.5f) } } },
-                        progress = progress,
+                        progressProvider = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .graphicsLayer {
@@ -1144,7 +1145,11 @@ private fun CleanedPlayerCard(
     progressStyle: String = "slider"
 ) {
     val playbackState by playback.state.collectAsState()
-    val isCurrent = playbackState.currentPath == filePath
+    // Derived: this card only recomposes when *its* track changes, not on every
+    // position tick belonging to some other recording's playback.
+    val isCurrent by remember(filePath) {
+        derivedStateOf { playbackState.currentPath == filePath }
+    }
     val isPlaying = isCurrent && playbackState.isPlaying
     val progress = if (isCurrent && playbackState.durationMs > 0) (playbackState.positionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f) else 0f
     val duration = if (isCurrent && playbackState.durationMs > 0) playbackState.durationMs else 0L

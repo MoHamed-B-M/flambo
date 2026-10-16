@@ -66,21 +66,25 @@ fun WaveformVisualizer(
         }
 
         val count = amplitudes.size.coerceAtMost(48)
-        val recent = amplitudes.takeLast(count)
+        val start = amplitudes.size - count
         val barW = (width - 32.dp.toPx()) / count
         val gap = 3.dp.toPx()
         val startX = 16.dp.toPx()
 
-        recent.forEachIndexed { idx, amp ->
+        // Indexed loop over the source list: `takeLast(count)` allocated a new
+        // list on every draw frame.
+        for (idx in 0 until count) {
+            val amp = amplitudes[start + idx]
+            val isLast = idx == count - 1
             val hNorm = (amp * 0.9f + 0.08f).coerceIn(0.08f, 1f)
             val barH = height * (0.12f + hNorm * 0.78f)
 
-            val boost = if (idx == recent.lastIndex) animatedAmp * 0.12f * height else 0f
+            val boost = if (isLast) animatedAmp * 0.12f * height else 0f
             val finalH = (barH + boost).coerceAtMost(height * 0.92f)
             val x = startX + idx * barW
             val y = centerY - finalH / 2
             drawRoundRect(
-                color = if (idx == recent.lastIndex) barColor else barColor.copy(alpha = 0.72f + hNorm * 0.26f),
+                color = if (isLast) barColor else barColor.copy(alpha = 0.72f + hNorm * 0.26f),
                 topLeft = Offset(x + gap / 2, y),
                 size = Size(barW - gap, finalH),
                 cornerRadius = CornerRadius(999f)
@@ -92,7 +96,8 @@ fun WaveformVisualizer(
 @Composable
 fun StaticWaveform(
     peaks: List<Float>,
-    progress: Float,
+    /** Resolved inside the draw block so callers never read playback state in composition. */
+    progressProvider: () -> Float,
     modifier: Modifier = Modifier,
     playedColor: Color = MaterialTheme.colorScheme.primary,
     remainingColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -126,6 +131,7 @@ fun StaticWaveform(
             } else Modifier
         )
     ) {
+        val progress = progressProvider().coerceIn(0f, 1f)
         if (peaks.isEmpty()) {
             drawRoundRect(
                 color = remainingColor,
@@ -136,11 +142,13 @@ fun StaticWaveform(
             return@Canvas
         }
         val count = peaks.size.coerceAtMost(80)
-        val data = peaks.take(count)
         val barW = size.width / count
         val gap = 2.dp.toPx()
         val centerY = size.height / 2
-        data.forEachIndexed { i, amp ->
+        // Indexed loop over the source list: `take(count)` allocated a new list
+        // on every draw frame.
+        for (i in 0 until count) {
+            val amp = peaks[i]
             val isPlayed = i.toFloat() / count <= progress
             val h = size.height * (0.18f + amp.coerceIn(0f, 1f) * 0.82f)
             drawRoundRect(

@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,10 +58,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
@@ -70,6 +73,7 @@ import com.flambo.recorder.playback.PlaybackController
 import com.flambo.recorder.ui.haptics.AppHaptics
 import com.flambo.recorder.ui.theme.FlamboMotion
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
+import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -91,16 +95,27 @@ fun RecordingCard(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    // Playback pushes a position tick ~8x/s while a track plays, and a raw
+    // StateFlow invalidates *every* reader on every tick. This card is a lazy
+    // list item, so reading the state directly would recompose the whole list
+    // ~8x/s. Instead the subscription is funneled through derived slices (which
+    // only recompose the card when their value actually changes) and a
+    // draw-phase provider, so cards that are not the playing one stay still.
     val playbackState by playback.state.collectAsState()
-    val isCurrent = playbackState.currentPath == recording.filePath
-    val isPlaying = isCurrent && playbackState.isPlaying
-    val progress = if (isCurrent && playbackState.durationMs > 0) {
-        (playbackState.positionMs.toFloat() / playbackState.durationMs.toFloat()).coerceIn(0f, 1f)
-    } else 0f
-    val displayedDuration = when {
-        isCurrent && playbackState.durationMs > 0 && playbackState.isPlaying -> "${formatDuration(playbackState.positionMs)} / ${formatDuration(playbackState.durationMs)}"
-        isCurrent && playbackState.durationMs > 0 -> "${formatDuration(playbackState.positionMs)} / ${formatDuration(playbackState.durationMs)}"
-        else -> formatDuration(recording.durationMs)
+    val isCurrent by remember(recording.filePath) {
+        derivedStateOf { playbackState.currentPath == recording.filePath }
+    }
+    val isPlaying by remember(recording.filePath) {
+        derivedStateOf { isCurrent && playbackState.isPlaying }
+    }
+    // Read in the draw phase only: the moving playhead redraws without
+    // recomposing the card.
+    val progressProvider: () -> Float = remember(recording.filePath) {
+        {
+            if (isCurrent && playbackState.durationMs > 0) {
+                (playbackState.positionMs.toFloat() / playbackState.durationMs.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+        }
     }
 
     // Single maximize/minimize morph: the whole card expands to fill the page
@@ -212,12 +227,13 @@ fun RecordingCard(
                         }
                         val density = LocalDensity.current
 
-                        Text(
-                            text = displayedDuration,
+                        PlaybackDurationText(
+                            playback = playback,
+                            filePath = recording.filePath,
+                            fallbackDurationMs = recording.durationMs,
                             style = durationStyle,
-                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            softWrap = false,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.width(with(density) { maxDurationWidthPx.toDp() })
                         )
                     }
@@ -231,20 +247,18 @@ fun RecordingCard(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                 }
-                // Parsed once per recording: peakList splits + parses ~120 floats,
-                // and cards recompose on every playback tick while playing.
+                // Parsed once per recording: peakList splits + parses ~120 floats.
                 val peaks = remember(recording.amplitudePeaks) { recording.peakList }
                 val seekOnCard = rememberCardSeek(
                     recording = recording,
                     playback = playback,
                     isCurrent = isCurrent,
-                    durationMs = playbackState.durationMs,
                     fileMissing = fileMissing
                 )
                 if (peaks.isNotEmpty()) {
                     StaticWaveform(
                         peaks = peaks,
-                        progress = progress,
+                        progressProvider = progressProvider,
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                         onSeek = seekOnCard
                     )
@@ -253,14 +267,18 @@ fun RecordingCard(
                     // expand with a seekable linear track so pressing play
                     // always reveals a visible progress bar.
                     SeekableLinearTrack(
-                        progress = progress,
+                        progressProvider = progressProvider,
                         onSeek = seekOnCard,
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                     )
                 }
                 if (recording.tagList.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-                        recording.tagList.take(3).forEach { tag ->
+                        val tags = recording.tagList
+                        // Indexed loop: `take(3)` allocated a fresh list on every
+                        // recomposition, and this runs inside a scrolling list.
+                        for (i in 0 until minOf(3, tags.size)) {
+                            val tag = tags[i]
                             AssistChip(
                                 onClick = {},
                                 label = { Text(tag, style = MaterialTheme.typography.labelSmall) }
@@ -382,17 +400,20 @@ private fun rememberCardSeek(
     recording: Recording,
     playback: PlaybackController,
     isCurrent: Boolean,
-    durationMs: Long,
     fileMissing: Boolean
 ): ((Float) -> Unit)? {
     // Hooks stay unconditional; only the returned lambda is gated.
     var pending by remember { mutableStateOf<Float?>(null) }
-    LaunchedEffect(isCurrent, durationMs, pending) {
-        val frac = pending
-        if (frac != null && isCurrent && durationMs > 0) {
-            playback.seekTo((frac * durationMs).toLong())
-            pending = null
-        }
+    // Keyed on the pending scrub, not on the playback duration: keying on
+    // duration restarted this effect on every playback tick.
+    LaunchedEffect(isCurrent, pending) {
+        val frac = pending ?: return@LaunchedEffect
+        if (!isCurrent) return@LaunchedEffect
+        // Duration only becomes known shortly after prepare(); suspend until
+        // the player reports one instead of polling the state each tick.
+        val durationMs = playback.state.first { it.durationMs > 0 }.durationMs
+        playback.seekTo((frac * durationMs).toLong())
+        pending = null
     }
     val seek: (Float) -> Unit = remember(isCurrent) { { frac: Float ->
         val dur = playback.state.value.durationMs
@@ -413,7 +434,7 @@ private fun rememberCardSeek(
  */
 @Composable
 private fun SeekableLinearTrack(
-    progress: Float,
+    progressProvider: () -> Float,
     onSeek: ((Float) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
@@ -448,10 +469,43 @@ private fun SeekableLinearTrack(
         contentAlignment = Alignment.Center
     ) {
         LinearProgressIndicator(
-            progress = { progress.coerceIn(0f, 1f) },
+            // Provider resolve happens inside the indicator lambda, keeping the
+            // state read in the draw phase instead of composition.
+            progress = { progressProvider().coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(999.dp)),
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         )
     }
+}
+
+/**
+ * Live "position / duration" label. Isolated into its own composable so the
+ * ~8x/s playback ticks recompose only this tiny text and never the whole card
+ * (text has no draw-phase provider equivalent). Falls back to the stored
+ * duration when a different track is playing.
+ */
+@Composable
+private fun PlaybackDurationText(
+    playback: PlaybackController,
+    filePath: String,
+    fallbackDurationMs: Long,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val state by playback.state.collectAsState()
+    val text = if (state.currentPath == filePath && state.durationMs > 0) {
+        "${formatDuration(state.positionMs)} / ${formatDuration(state.durationMs)}"
+    } else {
+        formatDuration(fallbackDurationMs)
+    }
+    Text(
+        text = text,
+        style = style,
+        color = color,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier
+    )
 }

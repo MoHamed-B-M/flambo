@@ -1,0 +1,4 @@
+# Bundled third-party inference engine (whisper.cpp + its ggml backends).
+# Mark it vendored so GitHub Linguist stops counting its ~1,400 C/C++
+# files as first-party code and the language bar reflects the Kotlin app.
+app/src/main/cpp/whisper.cpp/** linguist-vendored

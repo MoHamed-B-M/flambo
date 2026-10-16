@@ -172,7 +172,7 @@ fun RecordingCard(
                 onClick = {
                     AppHaptics.tap(context)
                     if (isPlaying) playback.pause()
-                    else playback.play(recording.filePath)
+                    else playback.play(recording.filePath, recording.title)
                 }
             ) {
                 Icon(
@@ -400,7 +400,7 @@ private fun rememberCardSeek(
             playback.seekTo((frac * dur).toLong())
         } else if (!isCurrent) {
             pending = frac
-            playback.play(recording.filePath)
+            playback.play(recording.filePath, recording.title)
         }
     } }
     return if (fileMissing) null else seek

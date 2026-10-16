@@ -208,7 +208,7 @@ fun DetailScreen(
             playback.seekTo((frac * dur).toLong())
         } else if (!isCurrentTrack) {
             detailPendingSeek = frac
-            playback.play(rec.filePath)
+            playback.play(rec.filePath, rec.title)
         }
     }
 
@@ -645,7 +645,7 @@ fun DetailScreen(
                                 AppHaptics.tap(context)
                                 lastTransportTap = 1
                                 if (isThisPlaying) playback.pause()
-                                else playback.play(rec.filePath)
+                                else playback.play(rec.filePath, rec.title)
                             },
                             enabled = !fileMissing,
                             shape = RoundedCornerShape(playCorner),

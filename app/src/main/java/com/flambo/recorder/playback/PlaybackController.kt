@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -37,6 +38,7 @@ class PlaybackController(private val context: Context) {
     private var controllerFuture: ListenableFuture<MediaController>? = null
     /** play() requested before the controller connected; flushed on ready. */
     private var pendingPath: String? = null
+    private var pendingTitle: String? = null
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state
 
@@ -69,7 +71,9 @@ class PlaybackController(private val context: Context) {
                 controller.playbackParameters = controller.playbackParameters.withSpeed(_state.value.speed)
                 pendingPath?.let { path ->
                     pendingPath = null
-                    play(path)
+                    val t = pendingTitle
+                    pendingTitle = null
+                    play(path, t)
                 }
                 onReady()
             }, ContextCompat.getMainExecutor(context))
@@ -96,7 +100,11 @@ class PlaybackController(private val context: Context) {
         }
     }
 
-    fun play(path: String) {
+    /**
+     * [title] is shown in the media notification / Live pill; when null it is
+     * derived from the file name (works for both file paths and content URIs).
+     */
+    fun play(path: String, title: String? = null) {
         if (path.isBlank()) return
         if (!AudioFileStore.exists(context, path)) {
             _error.value = "Audio file not found — it may have been deleted outside the app."
@@ -123,13 +131,26 @@ class PlaybackController(private val context: Context) {
         if (controller == null) {
             // Tapped before the session connected: stash and flush on ready.
             pendingPath = path
+            pendingTitle = title
             connect()
             return
         }
         dropTrack()
         currentPath = path
         _state.value = PlaybackState(speed = _state.value.speed, currentPath = path)
-        controller.setMediaItem(MediaItem.fromUri(path))
+        val displayTitle = title?.takeIf { it.isNotBlank() }
+            ?: AudioFileStore.displayName(context, path).substringBeforeLast('.').ifBlank { "Recording" }
+        controller.setMediaItem(
+            MediaItem.Builder()
+                .setUri(path)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(displayTitle)
+                        .setArtist("Flambo")
+                        .build()
+                )
+                .build()
+        )
         controller.prepare()
         controller.playWhenReady = true
         controller.playbackParameters = controller.playbackParameters.withSpeed(_state.value.speed)

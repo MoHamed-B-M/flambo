@@ -25,6 +25,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Flambo"
         tools:targetApi="31">
+
+        <!-- One UI 7+ routes an app's ongoing/media notification to Live
+             Notifications (status bar pill / Now Bar) only if the app opts
+             in. Ignored by other OEMs. -->
+        <meta-data
+            android:name="com.samsung.android.support.ongoing_activity"
+            android:value="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

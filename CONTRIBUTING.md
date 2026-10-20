@@ -1,6 +1,6 @@
 # Contributing to Flambo
 
-Thank you for considering Flambo! This document helps you get started quickly — from building locally to opening a clean PR against `beta`.
+Thank you for considering Flambo! This document helps you get started quickly — from building locally to opening a clean PR against `dev`.
 
 > **Design vibe:** Flambo is a **Material 3 Expressive** showcase — tonal surfaces over shadows, morphing shapes, bouncy springs (`DampingRatioMediumBouncy`, `StiffnessMediumLow`), and dynamic color. Please keep new UI in that language.
 
@@ -11,13 +11,13 @@ Thank you for considering Flambo! This document helps you get started quickly �
 ```bash
 git clone https://github.com/MoHamed-B-M/flambo.git
 cd flambo
-git checkout beta          # active development lives here
+git checkout dev           # active development lives here
 ./gradlew :app:assembleRelease
 ```
 
 Per-ABI APKs plus a universal APK land in `app/build/outputs/apk/release/` (`universal` + `arm64` + `armv7`). A debug-keystore fallback means the command works with **no secrets** configured.
 
-Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compileSdk 37 / targetSdk 36 / minSdk 26` (`platforms;android-37` comes from the canary channel or the preinstalled runner image — it is not on the stable sdkmanager channel).
+Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compileSdk 37 / targetSdk 37 / minSdk 26` (`platforms;android-37` comes from the canary channel or the preinstalled runner image — it is not on the stable sdkmanager channel).
 
 ---
 
@@ -25,10 +25,10 @@ Requirements: **JDK 21**, **AGP 9.3.2**, **Kotlin 2.3.10**, Android SDK `compile
 
 | Branch | What it is | CI does |
 |---|---|---|
-| `beta` | Rolling preview `1.2.1-dev(#N)` (`100000 + runNumber` versionCode so stable→beta is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
+| `dev` | Rolling preview `1.7.4-dev(#N)` (`100000 + runNumber` versionCode so stable→dev is always an update) | Builds, signs, publishes to `beta-latest` prerelease (previous asset wiped, one build always), artifact 7 days |
 | `main` | Versioned stable `x.y.z+BUILD` (pins `BASE_VERSION`/`STABLE_BUILD`) | Builds, signs, creates `vX.Y.Z+BUILD` release with notes + checksums, artifact 30 days, marks latest |
 
-- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, beta follows automatically (`1.2.1-dev(#N)`). `STABLE_BUILD` must keep increasing across stables (Android rejects updates whose versionCode doesn't grow). `RELEASE_TAGLINE` sets the stable codename (e.g. `1.2.1 — Tachylite`).
+- **Single source of truth:** `BASE_VERSION`, `STABLE_BUILD`, `BETA_CODE_OFFSET` at the top of `.github/workflows/build.yaml`. Bump `BASE_VERSION` for a stable, dev previews follow automatically (`1.7.4-dev(#N)`). `STABLE_BUILD` must keep increasing across stables (Android rejects updates whose versionCode doesn't grow). `RELEASE_TAGLINE` sets the stable codename (e.g. `1.7.3 — Maintenance`).
 - Docs-only pushes (`README.md`, `screenshots/**`) skip CI via `paths-ignore`.
 - Never commit a keystore — CI decodes `KEYSTORE_BASE64` → `app/release.keystore` at build time, falls back to ephemeral/debug otherwise.
 
@@ -62,11 +62,11 @@ MVVM: `ViewModel` + `StateFlow`, repository pattern, thin platform wrappers.
 
 ## How to contribute
 
-1. **Fork** and `git checkout -b feat/your-thing` from `beta`.
+1. **Fork** and `git checkout -b feat/your-thing` from `dev`.
 2. Keep changes **focused** — one feature/fix per PR.
 3. Run the app on a real device (emulator lacks `RECORD_AUDIO` + Vosk native libs nuance).
 4. Ensure `./gradlew :app:assembleRelease` still passes (CI does this).
-5. Open a PR **against `beta`**, not `main`. Describe screenshots/gifs for UI changes.
+5. Open a PR **against `dev`**, not `main`. Describe screenshots/gifs for UI changes.
 
 ### Commit style
 
@@ -110,11 +110,11 @@ ci: bump BASE_VERSION to 1.0.3
 ## Reporting bugs & ideas
 
 - Check [existing issues](https://github.com/MoHamed-B-M/flambo/issues) first.
-- Include: Flambo version (`vX.Y.Z+BUILD` or `1.0.x-dev(#N)`), Android version, device, steps, expected vs actual, logcat if relevant.
-- For update/install issues, note the channel (beta/stable) and the SHA-256 from the release.
+- Include: Flambo version (`vX.Y.Z+BUILD` or `1.7.x-dev(#N)`), Android version, device, steps, expected vs actual, logcat if relevant.
+- For update/install issues, note the channel (dev preview / stable) and the SHA-256 from the release.
 
 ---
 
 ## Questions?
 
-Open a discussion or ping [@MoHamed-B-M](https://github.com/MoHamed-B-M). Contributions — code, docs, screenshots, translations, or just testing the beta — are all welcome.
+Open a discussion or ping [@MoHamed-B-M](https://github.com/MoHamed-B-M). Contributions — code, docs, screenshots, translations, or just testing the dev preview — are all welcome.

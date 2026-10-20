@@ -1,18 +1,13 @@
 # Changelog
 
-## [1.7.3] - 2026-10-16
-
-### Added
-
-- Distinct status-bar icon for each state, drawn from the Flambo mic mark — a dot while recording, a play symbol while playing, an arrow when an update is ready
-- Samsung One UI 7+: opted into Live Notifications, so the recorder can appear as an ongoing status-bar pill / Now Bar on supported devices
+## [1.7.4] - 2026-10-20
 
 ### Improvements
 
-- Scrolling the library is smoother while a recording is playing
-- Playback progress no longer stutters when many recordings are on screen
+- Ready for Android 17 — the app now targets API level 37, so it runs with Android 17's latest behavior and optimizations
+- Playback keeps running in the background under Android 17's stricter audio rules (handled by the media session service)
+- Sharing a recording and installing an in-app update already hand the target app temporary read access, matching Android 17's tighter URI-grant rules
 
-### Fixed
+### Notes
 
-- Tapping the play notification now opens the app (it used to do nothing)
-- The playback notification now shows the recording's name — or "Recording" when it has none — instead of no title
+- No functional changes: the recorder already compiled against API 37, so this is a compatibility target update plus documentation

@@ -40,7 +40,7 @@ android {
     defaultConfig {
         applicationId = "com.flambo.recorder"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         val baseCode = 1
         versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull()

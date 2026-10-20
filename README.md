@@ -7,14 +7,14 @@
     <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.3.10-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin 2.3.10" /></a>
     <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/Compose-BOM_2026.08-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose BOM" /></a>
     <img src="https://img.shields.io/badge/minSdk-26-625B71?style=for-the-badge" alt="minSdk 26" />
-    <img src="https://img.shields.io/badge/targetSdk-36-006A60?style=for-the-badge" alt="targetSdk 36" />
+    <img src="https://img.shields.io/badge/targetSdk-37-006A60?style=for-the-badge" alt="targetSdk 37" />
     <a href="https://github.com/MoHamed-B-M/flambo/releases"><img src="https://img.shields.io/github/downloads/MoHamed-B-M/flambo/total?label=downloads&color=D8572A&style=for-the-badge&logo=github&logoColor=white" alt="Downloads" /></a>
   </p>
   <p>
-    <a href="https://github.com/MoHamed-B-M/flambo/actions/workflows/build.yaml"><img src="https://img.shields.io/github/actions/workflow/status/MoHamed-B-M/flambo/build.yaml?branch=beta&label=beta%20build&style=flat-square&color=2E7D32" alt="beta build" /></a>
-    <img src="https://img.shields.io/github/last-commit/MoHamed-B-M/flambo/beta?style=flat-square&label=last%20commit&color=6750A4" alt="last commit" />
+    <a href="https://github.com/MoHamed-B-M/flambo/actions/workflows/build.yaml"><img src="https://img.shields.io/github/actions/workflow/status/MoHamed-B-M/flambo/build.yaml?branch=dev&label=dev%20build&style=flat-square&color=2E7D32" alt="dev build" /></a>
+    <img src="https://img.shields.io/github/last-commit/MoHamed-B-M/flambo/dev?style=flat-square&label=last%20commit&color=6750A4" alt="last commit" />
     <img src="https://img.shields.io/github/commit-activity/m/MoHamed-B-M/flambo?style=flat-square&label=commits%2Fmonth&color=D8572A" alt="commit activity" />
-    <a href="https://github.com/MoHamed-B-M/flambo/blob/beta/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-006A60?style=flat-square" alt="contributions welcome" /></a>
+    <a href="https://github.com/MoHamed-B-M/flambo/blob/dev/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-006A60?style=flat-square" alt="contributions welcome" /></a>
   </p>
 </div>
 
@@ -48,7 +48,7 @@
 [![Get it on Orion Store](https://raw.githubusercontent.com/RookieEnough/Orion-Store/refs/heads/main/assets/orion-badge.png)](https://rookieenough.github.io/Orion-Data/redirect.html?id=flambo)
 <a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
 
-Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.7.3-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
+Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.7.4-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
 
 | File suffix | Architecture | Most devices |
 |---|---|---|
@@ -74,7 +74,7 @@ Debug keystore fallback means `assembleRelease` works locally with no secrets co
 
 [`build.yaml`](.github/workflows/build.yaml) builds every push to `dev` and `main`:
 
-- **`dev`** → signed dev build `1.7.3-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
+- **`dev`** → signed dev build `1.7.4-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
 - **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
 
 Pushes touching only `README.md` or `screenshots/` skip CI entirely (no code changed, nothing to build).
@@ -109,7 +109,7 @@ Format examples:
 - `2.0.0+120` → complete UI redesign + new audio engine
 - `2.0.1+121` → rebuilt with updated libraries
 
-Beta builds follow the stable line with a dev tag: `1.7.3-dev(#N)`, where `N` is the CI run number (e.g. `1.7.3-dev(#42)`). When stable moves to `1.7.4`, beta becomes `1.7.4-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
+Beta builds follow the stable line with a dev tag: `1.7.4-dev(#N)`, where `N` is the CI run number (e.g. `1.7.4-dev(#42)`). When stable moves to `1.7.5`, beta becomes `1.7.5-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
 
 Beta version codes sit `100000` above the run number, so installing a beta over a stable release always counts as an update for Android (which requires the code to increase).
 

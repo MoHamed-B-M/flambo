@@ -108,7 +108,6 @@ import com.flambo.recorder.update.UpdateChecker
 import com.flambo.recorder.update.UpdateNotifier
 import com.flambo.recorder.update.WhatsNewItem
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -282,9 +281,6 @@ fun HomeScreen(
         installedVersion = version
         val lastSeen = prefs.lastSeenVersionCode()
         if (lastSeen != 0L && code > lastSeen) {
-            // Let the launch intro finish first so the sheet doesn't pop
-            // underneath it; no wait when the intro is disabled.
-            if (prefs.introAnimFlow.first()) delay(INTRO_SHEET_DELAY_MS)
             whatsNewVersion = version
             whatsNewItems = ReleaseNotes.loadWhatsNew(context)
         }
@@ -1193,9 +1189,6 @@ fun HomeScreen(
         )
     }
 }
-
-/** Intro (~3.3s) plus fade-out beat before What's New may pop. */
-private const val INTRO_SHEET_DELAY_MS = 3800L
 
 /**
  * Scroll-driven top fade: 96dp surface→transparent gradient drawn over the

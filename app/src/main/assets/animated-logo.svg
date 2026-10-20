@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><style>@keyframes lam-draw-0 { 0%,0.00000% {stroke-dashoffset:1;fill-opacity:0} 46.66667% {stroke-dashoffset:0;fill-opacity:0} 66.66667%,100% {stroke-dashoffset:0;fill-opacity:1} }
-g.lam-anim [data-lam-draw] { stroke-dasharray:1; animation:lam-draw-0 3s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite both; }</style><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" x="71.68" y="71.68" width="368.64" height="368.64" overflow="visible"><g class="lam-anim">
-<path d="M20 12V13C20 17.4183 16.4183 21 12 21C7.58172 21 4 17.4183 4 13V12M12 17C9.79086 17 8 15.2091 8 13V7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7V13C16 15.2091 14.2091 17 12 17Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lam-draw="" pathLength="1"/>
-</g></svg></svg>

@@ -45,8 +45,6 @@ class PreferencesManager(private val context: Context) {
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
         val CARD_EXPAND_ANIM = booleanPreferencesKey("card_expand_anim")
-        val INTRO_ANIM = booleanPreferencesKey("intro_anim")
-        val INTRO_SEEN = booleanPreferencesKey("intro_seen")
         val TRANSITION_STYLE = stringPreferencesKey("transition_style")
         val HAPTIC_LEVEL = intPreferencesKey("haptic_level")
         val APP_ICON = stringPreferencesKey("app_icon")
@@ -288,13 +286,6 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[Keys.CARD_EXPAND_ANIM] = enabled }
     }
 
-    val introAnimFlow: Flow<Boolean> =
-        context.dataStore.data.map { it[Keys.INTRO_ANIM] ?: true }
-
-    suspend fun setIntroAnim(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.INTRO_ANIM] = enabled }
-    }
-
     /** Page-to-page animation: slide, fade, zoom-in or zoom-out. */
     val transitionStyleFlow: Flow<String> =
         context.dataStore.data.map { it[Keys.TRANSITION_STYLE] ?: "slide" }
@@ -312,14 +303,6 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setHapticLevel(level: Int) {
         context.dataStore.edit { it[Keys.HAPTIC_LEVEL] = level.coerceIn(0, 100) }
-    }
-
-    /** True once the full brand intro has played at least once. */
-    val introSeenFlow: Flow<Boolean> =
-        context.dataStore.data.map { it[Keys.INTRO_SEEN] ?: false }
-
-    suspend fun setIntroSeen() {
-        context.dataStore.edit { it[Keys.INTRO_SEEN] = true }
     }
 
     suspend fun cardExpandAnim(): Boolean =

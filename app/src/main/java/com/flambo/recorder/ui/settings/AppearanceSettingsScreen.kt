@@ -300,19 +300,6 @@ fun AppearanceSettingsScreen(
                         )
                     }
                     item {
-                        val introAnim by prefs.introAnimFlow.collectAsState(initial = true)
-                        PreferenceSwitchItem(
-                            icon = Icons.Filled.PlayArrow,
-                            title = "Intro animation",
-                            subtitle = if (introAnim) "Full animation on first launch, quick flash after"
-                            else "Skip straight to your recordings",
-                            checked = introAnim,
-                            onCheckedChange = { enabled ->
-                                scope.launch { prefs.setIntroAnim(enabled) }
-                            }
-                        )
-                    }
-                    item {
                         PreferenceValueItem(
                             icon = Icons.Filled.SwapHoriz,
                             title = "Page transitions",

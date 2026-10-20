@@ -91,16 +91,16 @@ fun IntroSplash(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onDone
-            )
-            .contentAlignment(Alignment.Center)
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val tMs = clock.value * totalMs
             // Scale to fit within 80% of the smaller screen dimension
             val targetSize = minOf(size.width, size.height) * 0.8f
             val pathBounds = logoPath.getBounds()
-            val pathWidth = pathBounds.width()
-            val pathHeight = pathBounds.height()
+            val pathWidth = pathBounds.width
+            val pathHeight = pathBounds.height
             val scale = targetSize / maxOf(pathWidth, pathHeight)
             val tx = (size.width - pathWidth * scale) / 2f
             val ty = (size.height - pathHeight * scale) / 2f

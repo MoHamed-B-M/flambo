@@ -1,23 +1,28 @@
 package com.flambo.recorder.ui.splash
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.AnimatedImageVector
 import androidx.compose.ui.graphics.vector.rememberAnimatedVectorPainter
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
 private const val INTRO_TOTAL_MS = 2000
@@ -43,10 +48,10 @@ fun IntroSplash(
 ) {
     BackHandler(onBack = onDone)
     val totalMs = if (fast) INTRO_FAST_TOTAL_MS else INTRO_TOTAL_MS
-    val clock = remember { androidx.compose.animation.core.Animatable(0f) }
+    val clock = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         delay((if (fast) INTRO_FAST_WARMUP_MS else INTRO_WARMUP_MS).toLong())
-        clock.animateTo(1f, tween(totalMs, easing = androidx.compose.animation.core.LinearEasing))
+        clock.animateTo(1f, tween(totalMs, easing = LinearEasing))
         onDone()
     }
 
@@ -55,7 +60,7 @@ fun IntroSplash(
         id = com.flambo.recorder.R.drawable.animated_logo_anim
     )
     val painter = rememberAnimatedVectorPainter(animatedVector)
-    val atEnd by remember { mutableStateOf(false) }
+    var atEnd by remember { mutableStateOf(false) }
 
     // App theme background color
     val backgroundColor = MaterialTheme.colorScheme.background

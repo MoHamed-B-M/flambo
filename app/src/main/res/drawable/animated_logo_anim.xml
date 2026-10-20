@@ -1,27 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:drawable="@drawable/animated_logo_vector">
-    <target android:name="logo_path">
+    <target android:name="logo_stroke">
         <aapt:attr name="android:animation">
-            <set android:ordering="sequentially">
-                <!-- Stroke draw: 0% to 100% over 1.4s (46.67% of 3s) -->
-                <objectAnimator
-                    android:propertyName="trimPathEnd"
-                    android:duration="1400"
-                    android:valueFrom="0"
-                    android:valueTo="1"
-                    android:valueType="floatType"
-                    android:interpolator="@android:interpolator/fast_out_slow_in" />
-                <!-- Fill fade-in: starts at 46.67% (1.4s), ends at 66.67% (2s), so 0.6s delay + 0.6s duration -->
-                <objectAnimator
-                    android:propertyName="fillAlpha"
-                    android:startOffset="1400"
-                    android:duration="600"
-                    android:valueFrom="0"
-                    android:valueTo="1"
-                    android:valueType="floatType"
-                    android:interpolator="@android:interpolator/linear_out_slow_in" />
-            </set>
+            <objectAnimator
+                android:propertyName="trimPathEnd"
+                android:duration="1400"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:interpolator/fast_out_slow_in" />
+        </aapt:attr>
+    </target>
+    <target android:name="logo_fill">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="alpha"
+                android:startOffset="1400"
+                android:duration="600"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:interpolator/linear_out_slow_in" />
         </aapt:attr>
     </target>
 </animated-vector>

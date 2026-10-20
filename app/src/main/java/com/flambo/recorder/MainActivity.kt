@@ -12,8 +12,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeOut
 import com.flambo.recorder.data.PreferencesManager
 import com.flambo.recorder.record.AudioSource
 import com.flambo.recorder.record.MediaProjectionHolder
@@ -41,7 +39,6 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.flambo.recorder.ui.navigation.FlamboNavGraph
 import com.flambo.recorder.ui.onboarding.OnboardingScreen
-import com.flambo.recorder.ui.splash.IntroSplash
 import com.flambo.recorder.ui.theme.FlamboTheme
 import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import kotlinx.coroutines.launch
@@ -187,14 +184,6 @@ class MainActivity : ComponentActivity() {
             val onboardingDone by app.prefs.onboardingDoneFlow.collectAsState(initial = null)
             var rerunOnboarding by remember { mutableStateOf(false) }
             val showOnboarding = onboardingDone == false || rerunOnboarding
-            val introEnabled by app.prefs.introAnimFlow.collectAsState(initial = true)
-            val introSeen by app.prefs.introSeenFlow.collectAsState(initial = null)
-            // Cold-start brand intro over the loading content (plain remember:
-            // rotation must not replay it, and content loads underneath).
-            // Shown only when enabled in Appearance settings. Full sequence
-            // on first launch, quick flash on returns.
-            var showIntro by remember { mutableStateOf(true) }
-            val introVisible = showIntro && introEnabled
 
             SideEffect {
                 val controller = WindowCompat.getInsetsController(window, window.decorView)
@@ -204,44 +193,29 @@ class MainActivity : ComponentActivity() {
 
             FlamboTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedId = themeSeed, colorSchemeStyle = colorSchemeStyle, customColors = customColors) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when {
-                            onboardingDone == null -> Box(Modifier.fillMaxSize())
-                            showOnboarding -> OnboardingScreen(
-                                onFinish = {
-                                    lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
-                                    rerunOnboarding = false
-                                },
-                                micGranted = micGrantedState,
-                                notifGranted = notifGrantedState,
-                                showNotificationsRow = Build.VERSION.SDK_INT >= 33,
-                                onGrantMic = { micLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                                onGrantNotifications = {
-                                    if (Build.VERSION.SDK_INT >= 33) {
-                                        notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
+                    when {
+                        onboardingDone == null -> Box(Modifier.fillMaxSize())
+                        showOnboarding -> OnboardingScreen(
+                            onFinish = {
+                                lifecycleScope.launch { app.prefs.setOnboardingDone(true) }
+                                rerunOnboarding = false
+                            },
+                            micGranted = micGrantedState,
+                            notifGranted = notifGrantedState,
+                            showNotificationsRow = Build.VERSION.SDK_INT >= 33,
+                            onGrantMic = { micLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                            onGrantNotifications = {
+                                if (Build.VERSION.SDK_INT >= 33) {
+                                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                 }
-                            )
-                            else -> FlamboNavGraph(
-                                onRerunOnboarding = { rerunOnboarding = true },
-                                onRequestSystemCapture = { requestSystemCapture() },
-                                onEnableSystemSound = { requestSystemCaptureAndRecord() },
-                                onRequestMicPermission = { requestMicAndRecord(it) }
-                            )
-                        }
-
-                        AnimatedVisibility(
-                            visible = introVisible,
-                            exit = fadeOut()
-                        ) {
-                            IntroSplash(
-                                onDone = {
-                                    showIntro = false
-                                    lifecycleScope.launch { runCatching { app.prefs.setIntroSeen() } }
-                                },
-                                fast = introSeen == true
-                            )
-                        }
+                            }
+                        )
+                        else -> FlamboNavGraph(
+                            onRerunOnboarding = { rerunOnboarding = true },
+                            onRequestSystemCapture = { requestSystemCapture() },
+                            onEnableSystemSound = { requestSystemCaptureAndRecord() },
+                            onRequestMicPermission = { requestMicAndRecord(it) }
+                        )
                     }
 
                     if (showRationale) {

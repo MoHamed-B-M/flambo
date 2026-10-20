@@ -43,6 +43,10 @@
 |---|---|---|
 | ![Settings](screenshots/settings.jpg) | ![About](screenshots/about.jpg) | ![Trash](screenshots/trash.jpg) |
 
+## Demo
+
+<video src="screenshots/Scene.mp4" controls width="320" title="Flambo demo"></video>
+
 ## Get the app
 
 [![Get it on Orion Store](https://raw.githubusercontent.com/RookieEnough/Orion-Store/refs/heads/main/assets/orion-badge.png)](https://rookieenough.github.io/Orion-Data/redirect.html?id=flambo)

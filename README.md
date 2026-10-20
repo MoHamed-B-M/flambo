@@ -45,7 +45,7 @@
 
 ## Demo
 
-<video src="screenshots/Scene.mp4" controls width="320" title="Flambo demo"></video>
+<video src="screenshots/demos/Scene.mp4" controls width="320" title="Flambo demo"></video>
 
 ## Get the app
 

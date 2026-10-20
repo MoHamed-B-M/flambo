@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -49,9 +50,9 @@ private fun phase(tMs: Float, startMs: Int, durationMs: Int): Float =
     ((tMs - startMs) / durationMs).coerceIn(0f, 1f)
 
 /**
- * Launch intro using the animated-logo.svg path: the mic capsule draws
- * itself with a bouncy stroke animation, then fills with the brand gradient.
- * Tap or back skips.
+ * Launch intro using the animated-logo.svg path (stored in assets/animated-logo.svg):
+ * the mic capsule draws itself with a bouncy stroke animation, then fills with the
+ * brand gradient. Background uses the app's theme color. Tap or back skips.
  */
 @Composable
 fun IntroSplash(
@@ -83,10 +84,13 @@ fun IntroSplash(
         )
     }
 
+    // App theme background color
+    val backgroundColor = MaterialTheme.colorScheme.background
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF5E8D6)) // Cream background from SVG
+            .background(backgroundColor)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

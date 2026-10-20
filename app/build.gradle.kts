@@ -123,6 +123,5 @@ dependencies {
     implementation(libs.androidx.adaptive)
     implementation(libs.androidx.adaptive.layout)
     implementation(libs.vosk.android)
-    implementation(libs.androidx.animation.graphics)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

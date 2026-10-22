@@ -45,6 +45,7 @@ class PreferencesManager(private val context: Context) {
         val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         val GESTURE_ENABLED = booleanPreferencesKey("gesture_enabled")
         val CARD_EXPAND_ANIM = booleanPreferencesKey("card_expand_anim")
+        val COMPACT_SEARCH = booleanPreferencesKey("compact_search")
         val TRANSITION_STYLE = stringPreferencesKey("transition_style")
         val HAPTIC_LEVEL = intPreferencesKey("haptic_level")
         val APP_ICON = stringPreferencesKey("app_icon")
@@ -284,6 +285,14 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setCardExpandAnim(enabled: Boolean) {
         context.dataStore.edit { it[Keys.CARD_EXPAND_ANIM] = enabled }
+    }
+
+    /** Compact home layout: search moves from the body into the top app bar. */
+    val compactSearchFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.COMPACT_SEARCH] ?: false }
+
+    suspend fun setCompactSearch(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.COMPACT_SEARCH] = enabled }
     }
 
     /** Page-to-page animation: slide, fade, zoom-in or zoom-out. */

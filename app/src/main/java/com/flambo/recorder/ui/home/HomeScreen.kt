@@ -71,6 +71,8 @@ import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.TextField
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.SnackbarHostState
@@ -153,6 +155,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val recorderState by recorder.state.collectAsState()
     val cardExpandAnim by prefs.cardExpandAnimFlow.collectAsState(initial = true)
+    val compactSearch by prefs.compactSearchFlow.collectAsState(initial = false)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -232,10 +235,41 @@ fun HomeScreen(
     BackHandler(enabled = !selectionMode && openGroup != null) { openGroup = null }
     BackHandler(enabled = !selectionMode && openGroup == null && showGroups) { showGroups = false }
     var searchExpanded by remember { mutableStateOf(false) }
+    var compactSearchOpen by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+
+    val closeCompactSearch = {
+        compactSearchOpen = false
+        searchExpanded = false
+        keyboard?.hide()
+        viewModel.clearQuery()
+    }
+
     BackHandler(enabled = searchExpanded && !selectionMode) { searchExpanded = false }
+    BackHandler(enabled = compactSearchOpen && !selectionMode) { closeCompactSearch() }
+    LaunchedEffect(compactSearch) {
+        // Mode switches start from a clean slate: a query left over from the
+        // other layout would otherwise filter the library with no visible
+        // search field.
+        compactSearchOpen = false
+        searchExpanded = false
+        viewModel.clearQuery()
+    }
+    LaunchedEffect(compactSearchOpen) {
+        if (compactSearchOpen) {
+            // The bar enters composition with this effect's frame; guard the
+            // focus request so a missed attach can't take the screen down.
+            runCatching { searchFocusRequester.requestFocus() }
+            keyboard?.show()
+            searchExpanded = true
+        }
+    }
     LaunchedEffect(recorderState.isRecording) {
-        if (recorderState.isRecording) searchExpanded = false
+        if (recorderState.isRecording) {
+            searchExpanded = false
+            compactSearchOpen = false
+        }
     }
     var whatsNewVersion by remember { mutableStateOf<String?>(null) }
     var installedVersion by remember { mutableStateOf<String?>(null) }
@@ -378,16 +412,44 @@ fun HomeScreen(
                             Icon(Icons.Filled.Close, contentDescription = "Clear selection")
                         }
                     } else {
-                        IconButton(onClick = {
-                            AppHaptics.tap(context)
-                            installedVersion?.let {
-                                whatsNewVersion = it
-                                if (whatsNewItems == null) {
-                                    scope.launch { whatsNewItems = ReleaseNotes.loadWhatsNew(context) }
+                        AnimatedContent(
+                            targetState = compactSearch,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(180)) togetherWith
+                                    fadeOut(animationSpec = tween(120))
+                            },
+                            label = "primaryAppBarAction"
+                        ) { compact ->
+                            if (compact) {
+                                // Compact mode: the library search moves into
+                                // the app bar, so the What's new entry point
+                                // yields its slot to the magnifier.
+                                IconButton(
+                                    enabled = !recorderState.isRecording,
+                                    onClick = {
+                                        AppHaptics.tap(context)
+                                        if (compactSearchOpen) closeCompactSearch()
+                                        else {
+                                            compactSearchOpen = true
+                                            searchExpanded = true
+                                        }
+                                    }
+                                ) {
+                                    Icon(Icons.Filled.Search, contentDescription = "Search")
+                                }
+                            } else {
+                                IconButton(onClick = {
+                                    AppHaptics.tap(context)
+                                    installedVersion?.let {
+                                        whatsNewVersion = it
+                                        if (whatsNewItems == null) {
+                                            scope.launch { whatsNewItems = ReleaseNotes.loadWhatsNew(context) }
+                                        }
+                                    }
+                                }) {
+                                    Icon(Icons.Filled.Info, contentDescription = "What's new")
                                 }
                             }
-                        }) {
-                            Icon(Icons.Filled.Info, contentDescription = "What's new")
                         }
                         // Appears once the first group is created; opens the groups page.
                         if (groups.isNotEmpty()) {
@@ -450,7 +512,7 @@ fun HomeScreen(
             // it. Ducks on scroll exactly like the header and Record button.
             if (!recorderState.isRecording) {
             AnimatedVisibility(
-                visible = !listScrolling,
+                visible = if (compactSearch) compactSearchOpen else !listScrolling,
                 enter = expandVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
                     fadeIn(animationSpec = FlamboMotion.ContentSpringFloat),
                 exit = shrinkVertically(animationSpec = FlamboMotion.ContainerSizeSpring) +
@@ -463,7 +525,21 @@ fun HomeScreen(
                         value = uiState.query,
                         onValueChange = viewModel::onQueryChange,
                         placeholder = { Text("Search recordings") },
-                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        leadingIcon = {
+                            if (compactSearch) {
+                                IconButton(onClick = {
+                                    AppHaptics.tap(context)
+                                    closeCompactSearch()
+                                }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Close search"
+                                    )
+                                }
+                            } else {
+                                Icon(Icons.Filled.Search, contentDescription = null)
+                            }
+                        },
                         trailingIcon = {
                             if (uiState.query.isNotEmpty()) {
                                 IconButton(onClick = { AppHaptics.tap(context); viewModel.clearQuery() }) {
@@ -481,6 +557,7 @@ fun HomeScreen(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .focusRequester(searchFocusRequester)
                             .onFocusChanged { if (it.isFocused) searchExpanded = true }
                     )
                 },
@@ -515,6 +592,10 @@ fun HomeScreen(
                                     .clickable {
                                         searchExpanded = false
                                         keyboard?.hide()
+                                        if (compactSearch) {
+                                            compactSearchOpen = false
+                                            viewModel.clearQuery()
+                                        }
                                         onOpenDetail(rec.id)
                                     }
                                     .padding(horizontal = 16.dp, vertical = 10.dp)

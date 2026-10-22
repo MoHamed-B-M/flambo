@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.BlurOn
@@ -121,6 +122,7 @@ fun AppearanceSettingsScreen(
     val appIcon by prefs.appIconFlow.collectAsState(initial = AppIconManager.ICON_DEFAULT)
     val progressStyle by prefs.progressStyleFlow.collectAsState(initial = ProgressBarStyle.SLIDER)
     val transitionStyle by prefs.transitionStyleFlow.collectAsState(initial = "slide")
+    val compactSearch by prefs.compactSearchFlow.collectAsState(initial = false)
 
     var showAppThemeDialog by remember { mutableStateOf(false) }
     var showTransitionDialog by remember { mutableStateOf(false) }
@@ -296,6 +298,18 @@ fun AppearanceSettingsScreen(
                                     prefs.setCardExpandAnim(enabled)
                                     (appContext as? FlamboApp)?.cardExpandAnim = enabled
                                 }
+                            }
+                        )
+                    }
+                    item {
+                        PreferenceSwitchItem(
+                            icon = Icons.Filled.Search,
+                            title = "Compact search bar",
+                            subtitle = if (compactSearch) "Search moves to the top bar • more room for recordings"
+                            else "Full-width search bar below the title",
+                            checked = compactSearch,
+                            onCheckedChange = { enabled ->
+                                scope.launch { prefs.setCompactSearch(enabled) }
                             }
                         )
                     }

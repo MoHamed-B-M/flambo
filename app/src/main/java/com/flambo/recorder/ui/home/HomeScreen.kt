@@ -5,24 +5,22 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -32,7 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
@@ -54,13 +52,13 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -111,7 +109,6 @@ import com.flambo.recorder.update.UpdateNotifier
 import com.flambo.recorder.update.WhatsNewItem
 import kotlinx.coroutines.flow.first
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.flambo.recorder.data.Recording
 import com.flambo.recorder.domain.RecordingQuality
@@ -287,15 +284,8 @@ fun HomeScreen(
             }
     }
 
-    // Scroll state for the FAB overlay - top level so table slots can read it.
+    // Scroll state for the library list.
     val listState = rememberLazyListState()
-    // Immediately sensitive: collapsed on any scroll offset, expanded only
-    // at the exact top.
-    val isScrolled by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
-        }
-    }
     // Scroll-driven header fade: 0 at origin → 1 after ~60dp. A plain
     // lambda (not State) so it can be read in the draw phase, where it
     // schedules redraws only — scrolling never recomposes for this.
@@ -716,7 +706,7 @@ fun HomeScreen(
             } else if (!showGroups) {
 
                 if (uiState.recordings.isEmpty() && !recorderState.isRecording) {
-                    EmptyState(onRecord = { AppHaptics.tap(context); startRecording() }, modifier = Modifier.fillMaxSize())
+                    EmptyState(modifier = Modifier.weight(1f))
                 } else {
                     LazyColumn(
                         state = listState,
@@ -803,7 +793,7 @@ fun HomeScreen(
                         }
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
@@ -919,122 +909,43 @@ fun HomeScreen(
             }
         }
 
-        // Record overlay: a single Box row whose spacer-weight glide carries
-        // the pill center<->end on the same ease-in-out curve as the morph,
-        // so position and size travel as one motion with no clipping. The
-        // row itself is touch-transparent; only the pill consumes taps.
-        // Lifts above the snackbar while one is shown, like the old slot did.
-        val endWeight by animateFloatAsState(
-            // 0.0001f, not 0f: RowScope.weight requires a positive value.
-            targetValue = if (isScrolled) 0.0001f else 1f,
-            animationSpec = tween(
-                durationMillis = 500,
-                easing = FlamboMotion.Emphasized
-            ),
-            label = "recordPosition"
-        )
+        // Record FAB: a compact circular action anchored to the bottom-end,
+        // leaving the library and empty state visually quiet. Lifts above the
+        // snackbar while one is shown.
         val fabLift by animateDpAsState(
             targetValue = if (snackbarHostState.currentSnackbarData != null) 88.dp else 16.dp,
             animationSpec = tween(300),
             label = "recordLift"
         )
-        Row(
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = fabLift)
-                // Clear the system gesture bar so edge swipes home without
-                // grazing the pill (content padding excludes the bottom bar).
-                .navigationBarsPadding(),
-            verticalAlignment = Alignment.CenterVertically
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = fabLift),
+            contentAlignment = Alignment.Center
         ) {
-            Spacer(Modifier.weight(1f))
-            // Flat tonal pill: size, corners, icon and label share one slow
-            // ease-in-out curve with zero overshoot.
-            val recordEaseDp = tween<Dp>(
-                durationMillis = 500,
-                easing = FlamboMotion.Emphasized
-            )
-            val corner by animateDpAsState(
-                targetValue = if (!isScrolled) 28.dp else 38.dp,
-                animationSpec = recordEaseDp,
-                label = "recordCorner"
-            )
-            val iconSize by animateDpAsState(
-                targetValue = if (!isScrolled) 32.dp else 24.dp,
-                animationSpec = recordEaseDp,
-                label = "recordIconSize"
-            )
-            val iconTint by animateColorAsState(
-                targetValue = if (!isScrolled) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.primary,
-                animationSpec = tween(200),
-                label = "recordIconTint"
-            )
             AnimatedVisibility(
                 visible = !recorderState.isRecording && !selectionMode && !uiState.showTrash,
                 enter = fadeIn(tween(150)) + scaleIn(tween(300), initialScale = 0.85f),
                 exit = fadeOut(tween(120)) + scaleOut(tween(200), targetScale = 0.85f),
                 label = "recordFab"
             ) {
-                Surface(
+                FloatingActionButton(
                     onClick = {
                         AppHaptics.tap(context)
                         startRecording()
                     },
-                    shape = RoundedCornerShape(corner),
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shadowElevation = 0.dp,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier
-                        .height(76.dp)
-                        .animateContentSize(
-                            animationSpec = tween(
-                                durationMillis = 500,
-                                easing = FlamboMotion.Emphasized
-                            )
-                        )
+                    modifier = Modifier.size(64.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 28.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Mic,
-                            contentDescription = null,
-                            tint = iconTint,
-                            modifier = Modifier.size(iconSize)
-                        )
-                        AnimatedVisibility(
-                            visible = !isScrolled,
-                            enter = fadeIn(tween(150)) + expandHorizontally(
-                                expandFrom = Alignment.Start,
-                                animationSpec = tween(
-                                    durationMillis = 500,
-                                    easing = FlamboMotion.Emphasized
-                                )
-                            ),
-                            exit = fadeOut(tween(120)) + shrinkHorizontally(
-                                shrinkTowards = Alignment.Start,
-                                animationSpec = tween(
-                                    durationMillis = 350,
-                                    easing = FlamboMotion.Emphasized
-                                )
-                            ),
-                            label = "recordLabel"
-                        ) {
-                            Text(
-                                "Record",
-                                style = MaterialTheme.typography.titleLarge,
-                                maxLines = 1
-                            )
-                        }
-                    }
+                    Icon(
+                        Icons.Filled.Mic,
+                        contentDescription = "Start recording",
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
-            Spacer(Modifier.weight(endWeight))
         }
         }
     }
@@ -1424,36 +1335,45 @@ private fun ActiveRecordingPanel(
 }
 
 @Composable
-private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
-            shape = ShapeLargeIncreased,
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            modifier = Modifier.size(96.dp)
+private fun EmptyState(modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier = modifier) {
+        val scrollState = rememberScrollState()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = maxHeight)
+                    .padding(horizontal = 32.dp)
+                    // Reserve the Record FAB's footprint so the copy stays
+                    // balanced above it and never sits underneath it.
+                    .padding(bottom = 96.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    shape = ShapeLargeIncreased,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.size(96.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+                Text("No recordings yet", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Tap the record button to capture your first moment. Everything stays on your device.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
             }
-        }
-        Spacer(Modifier.height(20.dp))
-        Text("No recordings yet", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Tap Record to capture your first moment. Everything stays on your device.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(Modifier.height(20.dp))
-        FilledTonalButton(onClick = onRecord, shape = ShapeFull) {
-            Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(8.dp))
-            Text("Start recording")
         }
     }
 }

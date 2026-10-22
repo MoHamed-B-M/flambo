@@ -1337,6 +1337,7 @@ private fun ActiveRecordingPanel(
 @Composable
 private fun EmptyState(modifier: Modifier = Modifier) {
     BoxWithConstraints(modifier = modifier) {
+        val viewportHeight = maxHeight
         val scrollState = rememberScrollState()
         Box(
             modifier = Modifier
@@ -1346,7 +1347,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = maxHeight)
+                    .heightIn(min = viewportHeight)
                     .padding(horizontal = 32.dp)
                     // Reserve the Record FAB's footprint so the copy stays
                     // balanced above it and never sits underneath it.

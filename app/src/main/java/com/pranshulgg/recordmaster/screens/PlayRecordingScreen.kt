@@ -7,8 +7,13 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.audiofx.Visualizer
 import android.net.Uri
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -16,6 +21,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +30,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -344,112 +352,168 @@ fun PlayRecordingScreen(
             }
             Spacer(modifier = Modifier.height(18.dp))
 
-            val interactionSources = remember { List(3) { MutableInteractionSource() } }
-
-
-            ButtonGroup(
-
-                overflowIndicator = { menuState ->
-                    FilledIconButton(
-                        onClick = {}) {} }
-            ) {
-
-                customItem(
-                    {
-                        Button(
-                            interactionSource = interactionSources[0],
-                            modifier = Modifier
-                                .height(ButtonDefaults.LargeContainerHeight)
-                                .width(76.dp)
-                                .animateWidth(interactionSources[0]),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            ),
-                            shapes = ButtonDefaults.shapes(),
-                            onClick = {
-                                playback.skip(-5_000L)
-                            }
-
-                        ) {
-                            Symbol(R.drawable.replay_5_24px, size = 28.dp, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    },
-                    { state ->
-
+            ExpressiveTransportRow(
+                isPlaying = isPlaying,
+                onRewind = { playback.skip(-5_000L) },
+                onPlayPause = {
+                    if (isCurrent) {
+                        playback.toggle()
+                    } else {
+                        playback.play(filePath, file.nameWithoutExtension)
                     }
-                )
-
-
-                customItem(
-                    {
-                        ToggleButton(
-                            interactionSource = interactionSources[1],
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(ButtonDefaults.LargeContainerHeight)
-                                .fillMaxWidth().animateWidth(interactionSources[1]),
-                            colors = ToggleButtonDefaults.toggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                checkedContainerColor = MaterialTheme.colorScheme.errorContainer
-                            ),
-                            shapes = ToggleButtonDefaults.shapes(),
-                            checked = isPlaying,
-                            onCheckedChange = { checked ->
-                                if (isCurrent) {
-                                    playback.toggle()
-                                } else {
-                                    playback.play(filePath, file.nameWithoutExtension)
-                                }
-                            }
-
-                        ) {
-                            val size = ButtonDefaults.ExtraLargeContainerHeight
-                            if (isPlaying) Symbol(R.drawable.pause_24px, color = MaterialTheme.colorScheme.onErrorContainer, size = 28.dp)
-                            else Symbol(R.drawable.play_arrow_24px, color = MaterialTheme.colorScheme.onPrimaryContainer, size = 28.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (isPlaying) "Pause" else "Play",
-                                color = if (isPlaying) MaterialTheme.colorScheme.onErrorContainer
-                                else MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 24.sp)
-                        }
-                    },
-                    { state -> }
-                )
-
-
-                customItem(
-                    {
-                        Button(
-                            interactionSource = interactionSources[2],
-                            modifier = Modifier
-                                .height(ButtonDefaults.LargeContainerHeight)
-                                .width(76.dp)
-                                .animateWidth(interactionSources[2]),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            ),
-                            shapes = ButtonDefaults.shapes(),
-                            onClick = {
-                                playback.skip(10_000L)
-                            }
-
-                        ) {
-
-                            Symbol(R.drawable.forward_10_24px, size = 28.dp, color = MaterialTheme.colorScheme.onSurface)
-
-
-                        }
-                    },
-                    { state ->
-
-                    }
-                )
-
-            }
-
+                },
+                onForward = { playback.skip(10_000L) }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
         }
+    }
+}
+
+private enum class TransportAction { REWIND, PLAY_PAUSE, FORWARD }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ExpressiveTransportRow(
+    isPlaying: Boolean,
+    onRewind: () -> Unit,
+    onPlayPause: () -> Unit,
+    onForward: () -> Unit,
+    expansionWeight: Float = 1.30f,
+    compressionWeight: Float = 0.60f
+) {
+    var lastClicked by remember { mutableStateOf<TransportAction?>(null) }
+
+    fun weightFor(action: TransportAction): Float = when (lastClicked) {
+        null -> 1f
+        action -> expansionWeight
+        else -> compressionWeight
+    }
+
+    val rewindWeight by animateFloatAsState(
+        targetValue = weightFor(TransportAction.REWIND),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "rewindWeight"
+    )
+    val playWeight by animateFloatAsState(
+        targetValue = weightFor(TransportAction.PLAY_PAUSE),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "playWeight"
+    )
+    val forwardWeight by animateFloatAsState(
+        targetValue = weightFor(TransportAction.FORWARD),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "forwardWeight"
+    )
+
+    val playCornerRadius by animateDpAsState(
+        targetValue = if (isPlaying) 22.dp else 50.dp,
+        animationSpec = MotionScheme.expressive().defaultSpatialSpec(),
+        label = "playCornerRadius"
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        TransportButton(
+            modifier = Modifier
+                .weight(rewindWeight)
+                .height(ButtonDefaults.LargeContainerHeight),
+            shape = RoundedCornerShape(24.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            onClick = {
+                lastClicked = TransportAction.REWIND
+                onRewind()
+            }
+        ) {
+            Symbol(
+                R.drawable.replay_5_24px,
+                desc = "Rewind 5 seconds",
+                size = 30.dp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        TransportButton(
+            modifier = Modifier
+                .weight(playWeight)
+                .height(ButtonDefaults.LargeContainerHeight),
+            shape = RoundedCornerShape(playCornerRadius),
+            containerColor = if (isPlaying) {
+                MaterialTheme.colorScheme.errorContainer
+            } else {
+                MaterialTheme.colorScheme.primaryContainer
+            },
+            onClick = {
+                lastClicked = TransportAction.PLAY_PAUSE
+                onPlayPause()
+            }
+        ) {
+            if (isPlaying) {
+                Symbol(
+                    R.drawable.pause_24px,
+                    desc = "Pause",
+                    size = 32.dp,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            } else {
+                Symbol(
+                    R.drawable.play_arrow_24px,
+                    desc = "Play",
+                    size = 32.dp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        TransportButton(
+            modifier = Modifier
+                .weight(forwardWeight)
+                .height(ButtonDefaults.LargeContainerHeight),
+            shape = RoundedCornerShape(24.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            onClick = {
+                lastClicked = TransportAction.FORWARD
+                onForward()
+            }
+        ) {
+            Symbol(
+                R.drawable.forward_10_24px,
+                desc = "Forward 10 seconds",
+                size = 30.dp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransportButton(
+    modifier: Modifier,
+    shape: Shape,
+    containerColor: Color,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(containerColor)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
     }
 }
 

@@ -38,6 +38,7 @@ import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.ui.components.DropdownMenu
 import com.pranshulgg.recordmaster.ui.components.Symbol
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -100,12 +101,15 @@ fun PlayRecordingScreen(
 
     val staticAmpsState = remember { mutableStateOf<FloatArray?>(null) }
     var isComputing by remember { mutableStateOf(false) }
+    // Restart only when real stored peaks arrive. A Room row with blank peaks
+    // (the normal initial emission) must not cancel an in-flight computation.
+    val storedPeaksKey = recording?.amplitudePeaks?.takeIf { it.isNotBlank() }
 
     LaunchedEffect(filePath) {
         app.syncStorage()
     }
 
-    LaunchedEffect(filePath, recording?.amplitudePeaks) {
+    LaunchedEffect(filePath, storedPeaksKey) {
         val stored = recording?.peakList.orEmpty()
         if (stored.isNotEmpty()) {
             staticAmpsState.value = stored.toFloatArray()
@@ -117,9 +121,13 @@ fun PlayRecordingScreen(
                 computePeaksFromAudioFile(file.absolutePath, requestedBarCount)
             }
             staticAmpsState.value = amps
+        } catch (e: CancellationException) {
+            // The screen left composition or the effect key changed. This is
+            // not a waveform failure and must not surface a snackbar.
+            throw e
         } catch (e: Exception) {
             staticAmpsState.value = null
-            coroutineScope.launch {
+            launch {
                 snackbarHostState.showSnackbar("Waveform compute failed: ${e.message}")
             }
         } finally {
@@ -142,6 +150,8 @@ fun PlayRecordingScreen(
                 durStr?.toIntOrNull()
             }
             if (durationFromFile != null) storedDuration = durationFromFile
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }

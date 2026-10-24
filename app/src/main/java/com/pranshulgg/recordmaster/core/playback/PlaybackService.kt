@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
@@ -16,6 +17,7 @@ import com.pranshulgg.recordmaster.R
  * swipe-up-to-home, recents and screen-off like a standard media app.
  * The UI drives it through [PlaybackController].
  */
+@UnstableApi
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
 

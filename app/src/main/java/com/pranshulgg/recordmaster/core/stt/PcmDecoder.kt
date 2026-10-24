@@ -40,8 +40,8 @@ object PcmDecoder {
                 val audioFormat = format ?: error("No audio track found.")
                 extractor.selectTrack(track)
 
-                val sourceRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE, 44100)
-                val channels = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT, 1)
+                val sourceRate = audioFormat.getIntOrDefault(MediaFormat.KEY_SAMPLE_RATE, 44100)
+                val channels = audioFormat.getIntOrDefault(MediaFormat.KEY_CHANNEL_COUNT, 1)
                 val mime = audioFormat.getString(MediaFormat.KEY_MIME) ?: "audio/mp4a-latm"
 
                 val codec = MediaCodec.createDecoderByType(mime)
@@ -82,8 +82,8 @@ object PcmDecoder {
             val audioFormat = format ?: error("No audio track found.")
             extractor.selectTrack(track)
 
-            val sourceRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE, 44100)
-            val channels = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT, 1)
+            val sourceRate = audioFormat.getIntOrDefault(MediaFormat.KEY_SAMPLE_RATE, 44100)
+            val channels = audioFormat.getIntOrDefault(MediaFormat.KEY_CHANNEL_COUNT, 1)
             val mime = audioFormat.getString(MediaFormat.KEY_MIME) ?: "audio/mp4a-latm"
 
             val codec = MediaCodec.createDecoderByType(mime)
@@ -101,7 +101,7 @@ object PcmDecoder {
         }
     }
 
-    private fun MediaFormat.getInteger(key: String, fallback: Int): Int =
+    private fun MediaFormat.getIntOrDefault(key: String, fallback: Int): Int =
         if (containsKey(key)) getInteger(key) else fallback
 
     private fun decodeAll(

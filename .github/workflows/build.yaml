@@ -42,6 +42,7 @@ env:
   # STABLE_BUILD must keep increasing across stables — Android refuses to
   # install an update whose versionCode is not higher than the installed one.
   BASE_VERSION: "1.7.4"
+  DEV_VERSION: "2.0.0"
   STABLE_BUILD: "14"
   BETA_CODE_OFFSET: "100000"
   # Codename for the stable release title, e.g. "Rhyolite" → "Flambo 1.5.0+6 — Rhyolite".
@@ -116,7 +117,7 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          # Version name: tag if pushing a tag, pinned stable on main, 2.0 preview on 2.0.
+          # Version name: tag if pushing a tag, pinned stable on main, DEV_VERSION preview on 2.0.
           # Stable follows MAJOR.MINOR.PATCH+BUILD with build starting at STABLE_BUILD.
           # Beta tracks BASE_VERSION (e.g. 1.0.1-dev(#N)) so it always follows
           # the current stable line, with codes above any stable build.
@@ -133,7 +134,7 @@ jobs:
             # Only the very first stable gets the First Release title.
             if [[ "$DISPLAY" == "1.0.1+1" ]]; then SUFFIX=" — First Release"; else SUFFIX=""; fi
           else
-            VN="${BASE_VERSION}-dev(#${{ github.run_number }})"
+            VN="${DEV_VERSION}-dev(#${{ github.run_number }})"
             CODE="$(($BETA_CODE_OFFSET + ${{ github.run_number }}))"
             TAG=""
             DISPLAY="$VN"
@@ -274,13 +275,15 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
-  # Dev preview: rolling prerelease that is overwritten on every push
-  # New push => old preview APK/link is replaced automatically.
+  # Dev preview publishing is opt-in for 2.0.
+  # The signed release APK is always uploaded as a workflow artifact by the
+  # build job; nothing is published to GitHub Releases unless the repository
+  # variable PUBLISH_PREVIEW is set to "true".
   # ---------------------------------------------------------------------------
   preview-release:
-    name: Publish dev preview (auto-replace)
+    name: Publish dev preview (opt-in)
     needs: build
-    if: github.ref == 'refs/heads/2.0' && github.event_name == 'push'
+    if: vars.PUBLISH_PREVIEW == 'true' && github.ref == 'refs/heads/2.0' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write

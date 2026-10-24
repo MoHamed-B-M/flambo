@@ -394,7 +394,9 @@ private fun Waveform(amplitudes: List<Float>) {
 
         for (i in 0 until count) {
             val amp = display.getOrNull(i) ?: 0f
-            val scale = 3f
+            // Peaks are already normalized to 0..1, so no extra gain is needed.
+            // Keep some headroom so loud input does not saturate every bar.
+            val scale = 0.72f
             val barHeight = (amp * scale).coerceIn(0f, 1f) * h
 
             val left = i * barWidth + gap / 2f

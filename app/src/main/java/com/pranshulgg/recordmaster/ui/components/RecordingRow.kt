@@ -246,7 +246,8 @@ fun RecordingRow(
                         .padding(top = 6.dp)
                         .height(5.dp),
                     wavelength = 20.dp,
-                    amplitude = { _ -> (progress.coerceIn(0f, 1f) * 5.5f).coerceAtMost(1f) }
+                    // Flat while paused; wavy only while this row is actually playing.
+                    amplitude = { _ -> if (isThisPlaying) 1f else 0f }
 
                     )
             }

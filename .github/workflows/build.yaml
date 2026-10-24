@@ -2,13 +2,13 @@ name: Build Flambo
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, "2.0"]
     # Docs-only pushes (README, screenshots) skip CI entirely — no APKs to build.
     paths-ignore:
       - 'README.md'
       - 'screenshots/**'
   pull_request:
-    branches: [main, dev]
+    branches: [main, "2.0"]
     paths-ignore:
       - 'README.md'
       - 'screenshots/**'
@@ -116,7 +116,7 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          # Version name: tag if pushing a tag, pinned stable on main, dev preview on dev.
+          # Version name: tag if pushing a tag, pinned stable on main, 2.0 preview on 2.0.
           # Stable follows MAJOR.MINOR.PATCH+BUILD with build starting at STABLE_BUILD.
           # Beta tracks BASE_VERSION (e.g. 1.0.1-dev(#N)) so it always follows
           # the current stable line, with codes above any stable build.
@@ -230,8 +230,8 @@ jobs:
           echo "friendly=$FRIENDLY" >> "$GITHUB_OUTPUT"
           ls -lh Flambo-*.apk*
 
-      - name: Upload preview artifact (dev) — auto-expires
-        if: github.ref == 'refs/heads/dev' || (github.event_name == 'pull_request' && github.base_ref == 'dev')
+      - name: Upload preview artifact (2.0) — auto-expires
+        if: github.ref == 'refs/heads/2.0' || (github.event_name == 'pull_request' && github.base_ref == '2.0')
         uses: actions/upload-artifact@v4
         with:
           name: Flambo-preview-${{ steps.version.outputs.name }}-build${{ github.run_number }}
@@ -280,7 +280,7 @@ jobs:
   preview-release:
     name: Publish dev preview (auto-replace)
     needs: build
-    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/2.0' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -320,10 +320,10 @@ jobs:
           # release would reset its publish time. It is refreshed in place below
           # so its timestamp stays fixed while the APK is replaced.
 
-          # Delete old workflow runs for dev to keep Actions tab tidy (keeps storage low)
+          # Delete old workflow runs for 2.0 to keep Actions tab tidy (keeps storage low)
           # Keep last 3 runs
-          echo "Pruning old dev workflow runs (keep 3)..."
-          gh run list --branch dev --limit 100 --json databaseId,status --jq '.[] | select(.status == "completed") | .databaseId' | tail -n +4 | while read -r runId; do
+          echo "Pruning old 2.0 workflow runs (keep 3)..."
+          gh run list --branch 2.0 --limit 100 --json databaseId,status --jq '.[] | select(.status == "completed") | .databaseId' | tail -n +4 | while read -r runId; do
             echo "→ Deleting run $runId"
             gh run delete "$runId" || true
           done || true
@@ -368,13 +368,13 @@ jobs:
             ### Flambo — Beta Preview (DEV)
 
             > ⚠️ **Development version** — this build comes straight from the
-            > `dev` branch and may contain bugs, crashes and unfinished code.
+            > `2.0` branch and may contain bugs, crashes and unfinished code.
             > For daily use, install the latest stable release instead.
 
-            > ⚡ **Rolling preview** — this release is **refreshed in place on every push to `dev`**.
+            > ⚡ **Rolling preview** — this release is **refreshed in place on every push to `2.0`**.
             > Its publish date stays fixed; only the APK below is replaced with the newest build.
 
-            **Branch:** `dev` @ `${{ github.sha }}`
+            **Branch:** `2.0` @ `${{ github.sha }}`
             **Version:** `${{ needs.build.outputs.version_name }}` · **Build:** `#${{ github.run_number }}`
             **Commit:** `${{ github.event.head_commit.message }}`
 
@@ -394,8 +394,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Find open PR that has dev as head
-          PR=$(gh pr list --head dev --state open --json number --jq '.[0].number' || true)
+          # Find open PR that has 2.0 as head
+          PR=$(gh pr list --head 2.0 --state open --json number --jq '.[0].number' || true)
           if [[ -n "$PR" && "$PR" != "null" ]]; then
             gh pr comment "$PR" --body "### ✅ Preview APK ready
           **Version:** \`${{ needs.build.outputs.version_name }}\` · **Build:** \`#${{ github.run_number }}\`

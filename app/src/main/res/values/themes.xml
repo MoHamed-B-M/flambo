@@ -1,9 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base theme for edge-to-edge; Compose handles colors.
-         Bars stay transparent so content draws behind them on every API level;
-         icon contrast is handled by enableEdgeToEdge() + the system. -->
-    <style name="Theme.Flambo" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
+
+    <style name="Theme.RecordMaster" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

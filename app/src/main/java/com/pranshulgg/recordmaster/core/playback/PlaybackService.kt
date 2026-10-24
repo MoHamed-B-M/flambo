@@ -17,7 +17,7 @@ import com.pranshulgg.recordmaster.R
  * swipe-up-to-home, recents and screen-off like a standard media app.
  * The UI drives it through [PlaybackController].
  */
-@UnstableApi
+@androidx.annotation.OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
 

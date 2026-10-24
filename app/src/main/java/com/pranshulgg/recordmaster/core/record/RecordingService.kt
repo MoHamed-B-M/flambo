@@ -66,7 +66,7 @@ class RecordingService : Service() {
 
         val notification = buildNotification(0L, false)
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 startForeground(
                     NOTIF_ID,
                     notification,

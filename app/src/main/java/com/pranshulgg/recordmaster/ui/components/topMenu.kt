@@ -451,7 +451,7 @@ fun DropdownMenu(
             title = { Text("Transcribing") },
             text = {
                 Column {
-                    Text("Working offline with Vosk. This can take a moment.")
+                    Text("Working offline. This can take a moment.")
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(
                         progress = { transcribeProgress.coerceIn(0f, 1f) },

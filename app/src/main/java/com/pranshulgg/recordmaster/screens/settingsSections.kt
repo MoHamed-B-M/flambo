@@ -13,7 +13,6 @@ import com.pranshulgg.recordmaster.core.audio.EnhanceStrength
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
-import com.pranshulgg.recordmaster.core.stt.VoskModelManager
 import com.pranshulgg.recordmaster.ui.components.SettingSection
 import com.pranshulgg.recordmaster.ui.components.SettingTile
 import com.pranshulgg.recordmaster.ui.components.SettingsTileIcon
@@ -245,94 +244,3 @@ fun PlaybackSettingsSection(
         )
     )
 }
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun SpeechSettingsSection(
-    app: RecordMasterApp,
-    scope: CoroutineScope,
-    showMessage: suspend (String) -> Unit
-) {
-    val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
-    val progress by app.transcription.modelProgress.collectAsState()
-    val models = app.transcription.vosk.models
-
-    val catalog = VoskModelManager.CATALOG
-    val selectedModel = VoskModelManager.forTag(languageTag.ifBlank {
-        Locale.getDefault().toLanguageTag()
-    }) ?: catalog.first()
-    val installed = remember(progress) { models.installedCodes().toSet() }
-
-    SettingSection(
-        title = "Speech-to-text",
-        tiles = listOf(
-            SettingTile.TextTile(
-                leading = { SettingsTileIcon(R.drawable.notes_24px) },
-                title = "Engine",
-                description = "Vosk · fully offline"
-            ),
-            SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
-                title = "Transcription language",
-                description = selectedModel.label,
-                options = catalog.map { it.label },
-                selectedOption = selectedModel.label,
-                onOptionSelected = { label ->
-                    val model = catalog.firstOrNull { it.label == label } ?: catalog.first()
-                    scope.launch {
-                        app.prefs.setSttLanguage(model.code)
-                        showMessage(
-                            if (models.isInstalled(model.code)) {
-                                "Transcription language: ${model.label}"
-                            } else {
-                                "Download the ${model.label} model below"
-                            }
-                        )
-                    }
-                }
-            )
-        ) + catalog.map { model ->
-            when {
-                model.code in installed -> SettingTile.TextTile(
-                    leading = { SettingsTileIcon(R.drawable.check) },
-                    title = "${model.label} model",
-                    description = "Installed · ${
-                        String.format(
-                            Locale.US,
-                            "%.1f MB",
-                            models.modelSizeOnDisk(model.code) / (1024f * 1024f)
-                        )
-                    }"
-                )
-
-                progress[model.code] != null -> SettingTile.TextTile(
-                    leading = { SettingsTileIcon(R.drawable.clock_loader_60_24px) },
-                    title = "Downloading ${model.label}",
-                    description = "${
-                        ((progress[model.code] ?: 0f) * 100f).toInt()
-                    }% · ${model.sizeMb} MB"
-                )
-
-                else -> SettingTile.ActionTile(
-                    leading = { SettingsTileIcon(R.drawable.notes_24px) },
-                    title = "Download ${model.label} model",
-                    description = "${model.sizeMb} MB · offline transcription",
-                    onClick = {
-                        scope.launch {
-                            val result = models.download(model.code)
-                            result.fold(
-                                onSuccess = {
-                                    showMessage("${model.label} model installed")
-                                },
-                                onFailure = {
-                                    showMessage(it.message ?: "Download failed")
-                                }
-                            )
-                        }
-                    }
-                )
-            }
-        }
-    )
-}
-

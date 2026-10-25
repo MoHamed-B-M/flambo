@@ -41,13 +41,13 @@ app/src/main/java/com/flambo/recorder/
 ├── ui/
 │   ├── home/          # Library, search, recording panel, mini-player
 │   ├── detail/        # Playback, waveform scrubber, transcribe sheet, transcript card
-│   ├── settings/      # Segmented preference groups, Vosk model manager, updates, about
+│   ├── settings/      # Segmented preference groups, speech model manager, updates, about
 │   ├── onboarding/    # First-launch expressive pager tour (blocks until mic granted)
 │   ├── components/    # Waveform, cards, SegmentedList, mini-player
 │   └── theme/         # M3 Expressive color/type/shape/motion tokens
 ├── record/            # RecordingController (MediaRecorder / SystemAudioEngine), service, launcher-shortcut intents
 ├── audio/             # Offline enhancer
-├── stt/               # Vosk offline transcription
+├── stt/               # Whisper offline transcription
 ├── playback/          # ExoPlayer controller
 ├── update/            # UpdateChecker + ApkInstaller
 └── data/              # Room, Repository, DataStore prefs, SafFolderHelper
@@ -64,7 +64,7 @@ MVVM: `ViewModel` + `StateFlow`, repository pattern, thin platform wrappers.
 
 1. **Fork** and `git checkout -b feat/your-thing` from `dev`.
 2. Keep changes **focused** — one feature/fix per PR.
-3. Run the app on a real device (emulator lacks `RECORD_AUDIO` + Vosk native libs nuance).
+3. Run the app on a real device (emulator `RECORD_AUDIO` depends on the host microphone; native libs are built for x86_64 as well).
 4. Ensure `./gradlew :app:assembleRelease` still passes (CI does this).
 5. Open a PR **against `dev`**, not `main`. Describe screenshots/gifs for UI changes.
 

@@ -11,6 +11,10 @@ android {
     namespace = "com.pranshulgg.recordmaster"
     compileSdk = 36
 
+    // Native STT: whisper.cpp is built from the pinned git submodule in
+    // app/src/main/cpp/whisper.cpp. Keep this in sync with CI.
+    ndkVersion = "27.0.12077973"
+
     signingConfigs {
         create("release") {
             val ciKeystore = file("release.keystore")
@@ -46,6 +50,26 @@ android {
         versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            // arm64 is the primary target; armeabi-v7a covers older 32-bit
+            // devices and x86_64 keeps emulator testing possible.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_STL=c++_static",
+                    "-DBUILD_SHARED_LIBS=OFF",
+                    "-DWHISPER_BUILD_TESTS=OFF",
+                    "-DWHISPER_BUILD_EXAMPLES=OFF",
+                    "-DWHISPER_BUILD_SERVER=OFF",
+                    "-DGGML_OPENMP=OFF",
+                    "-DGGML_NATIVE=OFF"
+                )
+            }
+        }
     }
 
     buildTypes {
@@ -72,6 +96,12 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
     packaging {
         resources {
@@ -115,5 +145,4 @@ dependencies {
     implementation(libs.guava.listenablefuture)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.documentfile)
-    implementation(libs.vosk.android)
 }

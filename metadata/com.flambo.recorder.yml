@@ -16,7 +16,7 @@ Description: |-
 
   Record in one tap with a live waveform, pause/resume on a single timeline,
   and a foreground notification that keeps the take alive with the screen off.
-  Transcribe any recording fully offline with downloadable Vosk language models,
+  Transcribe any recording fully offline with downloadable Whisper language models,
   then copy, share, edit, or search the text.
 
   Headless automation for hardware keys:

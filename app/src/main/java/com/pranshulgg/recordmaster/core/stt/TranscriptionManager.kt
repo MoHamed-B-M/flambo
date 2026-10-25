@@ -2,58 +2,38 @@ package com.pranshulgg.recordmaster.core.stt
 
 import android.content.Context
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import java.util.Locale
+import kotlinx.coroutines.flow.asStateFlow
 
 sealed interface FileResult {
     data class Done(val text: String, val offline: Boolean) : FileResult
-    data class Failed(
-        val message: String,
-        val needsModelCode: String? = null
-    ) : FileResult
+    data class Failed(val message: String) : FileResult
 }
 
 /**
- * Offline transcription entry point. Whisper is deferred (D4); Vosk covers
- * 2.0. The interface stays small so a second engine can be added later.
+ * Offline transcription entry point.
+ *
+ * The Vosk engine was removed in Phase 1 of the Whisper migration. The
+ * on-device whisper.cpp engine is wired in over the next phases; until then
+ * requests fail gracefully instead of crashing the UI.
  */
 class TranscriptionManager(
-    context: Context,
-    private val prefs: PreferencesManager
+    @Suppress("UNUSED_PARAMETER") context: Context,
+    @Suppress("UNUSED_PARAMETER") prefs: PreferencesManager
 ) {
-    private val appContext = context.applicationContext
+    private val _modelProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
 
-    val vosk = VoskEngine(appContext)
-    val modelProgress: StateFlow<Map<String, Float>> = vosk.models.progress
+    /** Per-language model download progress, 0f..1f. Empty until Phase 3. */
+    val modelProgress: StateFlow<Map<String, Float>> = _modelProgress.asStateFlow()
 
+    @Suppress("UNUSED_PARAMETER")
     suspend fun transcribeFileWithProgress(
         path: String,
         onProgress: (Float) -> Unit
-    ): FileResult {
-        val tag = runCatching { prefs.sttLanguageFlow.first() }
-            .getOrDefault("")
-            .ifBlank { Locale.getDefault().toLanguageTag() }
+    ): FileResult = FileResult.Failed(
+        "On-device Whisper transcription isn't available in this build yet."
+    )
 
-        val result = vosk.transcribeFile(path, tag, onProgress)
-        return result.fold(
-            onSuccess = { FileResult.Done(it, offline = true) },
-            onFailure = { error ->
-                if (error is ModelMissingException) {
-                    val label = VoskModelManager.forTag(tag)?.label
-                        ?: error.code.uppercase()
-                    FileResult.Failed(
-                        "The offline $label model isn't downloaded yet — grab it in Settings, then retry.",
-                        needsModelCode = error.code
-                    )
-                } else {
-                    FileResult.Failed(error.message ?: "Transcription failed.")
-                }
-            }
-        )
-    }
-
-    fun release() {
-        vosk.release()
-    }
+    fun release() = Unit
 }

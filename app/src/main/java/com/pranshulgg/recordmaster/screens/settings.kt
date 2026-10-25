@@ -261,14 +261,6 @@ fun SettingsPage(
             }
             item {
                 Spacer(Modifier.height(10.dp))
-                SpeechSettingsSection(
-                    app = app,
-                    scope = scope,
-                    showMessage = showMessage
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
                 SettingSection(
                     title = "Additional",
                     tiles = listOf(

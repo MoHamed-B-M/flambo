@@ -125,7 +125,7 @@ class PreferencesManager(private val context: Context) {
         context.recordMasterDataStore.edit { it[Keys.TRASH_RETENTION_DAYS] = days.coerceIn(1, 365) }
     }
 
-    // ---- Speech-to-text (Vosk only in 2.0) ----
+    // ---- Speech-to-text (Whisper, on-device) ----
 
     val sttLanguageFlow: Flow<String> =
         context.recordMasterDataStore.data.map { it[Keys.STT_LANGUAGE] ?: "" }

@@ -384,11 +384,26 @@ private fun ExpressiveTransportRow(
     compressionWeight: Float = 0.60f
 ) {
     var lastClicked by remember { mutableStateOf<TransportAction?>(null) }
+    var tapId by remember { mutableIntStateOf(0) }
+
+    // Let the push effect settle, then release it so the row springs back.
+    LaunchedEffect(tapId) {
+        if (tapId > 0) {
+            delay(450)
+            lastClicked = null
+        }
+    }
 
     fun weightFor(action: TransportAction): Float = when (lastClicked) {
         null -> 1f
         action -> expansionWeight
         else -> compressionWeight
+    }
+
+    fun press(action: TransportAction, onAction: () -> Unit) {
+        lastClicked = action
+        tapId++
+        onAction()
     }
 
     val rewindWeight by animateFloatAsState(
@@ -433,8 +448,7 @@ private fun ExpressiveTransportRow(
             shape = RoundedCornerShape(24.dp),
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             onClick = {
-                lastClicked = TransportAction.REWIND
-                onRewind()
+                press(TransportAction.REWIND, onRewind)
             }
         ) {
             Symbol(
@@ -456,8 +470,7 @@ private fun ExpressiveTransportRow(
                 MaterialTheme.colorScheme.primaryContainer
             },
             onClick = {
-                lastClicked = TransportAction.PLAY_PAUSE
-                onPlayPause()
+                press(TransportAction.PLAY_PAUSE, onPlayPause)
             }
         ) {
             if (isPlaying) {
@@ -484,8 +497,7 @@ private fun ExpressiveTransportRow(
             shape = RoundedCornerShape(24.dp),
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             onClick = {
-                lastClicked = TransportAction.FORWARD
-                onForward()
+                press(TransportAction.FORWARD, onForward)
             }
         ) {
             Symbol(

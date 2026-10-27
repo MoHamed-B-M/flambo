@@ -53,7 +53,7 @@ fun RecordingSettingsSection(
                 }
             ),
             SettingTile.SwitchTile(
-                leading = { SettingsTileIcon(R.drawable.filter_list_24px) },
+                leading = { SettingsTileIcon(R.drawable.auto_fix_24px) },
                 title = "Noise reduction",
                 description = "Reduce background noise while recording",
                 checked = noiseReduction,
@@ -65,7 +65,7 @@ fun RecordingSettingsSection(
                 }
             ),
             SettingTile.SwitchTile(
-                leading = { SettingsTileIcon(R.drawable.brush_24px) },
+                leading = { SettingsTileIcon(R.drawable.colorize_24px) },
                 title = "Keep original recording",
                 description = "Save unprocessed copy alongside enhanced audio",
                 checked = keepOriginal,
@@ -77,7 +77,7 @@ fun RecordingSettingsSection(
                 }
             ),
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.tune_24px) },
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                 title = "Enhancement strength",
                 description = when (strengthValue) {
                     "light" -> "Light"
@@ -102,15 +102,15 @@ fun RecordingSettingsSection(
                     }
                 }
             ),
-            SettingTile.TextFieldTile(
-                leading = { SettingsTileIcon(R.drawable.text_fields_24px) },
+            SettingTile.DialogTextFieldTile(
+                leading = { SettingsTileIcon(R.drawable.edit_24px) },
                 title = "Recording name prefix",
                 description = "Default prefix for new recordings",
                 value = prefix,
                 placeholder = "User",
                 onValueChange = { newPrefix ->
                     scope.launch {
-                        app.prefs.setRecordingPrefix(newPrefix.ifBlank { "User" })
+                        app.prefs.setRecordingPrefix(if (newPrefix.isBlank()) "User" else newPrefix)
                     }
                 }
             )
@@ -238,9 +238,9 @@ fun SpeechSettingsSection(
                 }
             ),
             SettingTile.TextTile(
-                leading = { SettingsTileIcon(R.drawable.download_24px) },
+                leading = { SettingsTileIcon(R.drawable.notes_24px) },
                 title = "Default model",
-                description = "ggml-tiny.en-q8_0.bin (int8, \u00B77 MB)"
+                description = "ggml-tiny.en-q8_0.bin (int8, ~77 MB)"
             )
         )
     )

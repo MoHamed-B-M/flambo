@@ -2,7 +2,7 @@ Flambo is a calm, Material 3 Expressive voice recorder for Android.
 Everything stays on your device — no account, no cloud.
 
 • One-tap recording with live waveform, pause/resume on a single timeline and a foreground notification that keeps the take alive with the screen off
-• Offline transcription — Vosk language models download once, then run fully on-device; copy, share, edit, and search transcripts
+• Offline transcription — Whisper language models download once, then run fully on-device; copy, share, edit, and search transcripts
 • Noise reduction while recording and one-tap Clean audio enhancement (Light / Balanced / Strong)
 
 Headless automation for hardware keys:

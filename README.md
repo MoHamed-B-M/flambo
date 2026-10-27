@@ -23,7 +23,7 @@
 - **One-tap recording** with an animated-shape record button, live waveform, and pause/resume on a continuous timeline
 - **Two sources** — microphone, or system sound (music, videos, app audio) via AudioPlaybackCapture on Android 10+
 - **Live notification** with running timer plus Pause/Resume and Save actions, so recording survives the screen turning off
-- **Offline transcription** — Vosk turns saved recordings into text on-device; downloadable language models, copy/share/edit, transcripts are searchable
+- **Offline transcription** — Whisper turns saved recordings into text on-device; downloadable language models, copy/share/edit, transcripts are searchable
 - **Noise reduction** — live AGC and noise suppression while recording (toggle in Settings)
 - **Clean audio** — one-tap offline enhancement (hush + leveling) with Light/Balanced/Strong strength, keep or replace the original
 - **Playback** with waveform scrubber, 0.5x–2x speed pills, 5 s / 10 s skips, and a floating mini-player
@@ -120,13 +120,13 @@ app/src/main/java/com/flambo/recorder/
 ├── ui/
 │   ├── home/          # Library, search, recording panel, mini-player
 │   ├── detail/        # Playback, waveform scrubber, transcribe sheet, transcript card
-│   ├── settings/      # Segmented preference groups, Vosk model manager, updates, about
+│   ├── settings/      # Segmented preference groups, speech model manager, updates, about
 │   ├── onboarding/    # First-launch expressive pager tour
 │   ├── components/    # Waveform, cards, segmented list, mini-player
 │   └── theme/         # M3 Expressive color / type / shape / motion tokens
 ├── record/            # MediaRecorder + system-audio (AudioRecord) engines, foreground service
 ├── audio/             # Offline DSP enhancer (gate, normalize, WAV writer)
-├── stt/               # Vosk offline transcription, model downloads, PCM decoding
+├── stt/               # Whisper offline transcription, model downloads, PCM decoding
 ├── playback/          # ExoPlayer controller with persistent mini-player state
 ├── update/            # Release checker, in-app APK installer, update notifier
 └── data/              # Room database, repository, DataStore preferences
@@ -142,7 +142,7 @@ MVVM throughout: `ViewModel` + `StateFlow` UI state, repository pattern, thin pl
 | System-capture consent | One-time system dialog for system-sound recording, like a screen recorder |
 | `FOREGROUND_SERVICE_*` | Keeps recording alive with the screen off (mic / playback / projection types, narrowed per take) |
 | `POST_NOTIFICATIONS` | Recording timer + update-ready notifications (Android 13+) |
-| `INTERNET` | Only for Vosk model downloads and the update checker — audio never leaves the device |
+| `INTERNET` | Only for offline speech-model downloads and the update checker — audio never leaves the device |
 
 > [!IMPORTANT]
 > When enabling system-sound capture, Android shows a *screen-recording* consent dialog. Flambo only captures audio — no pixels are ever read (the codebase contains no virtual display; the MediaProjection token feeds `AudioPlaybackCaptureConfiguration` exclusively).
@@ -157,7 +157,7 @@ Recording is reachable without opening the app:
 
 ## Tech stack
 
-Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) · Navigation Compose · Room 2.8.5 (KSP) · DataStore · Media3 ExoPlayer · Vosk 0.3.75 · AGP 9.3.2, JDK 21.
+Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) · Navigation Compose · Room 2.8.5 (KSP) · DataStore · Media3 ExoPlayer · whisper.cpp 1.9.5 · AGP 9.3.2, JDK 21.
 
 ---
 

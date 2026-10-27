@@ -1,12 +1,19 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "com.flambo.recorder"
-    compileSdk = 37
+    // The installed package is Flambo's, while the Kotlin/R namespace stays
+    // RecordMaster's to avoid a risky full source-package rename.
+    namespace = "com.pranshulgg.recordmaster"
+    compileSdk = 36
+
+    // Native STT: whisper.cpp is built from the pinned git submodule in
+    // app/src/main/cpp/whisper.cpp. Keep this in sync with CI.
+    ndkVersion = "27.0.12077973"
 
     signingConfigs {
         create("release") {
@@ -15,9 +22,9 @@ android {
             when {
                 ciKeystore.exists() -> {
                     storeFile = ciKeystore
-                    storePassword = System.getenv("KEYSTORE_PASSWORD") ?: (project.findProperty("FLAMBO_STORE_PASSWORD") as String? ?: "flambo123")
-                    keyAlias = System.getenv("KEY_ALIAS") ?: (project.findProperty("FLAMBO_KEY_ALIAS") as String? ?: "flambo")
-                    keyPassword = System.getenv("KEY_PASSWORD") ?: (project.findProperty("FLAMBO_KEY_PASSWORD") as String? ?: "flambo123")
+                    storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "flambo123"
+                    keyAlias = System.getenv("KEY_ALIAS") ?: "flambo"
+                    keyPassword = System.getenv("KEY_PASSWORD") ?: "flambo123"
                 }
                 debugKeystore.exists() -> {
                     storeFile = debugKeystore
@@ -35,29 +42,39 @@ android {
         }
     }
 
-    ndkVersion = "26.1.10909125"
-
     defaultConfig {
         applicationId = "com.flambo.recorder"
-        minSdk = 26
-        targetSdk = 37
-        val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
-        val baseCode = 1
-        versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull()
-            ?: runNumber?.let { baseCode + it } ?: baseCode
-        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.3.0-dev"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables { useSupportLibrary = true }
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
-        externalNativeBuild { cmake { arguments += listOf("-DANDROID_STL=c++_shared") } }
-    }
+        minSdk = 24
+        targetSdk = 36
+        versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull() ?: 2
+        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.0.0"
 
-    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            // arm64 is the primary target; armeabi-v7a covers older 32-bit
+            // devices and x86_64 keeps emulator testing possible.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_STL=c++_static",
+                    "-DBUILD_SHARED_LIBS=OFF",
+                    "-DWHISPER_BUILD_TESTS=OFF",
+                    "-DWHISPER_BUILD_EXAMPLES=OFF",
+                    "-DWHISPER_BUILD_SERVER=OFF",
+                    "-DGGML_OPENMP=OFF",
+                    "-DGGML_NATIVE=OFF"
+                )
+            }
+        }
+    }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            isShrinkResources = false
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -65,52 +82,60 @@ android {
             )
         }
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = true
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+    buildFeatures {
+        compose = true
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    buildFeatures { compose = true }
-
     packaging {
-        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
     }
 }
-
-kotlin { jvmToolchain(21) }
-
-// Single source of truth for in-app What's New: copy the repo-root
-// changelogs.md into assets at build time so ReleaseNotes can parse it
-// offline. The generated file is gitignored (see .gitignore).
-tasks.register<Copy>("syncChangelogAsset") {
-    from(rootDir.resolve("changelogs.md"))
-    into(layout.projectDirectory.dir("src/main/assets"))
-}
-
-tasks.named("preBuild") { dependsOn("syncChangelogAsset") }
 
 dependencies {
+
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime)
-    implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons)
-    implementation(libs.androidx.compose.material.icons.extended.android)
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.material3)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.androidx.runtime)
+    implementation(libs.androidx.animation)
+    implementation(libs.colorpicker)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.materialKolor)
+    implementation(libs.markdown.compose)
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
@@ -120,8 +145,4 @@ dependencies {
     implementation(libs.guava.listenablefuture)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.documentfile)
-    implementation(libs.androidx.adaptive)
-    implementation(libs.androidx.adaptive.layout)
-    implementation(libs.vosk.android)
-    debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -5,7 +5,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
@@ -20,11 +19,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-/**
- * Additive 2.0 settings rows. They reuse the exact RecordMaster tile
- * components, shapes and spacing; the existing "App looks" section is
- * untouched.
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RecordingSettingsSection(
@@ -37,8 +31,7 @@ fun RecordingSettingsSection(
     val keepOriginal by app.prefs.keepOriginalFlow.collectAsState(initial = true)
     val strengthValue by app.prefs.enhanceStrengthFlow.collectAsState(initial = "balanced")
     val prefix by app.prefs.recordingPrefixFlow.collectAsState(initial = "User")
-
-    val strength = EnhanceStrength.fromPref(strengthValue)
+    val context = LocalContext.current
 
     SettingSection(
         title = "Recording",
@@ -46,65 +39,79 @@ fun RecordingSettingsSection(
             SettingTile.DialogOptionTile(
                 leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                 title = "Recording quality",
-                description = quality.description,
+                description = quality.label,
                 options = RecordingQuality.entries.map { it.label },
                 selectedOption = quality.label,
                 onOptionSelected = { label ->
-                    val selected = RecordingQuality.entries
-                        .firstOrNull { it.label == label } ?: RecordingQuality.HIGH
+                    val selected = RecordingQuality.entries.firstOrNull { it.label == label }
+                        ?: RecordingQuality.HIGH
                     scope.launch {
                         app.prefs.setQuality(selected)
-                        showMessage("Quality: ${selected.label}")
+                        showMessage("Recording quality: ${selected.label}")
                     }
                 }
             ),
             SettingTile.SwitchTile(
-                leading = { SettingsTileIcon(R.drawable.colorize_24px) },
+                leading = { SettingsTileIcon(R.drawable.filter_list_24px) },
                 title = "Noise reduction",
-                description = "Use the voice-recognition microphone source",
+                description = "Reduce background noise while recording",
                 checked = noiseReduction,
                 onCheckedChange = { enabled ->
-                    scope.launch { app.prefs.setNoiseReduction(enabled) }
+                    scope.launch {
+                        app.prefs.setNoiseReduction(enabled)
+                        showMessage(if (enabled) "Noise reduction enabled" else "Noise reduction disabled")
+                    }
                 }
             ),
             SettingTile.SwitchTile(
-                leading = { SettingsTileIcon(R.drawable.auto_fix_24px) },
-                title = "Keep original after cleaning",
-                description = "Off replaces the take with the cleaned copy",
+                leading = { SettingsTileIcon(R.drawable.brush_24px) },
+                title = "Keep original recording",
+                description = "Save unprocessed copy alongside enhanced audio",
                 checked = keepOriginal,
-                onCheckedChange = { keep ->
-                    scope.launch { app.prefs.setKeepOriginal(keep) }
+                onCheckedChange = { enabled ->
+                    scope.launch {
+                        app.prefs.setKeepOriginal(enabled)
+                        showMessage(if (enabled) "Original will be kept" else "Original won't be kept")
+                    }
                 }
             ),
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.auto_fix_24px) },
-                title = "Cleanup strength",
-                description = strength.description,
-                options = EnhanceStrength.entries.map { it.label },
-                selectedOption = strength.label,
+                leading = { SettingsTileIcon(R.drawable.tune_24px) },
+                title = "Enhancement strength",
+                description = when (strengthValue) {
+                    "light" -> "Light"
+                    "strong" -> "Strong"
+                    else -> "Balanced"
+                },
+                options = listOf("Light", "Balanced", "Strong"),
+                selectedOption = when (strengthValue) {
+                    "light" -> "Light"
+                    "strong" -> "Strong"
+                    else -> "Balanced"
+                },
                 onOptionSelected = { label ->
-                    val selected = EnhanceStrength.entries
-                        .firstOrNull { it.label == label } ?: EnhanceStrength.BALANCED
+                    val value = when (label) {
+                        "Light" -> "light"
+                        "Strong" -> "strong"
+                        else -> "balanced"
+                    }
                     scope.launch {
-                        app.prefs.setEnhanceStrength(selected.name.lowercase(Locale.US))
-                        showMessage("Cleanup: ${selected.label}")
+                        app.prefs.setEnhanceStrength(value)
+                        showMessage("Enhancement strength: $label")
                     }
                 }
             ),
-            SettingTile.DialogTextFieldTile(
-                leading = { SettingsTileIcon(R.drawable.edit_24px) },
+            SettingTile.TextFieldTile(
+                leading = { SettingsTileIcon(R.drawable.text_fields_24px) },
                 title = "Recording name prefix",
-                description = "New takes are named ${prefix}_###",
-                initialText = prefix,
-                onTextSubmitted = { value ->
+                description = "Default prefix for new recordings",
+                value = prefix,
+                placeholder = "User",
+                onValueChange = { newPrefix ->
                     scope.launch {
-                        app.prefs.setRecordingPrefix(value)
-                        app.recordingPrefix = app.prefs.recordingPrefix()
-                        showMessage("Prefix updated")
+                        app.prefs.setRecordingPrefix(newPrefix.ifBlank { "User" })
                     }
-                },
-                placeholder = "Prefix",
-                placeholderTextField = "User"
+                }
             )
         )
     )
@@ -117,94 +124,25 @@ fun StorageSettingsSection(
     scope: CoroutineScope,
     showMessage: suspend (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val volumeId by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
-    val autoPurge by app.prefs.trashAutoPurgeFlow.collectAsState(initial = false)
-    val retentionDays by app.prefs.trashRetentionDaysFlow.collectAsState(initial = 7)
-
-    val volumes = remember {
-        StorageVolumes.list(context).map { volume ->
-            volume.copy(
-                label = if (volume.id == StorageVolumes.ID_DEFAULT) {
-                    "${volume.label} (default)"
-                } else {
-                    volume.label
-                }
-            )
-        }
-    }
-    val selectedVolume = volumes.firstOrNull { it.id == volumeId } ?: volumes.firstOrNull()
+    val volumes = remember { StorageVolumes(context = LocalContext.current).getVolumes() }
+    val currentVolume by app.prefs.storageVolumeFlow.collectAsState(initial = StorageVolumes.Internal.id)
 
     SettingSection(
         title = "Storage",
         tiles = listOf(
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.storage_24px) },
-                title = "Storage location",
-                description = selectedVolume?.let { "${it.label} · ${it.dir.absolutePath}" }
-                    ?: "Phone storage",
+                leading = { SettingsTileIcon(R.drawable.folder_open_24px) },
+                title = "Save location",
+                description = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Internal storage",
                 options = volumes.map { it.label },
-                selectedOption = selectedVolume?.label,
+                selectedOption = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Internal storage",
                 onOptionSelected = { label ->
-                    val selected = volumes.firstOrNull { it.label == label }
-                    if (selected != null) {
+                    val volume = volumes.firstOrNull { it.label == label } ?: volumes.firstOrNull()
+                    volume?.let {
                         scope.launch {
-                            app.prefs.setRecordingsVolume(selected.id)
-                            app.storageVolumeId = selected.id
-                            app.syncStorage()
-                            showMessage("New recordings will be saved in ${selected.label}")
+                            app.prefs.setStorageVolume(it.id)
+                            showMessage("Save location: ${it.label}")
                         }
-                    }
-                }
-            ),
-            SettingTile.ActionTile(
-                leading = { SettingsTileIcon(R.drawable.refresh_24px) },
-                title = "Sync storage now",
-                description = "Index files added outside the app",
-                onClick = {
-                    app.syncStorage()
-                    scope.launch { showMessage("Storage sync started") }
-                }
-            ),
-            SettingTile.SwitchTile(
-                leading = { SettingsTileIcon(R.drawable.folder_delete_24px) },
-                title = "Auto-delete old trash",
-                description = "Permanently remove items after the retention period",
-                checked = autoPurge,
-                onCheckedChange = { enabled ->
-                    scope.launch {
-                        app.prefs.setTrashAutoPurge(enabled)
-                        if (enabled) {
-                            app.repository.purgeOldTrash(retentionDays)
-                            app.syncStorage()
-                        }
-                    }
-                }
-            ),
-            SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.clock_loader_60_24px) },
-                title = "Trash retention",
-                description = "$retentionDays days",
-                options = listOf("7 days", "14 days", "30 days", "60 days", "90 days"),
-                selectedOption = "$retentionDays days",
-                onOptionSelected = { label ->
-                    val days = label.substringBefore(' ').toIntOrNull() ?: 7
-                    scope.launch {
-                        app.prefs.setTrashRetentionDays(days)
-                        showMessage("Trash retention: $days days")
-                    }
-                }
-            ),
-            SettingTile.ActionTile(
-                leading = { SettingsTileIcon(R.drawable.delete_forever_24px, dangerColor = true) },
-                title = "Empty Recently deleted",
-                description = "Permanently delete everything in the trash",
-                danger = true,
-                onClick = {
-                    scope.launch {
-                        app.repository.emptyTrash()
-                        app.syncStorage()
-                        showMessage("Recently deleted emptied")
                     }
                 }
             )
@@ -221,13 +159,13 @@ fun PlaybackSettingsSection(
     showMessage: suspend (String) -> Unit
 ) {
     val speed by app.prefs.playbackSpeedFlow.collectAsState(initial = 1f)
-    val label = if (speed == 1f) "Normal (1x)" else String.format(Locale.US, "%.2fx", speed)
+    val label = if (speed == 1f) "1x" else String.format(Locale.US, "%.2fx", speed)
 
     SettingSection(
         title = "Playback",
         tiles = listOf(
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.routine_24px) },
+                leading = { SettingsTileIcon(R.drawable.speed_24px) },
                 title = "Default speed",
                 description = label,
                 options = listOf("0.5x", "0.75x", "1x", "1.25x", "1.5x", "1.75x", "2x"),
@@ -240,6 +178,68 @@ fun PlaybackSettingsSection(
                         showMessage("Playback speed: $value")
                     }
                 }
+            )
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun SpeechSettingsSection(
+    app: RecordMasterApp,
+    scope: CoroutineScope,
+    showMessage: suspend (String) -> Unit
+) {
+    val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
+    val whisperLanguages = listOf(
+        "" to "Auto-detect",
+        "en" to "English",
+        "es" to "Spanish",
+        "fr" to "French",
+        "de" to "German",
+        "it" to "Italian",
+        "pt" to "Portuguese",
+        "ru" to "Russian",
+        "ja" to "Japanese",
+        "zh" to "Chinese",
+        "ko" to "Korean",
+        "ar" to "Arabic",
+        "hi" to "Hindi",
+        "tr" to "Turkish",
+        "pl" to "Polish",
+        "nl" to "Dutch"
+    )
+    val selected = whisperLanguages.firstOrNull { it.first == languageTag } ?: whisperLanguages.first()
+
+    SettingSection(
+        title = "Speech-to-text",
+        tiles = listOf(
+            SettingTile.TextTile(
+                leading = { SettingsTileIcon(R.drawable.notes_24px) },
+                title = "Engine",
+                description = "Whisper \u00B7 fully offline (on-device)"
+            ),
+            SettingTile.DialogOptionTile(
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
+                title = "Transcription language",
+                description = selected.second,
+                options = whisperLanguages.map { it.second },
+                selectedOption = selected.second,
+                onOptionSelected = { label ->
+                    val lang = whisperLanguages.firstOrNull { it.second == label } ?: whisperLanguages.first()
+                    scope.launch {
+                        app.prefs.setSttLanguage(lang.first)
+                        showMessage(
+                            if (lang.first.isEmpty()) "Language: Auto-detect"
+                            else "Language: ${lang.second}"
+                        )
+                    }
+                }
+            ),
+            SettingTile.TextTile(
+                leading = { SettingsTileIcon(R.drawable.download_24px) },
+                title = "Default model",
+                description = "ggml-tiny.en-q8_0.bin (int8, \u00B77 MB)"
             )
         )
     )

@@ -81,13 +81,18 @@ class WhisperTranscriptionService : Service() {
         val bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
         val audioBufferSize = maxOf(bufferSize * 4, SAMPLE_RATE * 2 * 2) // 2 seconds buffer
 
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION, // Bypass AGC and noise suppression
-            SAMPLE_RATE,
-            CHANNEL_CONFIG,
-            AUDIO_FORMAT,
-            audioBufferSize
-        )
+        audioRecord = if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            == PackageManager.PERMISSION_GRANTED) {
+            AudioRecord(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION, // Bypass AGC and noise suppression
+                SAMPLE_RATE,
+                CHANNEL_CONFIG,
+                AUDIO_FORMAT,
+                audioBufferSize
+            )
+        } else {
+            null
+        }
 
         if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
             _state.value = WhisperState.IDLE
@@ -104,7 +109,11 @@ class WhisperTranscriptionService : Service() {
         
         try {
             while (recordingJob?.isActive == true) {
-                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
+        val read = try {
+            audioRecord?.read(buffer, 0, buffer.size) ?: 0
+        } catch (e: SecurityException) {
+            0
+        }
                 if (read > 0) {
                     val shorts = bytesToShorts(buffer, read)
                     val energy = calculateEnergy(shorts)

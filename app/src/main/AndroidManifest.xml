@@ -37,6 +37,11 @@
             android:foregroundServiceType="microphone" />
 
         <service
+            android:name=".core.stt.WhisperTranscriptionService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <service
             android:name=".core.playback.PlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">

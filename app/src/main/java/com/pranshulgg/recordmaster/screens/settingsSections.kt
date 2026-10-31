@@ -53,7 +53,7 @@ fun RecordingSettingsSection(
                 }
             ),
             SettingTile.SwitchTile(
-                leading = { SettingsTileIcon(R.drawable.filter_list_24px) },
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                 title = "Noise reduction",
                 description = "Reduce background noise while recording",
                 checked = noiseReduction,
@@ -65,7 +65,7 @@ fun RecordingSettingsSection(
                 }
             ),
             SettingTile.SwitchTile(
-                leading = { SettingsTileIcon(R.drawable.brush_24px) },
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                 title = "Keep original recording",
                 description = "Save unprocessed copy alongside enhanced audio",
                 checked = keepOriginal,
@@ -77,7 +77,7 @@ fun RecordingSettingsSection(
                 }
             ),
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.tune_24px) },
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                 title = "Enhancement strength",
                 description = when (strengthValue) {
                     "light" -> "Light"
@@ -102,13 +102,14 @@ fun RecordingSettingsSection(
                     }
                 }
             ),
-            SettingTile.TextFieldTile(
-                leading = { SettingsTileIcon(R.drawable.text_fields_24px) },
+            SettingTile.DialogTextFieldTile(
+                leading = { SettingsTileIcon(R.drawable.notes_24px) },
                 title = "Recording name prefix",
                 description = "Default prefix for new recordings",
-                value = prefix,
-                placeholder = "User",
-                onValueChange = { newPrefix ->
+                placeholderTextField = "User",
+                placeholder = prefix.ifBlank { "User" },
+                initialText = prefix,
+                onTextSubmitted = { newPrefix ->
                     scope.launch {
                         app.prefs.setRecordingPrefix(newPrefix.ifBlank { "User" })
                     }
@@ -125,23 +126,24 @@ fun StorageSettingsSection(
     scope: CoroutineScope,
     showMessage: suspend (String) -> Unit
 ) {
-    val volumes = remember { StorageVolumes(context = LocalContext.current).getVolumes() }
-    val currentVolume by app.prefs.storageVolumeFlow.collectAsState(initial = StorageVolumes.Internal.id)
+    val context = LocalContext.current
+    val volumes = remember { StorageVolumes.list(context) }
+    val currentVolume by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
 
     SettingSection(
         title = "Storage",
         tiles = listOf(
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.folder_open_24px) },
+                leading = { SettingsTileIcon(R.drawable.notes_24px) },
                 title = "Save location",
-                description = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Internal storage",
+                description = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Phone storage",
                 options = volumes.map { it.label },
-                selectedOption = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Internal storage",
+                selectedOption = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Phone storage",
                 onOptionSelected = { label ->
                     val volume = volumes.firstOrNull { it.label == label } ?: volumes.firstOrNull()
                     volume?.let {
                         scope.launch {
-                            app.prefs.setStorageVolume(it.id)
+                            app.prefs.setRecordingsVolume(it.id)
                             showMessage("Save location: ${it.label}")
                         }
                     }
@@ -166,7 +168,7 @@ fun PlaybackSettingsSection(
         title = "Playback",
         tiles = listOf(
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.speed_24px) },
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                 title = "Default speed",
                 description = label,
                 options = listOf("0.5x", "0.75x", "1x", "1.25x", "1.5x", "1.75x", "2x"),

@@ -179,7 +179,7 @@ fun HomeScreen(
                     message = if (source == AudioSource.SYSTEM)
                         "System sound needs microphone permission too"
                     else "Microphone permission needed to record",
-                    actionLabel = "Allow",
+                    actionLabel = "允许",
                     withDismissAction = true
                 )
                 if (r == SnackbarResult.ActionPerformed) onRequestMicPermission(source)
@@ -191,8 +191,8 @@ fun HomeScreen(
                 if (source == AudioSource.SYSTEM) {
 
                     val r = snackbarHostState.showSnackbar(
-                        message = "System sound needs permission",
-                        actionLabel = "Enable",
+                        message = "录制系统声音需要授权",
+                        actionLabel = "开启",
                         withDismissAction = true
                     )
                     if (r == SnackbarResult.ActionPerformed) onEnableSystemSound()
@@ -300,8 +300,8 @@ fun HomeScreen(
         prefs.setNotifiedUpdateVersion(key)
         UpdateNotifier.show(context, res.release)
         val r = snackbarHostState.showSnackbar(
-            message = "New update ready: v${res.release.version}",
-            actionLabel = "View",
+            message = "新版本可用：v${res.release.version}",
+            actionLabel = "查看",
             withDismissAction = true
         )
         if (r == SnackbarResult.ActionPerformed) onOpenUpdates()
@@ -320,7 +320,7 @@ fun HomeScreen(
         val deleted = uiState.lastDeleted ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
             message = "\"${deleted.title}\" moved to trash",
-            actionLabel = "Undo",
+            actionLabel = "撤销",
             withDismissAction = true
         )
         if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete()
@@ -345,7 +345,7 @@ fun HomeScreen(
                 title = {
                     if (selectionMode) {
                         Column {
-                            Text("${selection.size} selected", style = MaterialTheme.typography.displaySmall)
+                            Text("已选 ${selection.size} 项", style = MaterialTheme.typography.displaySmall)
                             Text(
                                 "tap cards to toggle",
                                 style = MaterialTheme.typography.bodySmall,
@@ -356,7 +356,7 @@ fun HomeScreen(
                         Column {
                             Text("Flambo", style = MaterialTheme.typography.displaySmall)
                             Text(
-                                "${uiState.recordings.size} recordings • tap to play, hold to record",
+                                "${uiState.recordings.size} 段录音 · 点击播放，长按录音",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -366,16 +366,16 @@ fun HomeScreen(
                 actions = {
                     if (selectionMode) {
                         IconButton(onClick = { AppHaptics.tap(context); groupText = ""; groupColorDraft = null; showGroupDialog = true }) {
-                            Icon(Icons.Filled.Group, contentDescription = "Group")
+                            Icon(Icons.Filled.Group, contentDescription = "归组")
                         }
                         IconButton(onClick = { AppHaptics.tap(context); showMoveDialog = true }) {
-                            Icon(Icons.Filled.DriveFileMove, contentDescription = "Move")
+                            Icon(Icons.Filled.DriveFileMove, contentDescription = "移动")
                         }
                         IconButton(onClick = { AppHaptics.tap(context); showBulkDeleteConfirm = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                            Icon(Icons.Filled.Delete, contentDescription = "删除")
                         }
                         IconButton(onClick = { AppHaptics.tap(context); selection = emptySet() }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Clear selection")
+                            Icon(Icons.Filled.Close, contentDescription = "取消选择")
                         }
                     } else {
                         IconButton(onClick = {
@@ -387,7 +387,7 @@ fun HomeScreen(
                                 }
                             }
                         }) {
-                            Icon(Icons.Filled.Info, contentDescription = "What's new")
+                            Icon(Icons.Filled.Info, contentDescription = "更新内容")
                         }
                         // Appears once the first group is created; opens the groups page.
                         if (groups.isNotEmpty()) {
@@ -397,7 +397,7 @@ fun HomeScreen(
                                 openGroup = null
                                 showGroups = true
                             }) {
-                                Icon(Icons.Filled.Folder, contentDescription = "Groups")
+                                Icon(Icons.Filled.Folder, contentDescription = "分组")
                             }
                         }
                         IconButton(
@@ -411,13 +411,13 @@ fun HomeScreen(
                             enabled = !recorderState.isRecording
                         ) {
                             if (uiState.showTrash) {
-                                Icon(Icons.Filled.Home, contentDescription = "Home")
+                                Icon(Icons.Filled.Home, contentDescription = "首页")
                             } else {
-                                Icon(Icons.Filled.Delete, contentDescription = "Trash")
+                                Icon(Icons.Filled.Delete, contentDescription = "回收站")
                             }
                         }
                         IconButton(onClick = { AppHaptics.tap(context); onOpenSettings() }) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                            Icon(Icons.Filled.Settings, contentDescription = "设置")
                         }
                     }
                 },
@@ -462,12 +462,12 @@ fun HomeScreen(
                     TextField(
                         value = uiState.query,
                         onValueChange = viewModel::onQueryChange,
-                        placeholder = { Text("Search recordings") },
+                        placeholder = { Text("搜索录音") },
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                         trailingIcon = {
                             if (uiState.query.isNotEmpty()) {
                                 IconButton(onClick = { AppHaptics.tap(context); viewModel.clearQuery() }) {
-                                    Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                    Icon(Icons.Filled.Close, contentDescription = "清除")
                                 }
                             }
                         },
@@ -590,7 +590,7 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Trash", style = MaterialTheme.typography.titleMedium)
+                    Text("回收站", style = MaterialTheme.typography.titleMedium)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -599,14 +599,14 @@ fun HomeScreen(
                             FilledTonalButton(
                                 onClick = { AppHaptics.tap(context); showEmptyTrashConfirm = true },
                                 shapes = ButtonDefaults.shapes()
-                            ) { Text("Empty trash") }
+                            ) { Text("清空回收站") }
                         }
-                        TextButton(onClick = { AppHaptics.tap(context); viewModel.toggleTrash(false) }) { Text("Done") }
+                        TextButton(onClick = { AppHaptics.tap(context); viewModel.toggleTrash(false) }) { Text("完成") }
                     }
                 }
                 if (uiState.trash.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("Trash is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("回收站是空的", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(
@@ -693,17 +693,17 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         IconButton(onClick = { showGroups = false }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to recordings")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回录音列表")
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Groups",
+                                text = "分组",
                                 style = MaterialTheme.typography.titleLarge,
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${groups.size} folders",
+                                text = "${groups.size} 个文件夹",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -756,7 +756,7 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         IconButton(onClick = { openGroup = null }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to groups")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回分组")
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -766,7 +766,7 @@ fun HomeScreen(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${members.size} recordings",
+                                text = "${members.size} 段录音",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -775,7 +775,7 @@ fun HomeScreen(
                             recolorGroup = group
                             groupColorDraft = folderColor
                         }) {
-                            Icon(Icons.Filled.Palette, contentDescription = "Folder color")
+                            Icon(Icons.Filled.Palette, contentDescription = "文件夹颜色")
                         }
                     }
                     if (members.isEmpty()) {
@@ -945,7 +945,7 @@ fun HomeScreen(
                             label = "recordLabel"
                         ) {
                             Text(
-                                "Record",
+                                "录音",
                                 style = MaterialTheme.typography.titleLarge,
                                 maxLines = 1
                             )
@@ -970,7 +970,7 @@ fun HomeScreen(
         val count = uiState.trash.size
         AlertDialog(
             onDismissRequest = { showEmptyTrashConfirm = false },
-            title = { Text("Empty trash?") },
+            title = { Text("清空回收站？") },
             text = {
                 Text(
                     "Permanently delete $count recording${if (count == 1) "" else "s"}? This cannot be undone."
@@ -983,9 +983,9 @@ fun HomeScreen(
                     playback.stopIfCurrent(*uiState.trash.flatMap { listOf(it.filePath, it.enhancedPath) }.toTypedArray())
                     viewModel.emptyTrash()
                     showEmptyTrashConfirm = false
-                }) { Text("Delete all", color = MaterialTheme.colorScheme.error) }
+                }) { Text("全部删除", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { showEmptyTrashConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showEmptyTrashConfirm = false }) { Text("取消") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -994,9 +994,9 @@ fun HomeScreen(
         val count = selection.size
         AlertDialog(
             onDismissRequest = { showBulkDeleteConfirm = false },
-            title = { Text("Move to trash?") },
+            title = { Text("移入回收站？") },
             text = {
-                Text("Move $count recording${if (count == 1) "" else "s"} to trash?")
+                Text("将 $count 段录音移入回收站？")
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -1009,9 +1009,9 @@ fun HomeScreen(
                     viewModel.softDeleteAll(selection)
                     selection = emptySet()
                     showBulkDeleteConfirm = false
-                }) { Text("Move to trash", color = MaterialTheme.colorScheme.error) }
+                }) { Text("移入回收站", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("取消") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -1020,7 +1020,7 @@ fun HomeScreen(
         val volumes = remember { StorageVolumes.list(context.applicationContext) }
         AlertDialog(
             onDismissRequest = { showMoveDialog = false },
-            title = { Text("Move ${selection.size} to…", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("移动 ${selection.size} 项到…", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     volumes.forEach { volume ->
@@ -1056,7 +1056,7 @@ fun HomeScreen(
                 TextButton(
                     onClick = { showMoveDialog = false },
                     shapes = ButtonDefaults.shapes()
-                ) { Text("Cancel") }
+                ) { Text("取消") }
             },
             shape = ShapeLargeIncreased
         )
@@ -1065,7 +1065,7 @@ fun HomeScreen(
     if (showGroupDialog) {
         AlertDialog(
             onDismissRequest = { showGroupDialog = false },
-            title = { Text("Group ${selection.size}", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("归组 ${selection.size} 项", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
@@ -1076,14 +1076,14 @@ fun HomeScreen(
                     androidx.compose.material3.OutlinedTextField(
                         value = groupText,
                         onValueChange = { groupText = it },
-                        label = { Text("Group name") },
-                        placeholder = { Text("e.g. Interview, Ideas") },
+                        label = { Text("分组名称") },
+                        placeholder = { Text("例如：面试、灵感") },
                         singleLine = true,
                         shape = ShapeLargeIncreased,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        "Folder color",
+                        "文件夹颜色",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1115,10 +1115,10 @@ fun HomeScreen(
                         }
                     },
                     shapes = ButtonDefaults.shapes()
-                ) { Text("Save") }
+                ) { Text("保存") }
             },
             dismissButton = {
-                TextButton(onClick = { showGroupDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Cancel") }
+                TextButton(onClick = { showGroupDialog = false }, shapes = ButtonDefaults.shapes()) { Text("取消") }
             },
             shape = ShapeLargeIncreased
         )
@@ -1152,10 +1152,10 @@ fun HomeScreen(
                         }
                     },
                     shapes = ButtonDefaults.shapes()
-                ) { Text("Save") }
+                ) { Text("保存") }
             },
             dismissButton = {
-                TextButton(onClick = { recolorGroup = null }, shapes = ButtonDefaults.shapes()) { Text("Cancel") }
+                TextButton(onClick = { recolorGroup = null }, shapes = ButtonDefaults.shapes()) { Text("取消") }
             },
             shape = ShapeLargeIncreased
         )
@@ -1164,12 +1164,12 @@ fun HomeScreen(
     showRenameDialog?.let { rec ->
         AlertDialog(
             onDismissRequest = { showRenameDialog = null },
-            title = { Text("Rename recording") },
+            title = { Text("重命名录音") },
             text = {
                 androidx.compose.material3.OutlinedTextField(
                     value = renameText,
                     onValueChange = { renameText = it },
-                    label = { Text("Title") },
+                    label = { Text("标题") },
                     singleLine = true,
                     shape = ShapeLargeIncreased,
                     modifier = Modifier.fillMaxWidth()
@@ -1182,9 +1182,9 @@ fun HomeScreen(
                         viewModel.rename(rec.id, renameText)
                     }
                     showRenameDialog = null
-                }) { Text("Save") }
+                }) { Text("保存") }
             },
-            dismissButton = { TextButton(onClick = { showRenameDialog = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showRenameDialog = null }) { Text("取消") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -1278,7 +1278,7 @@ private fun ActiveRecordingPanel(
                     modifier = Modifier.size(if (roomy) 16.dp else 14.dp)
                 )
                 Text(
-                    text = (if (isPaused) "Paused" else "Recording") +
+                    text = (if (isPaused) "已暂停" else "录音中") +
                         if (source == AudioSource.SYSTEM) " • System sound" else "",
                     style = if (roomy) MaterialTheme.typography.titleSmall
                     else MaterialTheme.typography.labelMedium,
@@ -1322,7 +1322,7 @@ private fun ActiveRecordingPanel(
                         modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonHeight))
                     )
                     Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(buttonHeight)))
-                    Text(if (isPaused) "Resume" else "Pause", style = ButtonDefaults.textStyleFor(buttonHeight))
+                    Text(if (isPaused) "继续" else "暂停", style = ButtonDefaults.textStyleFor(buttonHeight))
                 }
                 Button(
                     onClick = onStop,
@@ -1332,10 +1332,10 @@ private fun ActiveRecordingPanel(
                 ) {
                     Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonHeight)))
                     Spacer(modifier = Modifier.size(ButtonDefaults.iconSpacingFor(buttonHeight)))
-                    Text("Stop & save", style = ButtonDefaults.textStyleFor(buttonHeight))
+                    Text("停止并保存", style = ButtonDefaults.textStyleFor(buttonHeight))
                 }
             }
-            TextButton(onClick = onCancel) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = onCancel) { Text("放弃", color = MaterialTheme.colorScheme.error) }
             }
             }
         }
@@ -1359,7 +1359,7 @@ private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
         Spacer(Modifier.height(20.dp))
-        Text("No recordings yet", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Text("还没有录音", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text(
             "Tap Record to capture your first moment. Everything stays on your device.",
@@ -1372,7 +1372,7 @@ private fun EmptyState(onRecord: () -> Unit, modifier: Modifier = Modifier) {
         FilledTonalButton(onClick = onRecord, shape = ShapeFull) {
             Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.size(8.dp))
-            Text("Start recording")
+            Text("开始录音")
         }
     }
 }
@@ -1398,8 +1398,8 @@ private fun TrashRow(
                 Text(recording.title, style = MaterialTheme.typography.titleSmall)
                 Text(formatDuration(recording.durationMs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = onRestore) { Text("Restore") }
-            TextButton(onClick = onDeleteForever) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = onRestore) { Text("恢复") }
+            TextButton(onClick = onDeleteForever) { Text("删除", color = MaterialTheme.colorScheme.error) }
         }
     }
 }

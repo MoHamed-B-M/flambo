@@ -81,7 +81,7 @@ fun StorageSettingsScreen(
 ) {
     val context = LocalContext.current
     val storageVolume by prefs.recordingsVolumeFlow.collectAsState(initial = "default")
-    val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "Recording")
+    val recordingPrefix by prefs.recordingPrefixFlow.collectAsState(initial = "录音中")
     val customFolderUri by prefs.customFolderUriFlow.collectAsState(initial = "")
 
     var showStorageDialog by remember { mutableStateOf(false) }
@@ -190,10 +190,10 @@ fun StorageSettingsScreen(
         Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Storage & Data", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("存储与数据", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -211,14 +211,14 @@ fun StorageSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Storage Location")
+                SectionHeader(title = "存储位置")
                 SegmentedPreferenceGroup {
                     item {
                         val volumes = remember { StorageVolumes.list(context.applicationContext) }
                         val current = volumes.firstOrNull { it.id == storageVolume } ?: volumes.firstOrNull()
                         PreferenceValueItem(
                             icon = Icons.Filled.Folder,
-                            title = "Storage folder",
+                            title = "存储文件夹",
                             value = current?.label ?: "Phone storage",
                             subtitle = current?.let { StorageVolumes.formatBytes(it.freeBytes) + " free" },
                             onClick = { showStorageDialog = true }
@@ -228,9 +228,9 @@ fun StorageSettingsScreen(
                         val customLabel = if (customFolderUri.isBlank()) "Not set — uses Storage folder above" else SafFolderHelper.displayName(context, customFolderUri)
                         PreferenceValueItem(
                             icon = Icons.Filled.FolderOpen,
-                            title = "Custom folder",
+                            title = "自定义文件夹",
                             value = customLabel,
-                            subtitle = "Save location — new recordings go here directly",
+                            subtitle = "保存位置——新录音直接存到这里",
                             onClick = { folderPicker.launch(null) }
                         )
                     }
@@ -244,18 +244,18 @@ fun StorageSettingsScreen(
                                     it.customFolderUri = ""
                                 }
                             }
-                        }, shapes = ButtonDefaults.shapes()) { Text("Clear custom folder") }
+                        }, shapes = ButtonDefaults.shapes()) { Text("清除自定义文件夹") }
                     }
                 }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Naming")
+                SectionHeader(title = "命名")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.Title,
-                            title = "Recording name",
+                            title = "录音名称",
                             value = "$recordingPrefix 1 • $recordingPrefix 2",
                             subtitle = "e.g. \"$recordingPrefix 1\" — numbering follows highest existing",
                             onClick = { namingDraft = recordingPrefix; showNamingDialog = true }
@@ -271,10 +271,10 @@ fun StorageSettingsScreen(
         val volumes = remember { StorageVolumes.list(context.applicationContext) }
         AlertDialog(
             onDismissRequest = { showStorageDialog = false },
-            title = { Text("Storage folder", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("存储文件夹", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("New recordings go here. Existing ones stay where they are.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("新录音会存到这里，已有录音保持原位。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     volumes.forEachIndexed { index, volume ->
                         ToggleButton(
                             checked = storageVolume == volume.id,
@@ -301,7 +301,7 @@ fun StorageSettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showStorageDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { showStorageDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -309,20 +309,20 @@ fun StorageSettingsScreen(
     if (showNamingDialog) {
         AlertDialog(
             onDismissRequest = { showNamingDialog = false },
-            title = { Text("Recording name", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("录音名称", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Choose the prefix for new recordings. Numbering follows the highest existing number and restarts at 1 when the library is empty.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = namingDraft,
                         onValueChange = { namingDraft = it },
-                        label = { Text("Prefix") },
-                        placeholder = { Text("e.g. Sound, Voice, MyRec") },
+                        label = { Text("前缀") },
+                        placeholder = { Text("例如：录音、语音、我的录音") },
                         singleLine = true,
                         shape = ShapeLargeIncreased,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Text("Preview: \"${namingDraft.ifBlank { "Recording" }} 1\" • \"${namingDraft.ifBlank { "Recording" }} 2\"", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text("Preview: \"${namingDraft.ifBlank { "录音中" }} 1\" • \"${namingDraft.ifBlank { "录音中" }} 2\"", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
             },
             confirmButton = {
@@ -330,13 +330,13 @@ fun StorageSettingsScreen(
                     onClick = {
                         scope.launch {
                             prefs.setRecordingPrefix(namingDraft)
-                            (context.applicationContext as? FlamboApp)?.let { it.recordingPrefix = namingDraft.ifBlank { "Recording" } }
+                            (context.applicationContext as? FlamboApp)?.let { it.recordingPrefix = namingDraft.ifBlank { "录音中" } }
                         }
                         showNamingDialog = false
                     }, shapes = ButtonDefaults.shapes()
-                ) { Text("Save") }
+                ) { Text("保存") }
             },
-            dismissButton = { TextButton(onClick = { showNamingDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showNamingDialog = false }, shapes = ButtonDefaults.shapes()) { Text("取消") } },
             shape = ShapeLargeIncreased
         )
     }

@@ -134,7 +134,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.subSettingsPopExit
         animationSpec = tween(350)
     )
 
-// Style-driven variants for the Appearance "Page transitions" choice.
+// Style-driven variants for the Appearance "页面转场" choice.
 // "slide" funnels back to the standard above; morph overrides elsewhere
 // are untouched so the card animation keeps riding its own transition.
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.styledEnter(style: String) = when (style) {

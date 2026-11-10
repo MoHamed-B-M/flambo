@@ -352,13 +352,13 @@ fun DetailScreen(
             modifier = Modifier.then(sharedElementModifier).then(morphClip),
             topBar = {
                 TopAppBar(
-                    title = { Text("Playback", style = MaterialTheme.typography.titleLarge) },
+                    title = { Text("播放", style = MaterialTheme.typography.titleLarge) },
                     navigationIcon = {
-                        IconButton(onClick = { safeBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                        IconButton(onClick = { safeBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
                     },
                     actions = {
                         IconButton(onClick = { AppHaptics.tap(context); showDetailsCard = !showDetailsCard }) {
-                            Icon(Icons.Filled.Info, contentDescription = "Details", tint = if (showDetailsCard) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Filled.Info, contentDescription = "详情", tint = if (showDetailsCard) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         IconButton(
                             onClick = { AppHaptics.tap(context); viewModel.toggleFavorite() },
@@ -369,15 +369,15 @@ fun DetailScreen(
                         ) {
                             Icon(
                                 imageVector = if (rec.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = "Favorite",
+                                contentDescription = "收藏",
                                 tint = if (rec.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         IconButton(onClick = { AppHaptics.tap(context); shareAudio(rec.filePath, "Share recording") }, enabled = !fileMissing) {
-                            Icon(Icons.Filled.Share, contentDescription = "Share")
+                            Icon(Icons.Filled.Share, contentDescription = "分享")
                         }
                         IconButton(onClick = { AppHaptics.tap(context); showDeleteConfirm = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -400,7 +400,7 @@ fun DetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Audio file not found", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Text("音频文件不存在", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
                         Text(
                             "This recording was deleted outside the app (e.g. in a file manager). Playback, sharing, transcription and enhancement are unavailable — delete this entry or restore the file to fix it.",
                             style = MaterialTheme.typography.bodySmall,
@@ -431,16 +431,16 @@ fun DetailScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Icon(Icons.Filled.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                Text("Recording details", style = MaterialTheme.typography.titleMedium)
+                                Text("录音详情", style = MaterialTheme.typography.titleMedium)
                             }
                             IconButton(onClick = { showDetailsCard = false }, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Filled.Close, contentDescription = "Hide details", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Close, contentDescription = "收起详情", modifier = Modifier.size(18.dp))
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("位置", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(fileDir, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                                 Text(detailsName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             }
@@ -448,21 +448,21 @@ fun DetailScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.Storage, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                             Column {
-                                Text("Size", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("大小", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(if (fileSize > 0) StorageVolumes.formatBytes(fileSize) else "—", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                             Column {
-                                Text("Date", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("日期", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("${formatRelativeTime(rec.createdAt)} • ${java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(rec.createdAt))}", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                             Column {
-                                Text("Duration", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("时长", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(formatDuration(rec.durationMs) + " • ${rec.quality}", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
@@ -480,14 +480,14 @@ fun DetailScreen(
                         OutlinedTextField(
                             value = editTitle ?: "",
                             onValueChange = viewModel::setEditTitle,
-                            label = { Text("Title") },
+                            label = { Text("标题") },
                             singleLine = true,
                             shape = ShapeLargeIncreased,
                             modifier = Modifier.fillMaxWidth()
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { viewModel.setEditTitle(null) }) { Text("Cancel") }
-                            FilledTonalButton(onClick = { AppHaptics.tap(context); viewModel.saveTitle() }, shape = ShapeFull) { Text("Save") }
+                            TextButton(onClick = { viewModel.setEditTitle(null) }) { Text("取消") }
+                            FilledTonalButton(onClick = { AppHaptics.tap(context); viewModel.saveTitle() }, shape = ShapeFull) { Text("保存") }
                         }
                     } else {
                         Text(
@@ -499,7 +499,7 @@ fun DetailScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        TextButton(onClick = { AppHaptics.tap(context); viewModel.setEditTitle(rec.title) }) { Text("Rename") }
+                        TextButton(onClick = { AppHaptics.tap(context); viewModel.setEditTitle(rec.title) }) { Text("重命名") }
                     }
                     if (rec.tagList.isNotEmpty() || true) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
@@ -513,7 +513,7 @@ fun DetailScreen(
                             }
                             AssistChip(
                                 onClick = { AppHaptics.tap(context); tagInput = rec.tagList.joinToString(", "); showTagDialog = true },
-                                label = { Text(if (rec.tagList.isEmpty()) "Add tags" else "Edit tags") },
+                                label = { Text(if (rec.tagList.isEmpty()) "添加标签" else "编辑标签") },
                                 shape = ShapeFull
                             )
                         }
@@ -634,7 +634,7 @@ fun DetailScreen(
                         ) {
                             Icon(
                                 Icons.Filled.Replay5,
-                                contentDescription = "Back 5s",
+                                contentDescription = "后退 5 秒",
                                 modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
                             )
                         }
@@ -671,7 +671,7 @@ fun DetailScreen(
                             ) { playing ->
                                 Icon(
                                     imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                    contentDescription = if (playing) "Pause" else "Play",
+                                    contentDescription = if (playing) "暂停" else "播放",
                                     modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
                                 )
                             }
@@ -699,7 +699,7 @@ fun DetailScreen(
                         ) {
                             Icon(
                                 Icons.Filled.Forward5,
-                                contentDescription = "Forward 5s",
+                                contentDescription = "前进 5 秒",
                                 modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight))
                             )
                         }
@@ -790,7 +790,7 @@ fun DetailScreen(
                 FilledTonalButton(onClick = { AppHaptics.tap(context); showDeleteConfirm = true }, shape = ShapeFull, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Move to trash")
+                    Text("移入回收站")
                 }
             }
 
@@ -802,7 +802,7 @@ fun DetailScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Move to trash?") },
+            title = { Text("移入回收站？") },
             text = { Text("\"${rec.title}\" will be moved to trash and auto-deleted after 7 days. You can restore it from the Home trash view.") },
             confirmButton = {
                 TextButton(onClick = {
@@ -811,9 +811,9 @@ fun DetailScreen(
                     playback.stopIfCurrent(rec.filePath, rec.enhancedPath)
                     viewModel.softDelete()
                     onDeleted()
-                }) { Text("Move to trash", color = MaterialTheme.colorScheme.error) }
+                }) { Text("移入回收站", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -821,14 +821,14 @@ fun DetailScreen(
     if (showTagDialog) {
         AlertDialog(
             onDismissRequest = { showTagDialog = false },
-            title = { Text("Tags") },
+            title = { Text("标签") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Separate tags with commas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("多个标签用逗号分隔", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = tagInput,
                         onValueChange = { tagInput = it },
-                        placeholder = { Text("interview, idea, reminder") },
+                        placeholder = { Text("面试, 灵感, 提醒") },
                         shape = ShapeLargeIncreased,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -840,9 +840,9 @@ fun DetailScreen(
                     val tags = tagInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                     viewModel.updateTags(tags)
                     showTagDialog = false
-                }) { Text("Save") }
+                }) { Text("保存") }
             },
-            dismissButton = { TextButton(onClick = { showTagDialog = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showTagDialog = false }) { Text("取消") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -864,7 +864,7 @@ fun DetailScreen(
         var draft by remember(initial) { mutableStateOf(initial) }
         AlertDialog(
             onDismissRequest = { showTranscriptEditor = null },
-            title = { Text("Edit transcript") },
+            title = { Text("编辑转写") },
             text = {
                 OutlinedTextField(
                     value = draft,
@@ -878,9 +878,9 @@ fun DetailScreen(
                 TextButton(onClick = {
                     viewModel.saveTranscript(draft)
                     showTranscriptEditor = null
-                }) { Text("Save") }
+                }) { Text("保存") }
             },
-            dismissButton = { TextButton(onClick = { showTranscriptEditor = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showTranscriptEditor = null }) { Text("取消") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -941,8 +941,8 @@ private fun TranscriptSection(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Text("Transcribing offline…", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onCancelWork) { Text("Cancel") }
+                        Text("正在离线转写…", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onCancelWork) { Text("取消") }
                     }
                     LinearProgressIndicator(
                         progress = { transcriptionUi.progress },
@@ -974,11 +974,11 @@ private fun TranscriptSection(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Couldn't transcribe", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("转写失败", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
                     Text(transcriptionUi.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = onTranscribe, shape = ShapeFull) { Text("Try again") }
-                        TextButton(onClick = onDismiss) { Text("Dismiss") }
+                        FilledTonalButton(onClick = onTranscribe, shape = ShapeFull) { Text("重试") }
+                        TextButton(onClick = onDismiss) { Text("忽略") }
                     }
                     if (transcriptionUi.needsModelCode != null) {
                         Text(
@@ -1012,7 +1012,7 @@ private fun TranscriptSection(
                 ) {
                     Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Transcribe this recording")
+                    Text("转写这段录音")
                 }
             }
         }
@@ -1043,8 +1043,8 @@ private fun EnhanceSection(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Text("Cleaning audio…", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onCancel) { Text("Cancel") }
+                        Text("正在清理音频…", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onCancel) { Text("取消") }
                     }
                     LinearProgressIndicator(
                         progress = { enhanceUi.progress },
@@ -1072,7 +1072,7 @@ private fun EnhanceSection(
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.weight(1f)
                         )
-                        TextButton(onClick = onDismiss) { Text("Dismiss") }
+                        TextButton(onClick = onDismiss) { Text("忽略") }
                     }
                     Text(
                         "Cleaned audio ready — opened in a dedicated player below",
@@ -1091,11 +1091,11 @@ private fun EnhanceSection(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Couldn't clean this one", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("这段音频无法清理", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
                     Text(enhanceUi.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = onEnhance, shape = ShapeFull) { Text("Try again") }
-                        TextButton(onClick = onDismiss) { Text("Dismiss") }
+                        FilledTonalButton(onClick = onEnhance, shape = ShapeFull) { Text("重试") }
+                        TextButton(onClick = onDismiss) { Text("忽略") }
                     }
                 }
             }
@@ -1109,7 +1109,7 @@ private fun EnhanceSection(
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Text("Cleaned copy saved", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                            Text("已保存清理后的副本", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                         }
                         Text(
                             "Tap play to listen in a dedicated player",
@@ -1129,7 +1129,7 @@ private fun EnhanceSection(
                 ) {
                     Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Clean audio • $strengthLabel")
+                    Text("清理音频 · $strengthLabel")
                 }
             }
         }
@@ -1162,10 +1162,10 @@ private fun CleanedPlayerCard(
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Filled.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                Text("Cleaned playback", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                IconButton(onClick = { onShare(filePath) }) { Icon(Icons.Filled.Share, contentDescription = "Share cleaned") }
+                Text("播放清理版", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                IconButton(onClick = { onShare(filePath) }) { Icon(Icons.Filled.Share, contentDescription = "分享清理版") }
                 if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge) }
+                    TextButton(onClick = onDelete) { Text("删除", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge) }
                 }
             }
             PlaybackProgressBar(
@@ -1195,7 +1195,7 @@ private fun CleanedPlayerCard(
                 ) {
                     Icon(if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (isPlaying) "Pause" else "Play", maxLines = 1)
+                    Text(if (isPlaying) "暂停" else "播放", maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { onShare(filePath) },
@@ -1204,7 +1204,7 @@ private fun CleanedPlayerCard(
                 ) {
                     Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Share", maxLines = 1)
+                    Text("分享", maxLines = 1)
                 }
             }
         }
@@ -1237,15 +1237,15 @@ private fun TranscriptCard(
                 androidx.compose.material3.AssistChip(onClick = {}, label = { Text(badge, maxLines = 1) })
                 androidx.compose.foundation.layout.Box(modifier = Modifier.weight(1f))
                 if (!saved) {
-                    TextButton(onClick = onDiscard) { Text("Discard", maxLines = 1) }
+                    TextButton(onClick = onDiscard) { Text("放弃", maxLines = 1) }
                     FilledTonalButton(onClick = { onSave(text) }, shape = ShapeFull, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
                         Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Save", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        Text("保存", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                     }
                 } else {
                     TextButton(onClick = onClearSaved) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error, maxLines = 1)
+                        Text("删除", color = MaterialTheme.colorScheme.error, maxLines = 1)
                     }
                 }
             }
@@ -1267,7 +1267,7 @@ private fun TranscriptCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text(if (justCopied) "Copied" else "Copy", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                    Text(if (justCopied) "已复制" else "复制", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { onShareText(text) },
@@ -1277,10 +1277,10 @@ private fun TranscriptCard(
                 ) {
                     Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Share", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                    Text("分享", style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 androidx.compose.material3.IconButton(onClick = { onEdit(text) }) {
-                    Icon(Icons.Filled.Edit, contentDescription = "Edit transcript")
+                    Icon(Icons.Filled.Edit, contentDescription = "编辑转写")
                 }
             }
         }
@@ -1322,7 +1322,7 @@ private fun TranscribeSheet(
             modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Transcribe offline", style = MaterialTheme.typography.titleLarge)
+            Text("离线转写", style = MaterialTheme.typography.titleLarge)
             Text(
                 if (isWhisper) "Whisper turns this file into text on your device — no cloud, no account. One tiny model covers 95+ languages."
                 else "Vosk turns this file into text on your device — no cloud, no account. Download the language model once, reuse forever.",
@@ -1330,7 +1330,7 @@ private fun TranscribeSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Text("Language", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text("语言", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             ExposedDropdownMenuBox(expanded = langExpanded, onExpandedChange = { langExpanded = it }) {
                 val displayLabel = if (isWhisper) {
                     when (languageTag) {
@@ -1432,7 +1432,7 @@ private fun TranscribeSheet(
                             LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
                             Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else if (!installed) {
-                            Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("一次下载，之后完全离线。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         Text(
@@ -1445,7 +1445,7 @@ private fun TranscribeSheet(
                             LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth())
                             Text("Downloading… ${(prog * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else if (!installed) {
-                            Text("One-time download, then fully offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("一次下载，之后完全离线。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -1463,7 +1463,7 @@ private fun TranscribeSheet(
                         ) {
                             Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Get")
+                            Text("获取")
                         }
                     } else if (modelEntry != null) {
                         FilledTonalButton(
@@ -1481,7 +1481,7 @@ private fun TranscribeSheet(
                         ) {
                             Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Get")
+                            Text("获取")
                         }
                     }
                 }
@@ -1495,7 +1495,7 @@ private fun TranscribeSheet(
             ) {
                 Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (installed) "Start transcription" else "Download the model first")
+                Text(if (installed) "开始转写" else "请先下载模型")
             }
         }
     }

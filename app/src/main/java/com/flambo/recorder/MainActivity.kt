@@ -3,6 +3,8 @@ package com.flambo.recorder
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import androidx.core.content.ContextCompat
+import com.flambo.recorder.record.RecordingService
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -160,6 +162,14 @@ class MainActivity : ComponentActivity() {
         }
 
         app = application as FlamboApp
+
+        // 应用可见时把录音服务拎成常驻前台服务（待命），
+        // 之后熄屏触发录音就不会再被判成"后台启动麦克风服务"。
+        runCatching {
+            val idle = Intent(this, RecordingService::class.java)
+                .setAction(RecordingService.ACTION_IDLE)
+            ContextCompat.startForegroundService(this, idle)
+        }
         refreshPermissionStates()
 
         lifecycleScope.launch {

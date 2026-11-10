@@ -356,7 +356,7 @@ fun HomeScreen(
                         Column {
                             Text("Flambo", style = MaterialTheme.typography.displaySmall)
                             Text(
-                                "${uiState.recordings.size} recordings • tap to play, hold to record",
+                                "${uiState.recordings.size} 段录音 · 点击播放，长按录音",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -945,7 +945,7 @@ fun HomeScreen(
                             label = "recordLabel"
                         ) {
                             Text(
-                                "Record",
+                                "录音",
                                 style = MaterialTheme.typography.titleLarge,
                                 maxLines = 1
                             )
@@ -996,7 +996,7 @@ fun HomeScreen(
             onDismissRequest = { showBulkDeleteConfirm = false },
             title = { Text("移入回收站？") },
             text = {
-                Text("Move $count recording${if (count == 1) "" else "s"} to trash?")
+                Text("将 $count 段录音移入回收站？")
             },
             confirmButton = {
                 TextButton(onClick = {

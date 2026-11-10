@@ -34,15 +34,15 @@ import com.flambo.recorder.ui.theme.ShapeLargeIncreased
 import com.flambo.recorder.update.WhatsNewItem
 
 private val fallbackHighlights = listOf(
-    WhatsNewItem("Recording details", "See file location, size, date and duration from Playback."),
+    WhatsNewItem("录音详情", "See file location, size, date and duration from Playback."),
     WhatsNewItem("Swipe tip", "A short bounce shows how swipe-to-dismiss works."),
     WhatsNewItem("Inline playback", "Play right inside each card — no pop-up player."),
     WhatsNewItem("App icons", "Pick Default, Outline Navy, Duo Teal or Solid Black."),
-    WhatsNewItem("Progress bar", "Choose a Slider, Linear or Wavy seek bar."),
+    WhatsNewItem("进度条", "Choose a Slider, Linear or Wavy seek bar."),
     WhatsNewItem("Save location", "Save new recordings straight to your picked folder."),
     WhatsNewItem("File names", "Saved files now match their titles."),
     WhatsNewItem("Trash cleanup", "Deleted files are removed from everywhere."),
-    WhatsNewItem("Transcribe offline", "Turn speech into text without internet."),
+    WhatsNewItem("离线转写", "Turn speech into text without internet."),
     WhatsNewItem("Clean audio", "One-tap noise cleanup."),
     WhatsNewItem("Update page", "The update button opens the update screen directly.")
 )
@@ -83,7 +83,7 @@ fun WhatsNewSheet(
                 )
                 Column {
                     Text(
-                        "What's new",
+                        "更新内容",
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     )
                 }
@@ -128,7 +128,7 @@ fun WhatsNewSheet(
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Nice", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text("不错", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
     }

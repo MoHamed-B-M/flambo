@@ -231,10 +231,10 @@ fun AppearanceSettingsScreen(
         Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Appearance & Theme", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("外观与主题", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -252,27 +252,27 @@ fun AppearanceSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Theme")
+                SectionHeader(title = "主题")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.Palette,
-                            title = "App theme",
+                            title = "应用主题",
                             value = run {
                                 val mode = when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System" }
                                 val style = ColorPaletteGenerator.fromString(colorSchemeStyle).name.lowercase().replaceFirstChar { it.titlecase() }
                                 "$style • $mode"
                             },
-                            subtitle = "Brightness, brand palettes and custom colors",
+                            subtitle = "亮度、品牌配色与自定义颜色",
                             onClick = { showAppThemeDialog = true }
                         )
                     }
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.PlayArrow,
-                            title = "Progress bar",
+                            title = "进度条",
                             value = ProgressBarStyle.label(progressStyle),
-                            subtitle = "Playback seek bar style",
+                            subtitle = "播放进度条样式",
                             onClick = { showProgressBarDialog = true }
                         )
                     }
@@ -280,15 +280,15 @@ fun AppearanceSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Layout")
+                SectionHeader(title = "布局")
                 SegmentedPreferenceGroup {
                     item {
                         val cardExpandAnim by prefs.cardExpandAnimFlow.collectAsState(initial = true)
                         val appContext = LocalContext.current.applicationContext
                         PreferenceSwitchItem(
                             icon = Icons.Filled.ZoomOutMap,
-                            title = "Card expand animation",
-                            subtitle = if (cardExpandAnim) "Cards zoom open and back • app-launch feel"
+                            title = "卡片展开动画",
+                            subtitle = if (cardExpandAnim) "卡片缩放展开 · 应用启动手感"
                             else "Open instantly without the zoom",
                             checked = cardExpandAnim,
                             onCheckedChange = { enabled ->
@@ -302,7 +302,7 @@ fun AppearanceSettingsScreen(
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.SwapHoriz,
-                            title = "Page transitions",
+                            title = "页面转场",
                             value = when (transitionStyle) {
                                 "fade" -> "Fade • calm crossfade"
                                 "zoom-in" -> "Zoom in • forward motion"
@@ -315,16 +315,16 @@ fun AppearanceSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "App icon")
+                SectionHeader(title = "应用图标")
                 SegmentedPreferenceGroup {
                     item {
                         val current = AppIconManager.options().firstOrNull { it.id == appIcon }
                             ?: AppIconManager.options().first()
                         PreferenceValueItem(
                             icon = Icons.Filled.Palette,
-                            title = "Launcher icon",
+                            title = "桌面图标",
                             value = current.label,
-                            subtitle = "Color and style • launcher refreshes in a moment",
+                            subtitle = "颜色与样式 · 桌面图标稍后刷新",
                             onClick = { showAppIconDialog = true }
                         )
                     }
@@ -332,13 +332,13 @@ fun AppearanceSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Gestures")
+                SectionHeader(title = "手势")
                 SegmentedPreferenceGroup {
                     item {
                         ListItem(
                             headlineContent = {
                                 androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("Swipe to dismiss", style = MaterialTheme.typography.titleMedium)
+                                    Text("滑动关闭", style = MaterialTheme.typography.titleMedium)
                                     Surface(
                                         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                                         color = androidx.compose.ui.graphics.Color(0xFFFF9800).copy(alpha = 0.15f),
@@ -383,7 +383,7 @@ fun AppearanceSettingsScreen(
                         var hapticDraft by remember(hapticLevel) { mutableStateOf(hapticLevel) }
                         val hapticsContext = LocalContext.current
                         ListItem(
-                            headlineContent = { Text("Haptic feedback", style = MaterialTheme.typography.titleMedium) },
+                            headlineContent = { Text("触感反馈", style = MaterialTheme.typography.titleMedium) },
                             supportingContent = {
                                 Column {
                                     Text(
@@ -432,11 +432,11 @@ fun AppearanceSettingsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                Text("Try it out", style = MaterialTheme.typography.titleSmall)
+                                Text("试一试", style = MaterialTheme.typography.titleSmall)
                             }
-                            TextButton(onClick = { showSwipeTip = false }) { Text("Got it") }
+                            TextButton(onClick = { showSwipeTip = false }) { Text("知道了") }
                         }
-                        Text("Swipe any card to the right to go back — just like this:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("向右滑动任意卡片即可返回——就像这样：", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -446,7 +446,7 @@ fun AppearanceSettingsScreen(
                                 .padding(8.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            Text("← swipe", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp))
+                            Text("← 滑动", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp))
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -457,7 +457,7 @@ fun AppearanceSettingsScreen(
                             ) {
                                 Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
-                                    Text("Playback", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text("播放", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                             }
                         }
@@ -466,13 +466,13 @@ fun AppearanceSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Guidance")
+                SectionHeader(title = "引导")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceSwitchItem(
                             icon = Icons.Filled.Lightbulb,
-                            title = "Show tips",
-                            subtitle = "Short how-tos on the home screen",
+                            title = "显示提示",
+                            subtitle = "在首页显示简短教程",
                             checked = tipsEnabled,
                             onCheckedChange = {
                                 scope.launch {
@@ -491,7 +491,7 @@ fun AppearanceSettingsScreen(
     if (showTransitionDialog) {
         AlertDialog(
             onDismissRequest = { showTransitionDialog = false },
-            title = { Text("Page transitions", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("页面转场", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
@@ -530,7 +530,7 @@ fun AppearanceSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showTransitionDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showTransitionDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") }
             },
             shape = ShapeLargeIncreased
         )
@@ -540,7 +540,7 @@ fun AppearanceSettingsScreen(
         val context = LocalContext.current
         AlertDialog(
             onDismissRequest = { showAppIconDialog = false },
-            title = { Text("Launcher icon", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("桌面图标", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -589,7 +589,7 @@ fun AppearanceSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAppIconDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showAppIconDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") }
             },
             shape = ShapeLargeIncreased
         )
@@ -598,7 +598,7 @@ fun AppearanceSettingsScreen(
     if (showProgressBarDialog) {
         AlertDialog(
             onDismissRequest = { showProgressBarDialog = false },
-            title = { Text("Progress bar", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("进度条", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -640,7 +640,7 @@ fun AppearanceSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showProgressBarDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showProgressBarDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") }
             },
             shape = ShapeLargeIncreased
         )
@@ -656,10 +656,10 @@ fun AppearanceSettingsScreen(
         }
         AlertDialog(
             onDismissRequest = { showAppThemeDialog = false },
-            title = { Text("App theme", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("应用主题", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Brightness", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                    Text("亮度", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                         modifier = Modifier.fillMaxWidth()
@@ -744,7 +744,7 @@ fun AppearanceSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAppThemeDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showAppThemeDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") }
             },
             shape = ShapeLargeIncreased
         )

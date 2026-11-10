@@ -35,7 +35,7 @@ val AppTips = listOf(
         "Open a recording and tap Clean audio. Pick Light, Balanced or Strong in Settings, and keep or replace the original."
     ),
     Tip(
-        "Transcribe offline",
+        "离线转写",
         "Download a language model once in Settings, then turn any recording into text with no internet."
     ),
     Tip(
@@ -92,10 +92,10 @@ fun TipCard(
             )
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                 TextButton(onClick = onHide) {
-                    Text("Hide tips", color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text("隐藏提示", color = MaterialTheme.colorScheme.onTertiaryContainer)
                 }
                 TextButton(onClick = onNext) {
-                    Text("Next tip", color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text("下一条提示", color = MaterialTheme.colorScheme.onTertiaryContainer)
                 }
             }
         }

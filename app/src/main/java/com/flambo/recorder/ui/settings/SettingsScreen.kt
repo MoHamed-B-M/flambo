@@ -167,9 +167,9 @@ fun SettingsScreen(
         Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("设置", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
@@ -188,12 +188,12 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Recording & Audio")
+                SectionHeader(title = "录音与音频")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceCategoryItemClickable(
                             icon = Icons.Filled.Mic,
-                            title = "Recording & Audio",
+                            title = "录音与音频",
                             subtitle = "${quality.label} • ${AudioSource.fromPref(audioSource).label} • ${if (sttEngine == "whisper") "Whisper" else "Vosk"}",
                             onClick = onNavigateRecording
                         )
@@ -202,14 +202,14 @@ fun SettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Appearance & Theme")
+                SectionHeader(title = "外观与主题")
                 SegmentedPreferenceGroup {
                     item {
                         val mode = when (darkTheme) { "light" -> "Light"; "dark" -> "Dark"; else -> "System" }
                         val color = if (dynamicColor) "Dynamic" else com.flambo.recorder.ui.theme.themeSeedById(themeSeed).label
                         PreferenceCategoryItemClickable(
                             icon = Icons.Filled.Palette,
-                            title = "Appearance",
+                            title = "外观",
                             subtitle = "$color • $mode • Layout",
                             onClick = onNavigateAppearance
                         )
@@ -218,13 +218,13 @@ fun SettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Speech-to-Text")
+                SectionHeader(title = "语音转文字")
                 SegmentedPreferenceGroup {
                     item {
                         val langLabel = if (sttLanguage.isBlank()) "Auto" else sttLanguage
                         PreferenceCategoryItemClickable(
                             icon = Icons.Filled.RecordVoiceOver,
-                            title = "Speech-to-Text",
+                            title = "语音转文字",
                             subtitle = if (sttEngine == "whisper") "Whisper • $langLabel • 95+ langs" else "Vosk • $langLabel • offline",
                             onClick = onNavigateStt
                         )
@@ -233,13 +233,13 @@ fun SettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Storage & Data")
+                SectionHeader(title = "存储与数据")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceCategoryItemClickable(
                             icon = Icons.Filled.Folder,
-                            title = "Storage & Data",
-                            subtitle = "Folders • Naming • Custom folder",
+                            title = "存储与数据",
+                            subtitle = "文件夹 · 命名 · 自定义目录",
                             onClick = onNavigateStorage
                         )
                     }
@@ -247,21 +247,21 @@ fun SettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Updates & About")
+                SectionHeader(title = "更新与关于")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceCategoryItemClickable(
                             icon = Icons.Filled.Download,
-                            title = "Updates",
-                            subtitle = "Channel • Auto-check • Install",
+                            title = "更新",
+                            subtitle = "通道 · 自动检查 · 安装",
                             onClick = onNavigateUpdates
                         )
                     }
                     item {
                         PreferenceCategoryItemClickable(
                             icon = Icons.Filled.Info,
-                            title = "About",
-                            subtitle = "Tips • Version • Credits • GitHub",
+                            title = "关于",
+                            subtitle = "提示 · 版本 · 致谢 · GitHub",
                             onClick = onNavigateAbout
                         )
                     }

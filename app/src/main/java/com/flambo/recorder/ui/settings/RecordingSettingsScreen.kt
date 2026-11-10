@@ -171,10 +171,10 @@ fun RecordingSettingsScreen(
         Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Recording & Audio", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("录音与音频", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -192,12 +192,12 @@ fun RecordingSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Audio Quality")
+                SectionHeader(title = "音质")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.RecordVoiceOver,
-                            title = "Quality",
+                            title = "质量",
                             value = "${quality.label} • ${quality.description}",
                             onClick = { showQualityDialog = true }
                         )
@@ -206,13 +206,13 @@ fun RecordingSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Recording Behavior")
+                SectionHeader(title = "录音行为")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceSwitchItem(
                             icon = Icons.Filled.RecordVoiceOver,
-                            title = "Recording reminder",
-                            subtitle = "Show a gentle reminder before long recordings",
+                            title = "录音提醒",
+                            subtitle = "长时间录音前给个温和提醒",
                             checked = reminder,
                             onCheckedChange = { scope.launch { prefs.setRecordingReminder(it) } }
                         )
@@ -220,7 +220,7 @@ fun RecordingSettingsScreen(
                     item {
                         PreferenceValueItem(
                             icon = if (audioSource == "system") Icons.Filled.MusicNote else Icons.Filled.Mic,
-                            title = "Audio source",
+                            title = "音频来源",
                             value = AudioSource.fromPref(audioSource).label,
                             subtitle = if (audioSource == "system") "System sound • Under development" else "Microphone",
                             onClick = { showAudioSourceDialog = true }
@@ -230,13 +230,13 @@ fun RecordingSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Audio Processing")
+                SectionHeader(title = "音频处理")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceSwitchItem(
                             icon = Icons.Filled.Tune,
-                            title = "Noise reduction",
-                            subtitle = "Live hush + steady levels while recording",
+                            title = "降噪",
+                            subtitle = "录音时实时降噪并稳定音量",
                             checked = noiseReduction,
                             onCheckedChange = { scope.launch { prefs.setNoiseReduction(it) } }
                         )
@@ -244,7 +244,7 @@ fun RecordingSettingsScreen(
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.Tune,
-                            title = "Enhancement strength",
+                            title = "增强强度",
                             value = EnhanceStrength.fromPref(enhanceStrength).let { "${it.label} • ${it.description}" },
                             onClick = { showEnhanceStrengthDialog = true }
                         )
@@ -252,8 +252,8 @@ fun RecordingSettingsScreen(
                     item {
                         PreferenceSwitchItem(
                             icon = Icons.Filled.Tune,
-                            title = "Keep original",
-                            subtitle = "Save the cleaned copy next to the original",
+                            title = "保留原文件",
+                            subtitle = "在原文件旁保存清理后的副本",
                             checked = keepOriginal,
                             onCheckedChange = { scope.launch { prefs.setKeepOriginal(it) } }
                         )
@@ -267,7 +267,7 @@ fun RecordingSettingsScreen(
     if (showQualityDialog) {
         AlertDialog(
             onDismissRequest = { showQualityDialog = false },
-            title = { Text("Recording quality", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("录音音质", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     RecordingQuality.entries.forEachIndexed { index, q ->
@@ -294,7 +294,7 @@ fun RecordingSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showQualityDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showQualityDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") }
             },
             shape = ShapeLargeIncreased
         )
@@ -303,7 +303,7 @@ fun RecordingSettingsScreen(
     if (showAudioSourceDialog) {
         AlertDialog(
             onDismissRequest = { showAudioSourceDialog = false },
-            title = { Text("Audio source", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("音频来源", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -339,7 +339,7 @@ fun RecordingSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAudioSourceDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showAudioSourceDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") }
             },
             shape = ShapeLargeIncreased
         )
@@ -348,7 +348,7 @@ fun RecordingSettingsScreen(
     if (showEnhanceStrengthDialog) {
         AlertDialog(
             onDismissRequest = { showEnhanceStrengthDialog = false },
-            title = { Text("Enhancement strength", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("增强强度", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     EnhanceStrength.entries.forEachIndexed { index, s ->
@@ -375,7 +375,7 @@ fun RecordingSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showEnhanceStrengthDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") }
+                TextButton(onClick = { showEnhanceStrengthDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") }
             },
             shape = ShapeLargeIncreased
         )

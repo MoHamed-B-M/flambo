@@ -127,13 +127,13 @@ fun GroupFolderCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${group.count} recordings",
+                    text = "${group.count} 个录音",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             IconButton(onClick = onRecolor) {
-                Icon(Icons.Filled.Palette, contentDescription = "Folder color")
+                Icon(Icons.Filled.Palette, contentDescription = "文件夹颜色")
             }
             Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

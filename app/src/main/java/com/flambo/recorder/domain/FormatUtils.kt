@@ -39,12 +39,12 @@ fun formatRelativeTime(epochMs: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - epochMs
     val mins = TimeUnit.MILLISECONDS.toMinutes(diff)
-    if (mins < 1) return "Just now"
-    if (mins < 60) return "$mins min ago"
+    if (mins < 1) return "刚刚"
+    if (mins < 60) return "$mins 分钟前"
     val hours = TimeUnit.MILLISECONDS.toHours(diff)
-    if (hours < 24) return "$hours hr ago"
+    if (hours < 24) return "$hours 小时前"
     val days = TimeUnit.MILLISECONDS.toDays(diff)
-    if (days < 7) return "$days day${if (days > 1) "s" else ""} ago"
+    if (days < 7) return "$days 天前"
     return dateFormatFor(Locale.getDefault()).format(Date(epochMs))
 }
 

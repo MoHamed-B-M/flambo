@@ -182,10 +182,10 @@ fun SttSettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Speech-to-Text", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("语音转文字", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -203,12 +203,12 @@ fun SttSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Engine")
+                SectionHeader(title = "引擎")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.RecordVoiceOver,
-                            title = "Engine",
+                            title = "引擎",
                             value = if (sttEngine == "whisper") "Whisper • multilingual 95+ langs" else "Vosk • per-language models",
                             onClick = { showEngineDialog = true }
                         )
@@ -216,7 +216,7 @@ fun SttSettingsScreen(
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.RecordVoiceOver,
-                            title = "Transcription language",
+                            title = "转写语言",
                             value = if (sttEngine == "whisper") {
                                 when (sttLanguage) {
                                     "" -> "Auto (detect)"
@@ -238,7 +238,7 @@ fun SttSettingsScreen(
                                 }
                             } else {
                                 VoskModelManager.forTag(sttLanguage.ifBlank { "en" })?.label
-                                    ?: if (sttLanguage.isBlank()) "Best installed model" else sttLanguage
+                                    ?: if (sttLanguage.isBlank()) "已安装的最佳模型" else sttLanguage
                             },
                             onClick = { showSttLanguageDialog = true }
                         )
@@ -247,13 +247,13 @@ fun SttSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Offline Models")
+                SectionHeader(title = "离线模型")
                 SegmentedPreferenceGroup {
                     item {
                         val installedCount = remember(modelsTick) { transcription.vosk.models.installedCodes().size }
                         PreferenceValueItem(
                             icon = Icons.Filled.Download,
-                            title = "Vosk offline models",
+                            title = "Vosk 离线模型",
                             value = if (installedCount == 0) "None yet — download one to transcribe offline" else "$installedCount language${if (installedCount > 1) "s" else ""} ready offline",
                             onClick = { showVoskModelsDialog = true }
                         )
@@ -264,7 +264,7 @@ fun SttSettingsScreen(
                             val prog = whisperProgress["whisper"]
                             PreferenceValueItem(
                                 icon = Icons.Filled.Download,
-                                title = "Whisper tiny model",
+                                title = "Whisper tiny 模型",
                                 value = when {
                                     prog != null -> "Downloading ${(prog * 100).toInt()}%"
                                     whisperInstalled -> "Ready offline • 95+ languages • ~75 MB"
@@ -289,12 +289,12 @@ fun SttSettingsScreen(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "About")
+                SectionHeader(title = "关于")
                 SegmentedPreferenceGroup {
                     item {
                         PreferenceValueItem(
                             icon = Icons.Filled.RecordVoiceOver,
-                            title = "Offline transcription",
+                            title = "离线转写",
                             value = "Vosk and Whisper run fully offline — no cloud, no account",
                             onClick = {}
                         )
@@ -308,10 +308,10 @@ fun SttSettingsScreen(
     if (showEngineDialog) {
         AlertDialog(
             onDismissRequest = { showEngineDialog = false },
-            title = { Text("Transcription engine", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("转写引擎", style = MaterialTheme.typography.titleLarge) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Whisper is multilingual (95+ languages) via ggml-tiny • Vosk uses per-language models", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Whisper 经 ggml-tiny 支持 95 种以上语言 · Vosk 每种语言单独模型", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     listOf(
                         Triple("vosk", "Vosk", "Per-language models • proven offline"),
                         Triple("whisper", "Whisper", "Multilingual 95+ • ggml-tiny 75 MB")
@@ -336,7 +336,7 @@ fun SttSettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showEngineDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { showEngineDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -344,7 +344,7 @@ fun SttSettingsScreen(
     if (showSttLanguageDialog) {
         AlertDialog(
             onDismissRequest = { showSttLanguageDialog = false },
-            title = { Text("Transcription language", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("转写语言", style = MaterialTheme.typography.titleLarge) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (sttEngine == "whisper") {
@@ -380,7 +380,7 @@ fun SttSettingsScreen(
                                 },
                                 shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("Best installed model") }
+                            ) { Text("已安装的最佳模型") }
                         }
                         items(
                             VoskModelManager.CATALOG,
@@ -403,7 +403,7 @@ fun SttSettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showSttLanguageDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { showSttLanguageDialog = false }, shapes = ButtonDefaults.shapes()) { Text("关闭") } },
             shape = ShapeLargeIncreased
         )
     }
@@ -411,7 +411,7 @@ fun SttSettingsScreen(
     if (showVoskModelsDialog) {
         AlertDialog(
             onDismissRequest = { showVoskModelsDialog = false },
-            title = { Text("Offline models", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("离线模型", style = MaterialTheme.typography.titleLarge) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(VoskModelManager.CATALOG, key = { it.code }) { model ->
@@ -422,17 +422,17 @@ fun SttSettingsScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(model.label, style = MaterialTheme.typography.titleSmall)
-                                        Text(if (installed) "Ready offline" else "~${model.sizeMb} MB one-time download" + if (model.large) " • large" else "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(if (installed) "离线可用" else "~${model.sizeMb} MB one-time download" + if (model.large) " • large" else "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     when {
                                         prog != null -> Text("${(prog * 100).toInt()}%", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                         installed -> IconButton(onClick = { scope.launch { transcription.vosk.models.delete(model.code); modelsTick++ } }) {
-                                            Icon(Icons.Filled.Delete, contentDescription = "Delete ${model.label} model", tint = MaterialTheme.colorScheme.error)
+                                            Icon(Icons.Filled.Delete, contentDescription = "删除 ${model.label} 模型", tint = MaterialTheme.colorScheme.error)
                                         }
                                         else -> FilledTonalButton(onClick = { scope.launch { transcription.vosk.models.download(model.code); modelsTick++ } }, shapes = ButtonDefaults.shapes()) {
                                             Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(Modifier.width(8.dp))
-                                            Text("Get")
+                                            Text("获取")
                                         }
                                     }
                                 }
@@ -442,7 +442,7 @@ fun SttSettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showVoskModelsDialog = false }, shapes = ButtonDefaults.shapes()) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { showVoskModelsDialog = false }, shapes = ButtonDefaults.shapes()) { Text("完成") } },
             shape = ShapeLargeIncreased
         )
     }

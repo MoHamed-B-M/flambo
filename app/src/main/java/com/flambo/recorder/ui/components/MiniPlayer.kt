@@ -48,7 +48,7 @@ fun MiniPlayer(
             FilledTonalIconButton(onClick = onPlayPause, modifier = Modifier.size(40.dp)) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play"
+                    contentDescription = if (isPlaying) "暂停" else "播放"
                 )
             }
             androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
@@ -56,7 +56,7 @@ fun MiniPlayer(
                 Text(formatDuration(positionMs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
             }
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close")
+                Icon(Icons.Filled.Close, contentDescription = "关闭")
             }
         }
     }

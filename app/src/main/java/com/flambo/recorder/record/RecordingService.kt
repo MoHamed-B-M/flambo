@@ -6,7 +6,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.flambo.recorder.MainActivity
 import com.flambo.recorder.R
@@ -28,6 +32,16 @@ class RecordingService : Service() {
         const val ACTION_PAUSE = "flambo.action.PAUSE"
         const val ACTION_RESUME = "flambo.action.RESUME"
         const val ACTION_STOP = "flambo.action.STOP"
+
+        /**
+         * 待命：把本服务拎成常驻前台服务，但不录音。
+         *
+         * 这是绕开 Android 14+ 「后台应用不能启动麦克风前台服务」的关键：
+         * 只要应用已经有一个前台服务在跑，触发录音时就不会再被判成"后台启动"。
+         * 由 MainActivity 可见时调用一次，之后一直活着。
+         */
+        const val ACTION_IDLE = "flambo.action.IDLE"
+
         const val EXTRA_FGS_TYPE = "flambo.extra.FGS_TYPE"
     }
 
@@ -41,6 +55,10 @@ class RecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
+            ACTION_IDLE -> {
+                enterStandby()
+                return START_STICKY
+            }
             ACTION_PAUSE -> {
                 RecordingController.instance?.pause()
                 refreshNow()
@@ -53,19 +71,25 @@ class RecordingService : Service() {
             }
             ACTION_STOP -> {
                 RecordingController.instance?.stop()
-                stopSelf()
-                return START_NOT_STICKY
+                enterStandby()
+                return START_STICKY
             }
         }
         val fgsType = intent?.getIntExtra(
             EXTRA_FGS_TYPE,
-            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        ) ?: android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        ) ?: ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         val notification = buildNotification(0L, false)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, notification, fgsType)
-        } else {
-            startForeground(NOTIF_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIF_ID, notification, fgsType)
+            } else {
+                startForeground(NOTIF_ID, notification)
+            }
+        } catch (_: Exception) {
+            // 后台启动被系统拒绝时不要崩进程（原先这里会抛 SecurityException 直接闪退）
+            runCatching { enterStandby() }
+            return START_STICKY
         }
         startTicker()
         return START_STICKY
@@ -77,6 +101,21 @@ class RecordingService : Service() {
         ticker?.cancel()
         scope.cancel()
         super.onDestroy()
+    }
+
+    /** 常驻待命：有前台资格但不占用麦克风。 */
+    private fun enterStandby() {
+        val notification = buildStandbyNotification()
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIF_ID, notification)
+            }
+        } catch (_: Exception) {
+            // 应用在后台被拒：退化成普通通知，至少进程不崩
+            runCatching { notify(notification) }
+        }
     }
 
     private fun createChannel() {
@@ -95,7 +134,8 @@ class RecordingService : Service() {
             while (isActive) {
                 val state = RecordingController.instance?.state?.value
                 if (state == null || !state.isRecording) {
-                    stopSelf()
+                    // 录完不销毁服务，退回待命，保证下次熄屏触发时应用仍是"前台服务"状态
+                    Handler(Looper.getMainLooper()).post { enterStandby() }
                     break
                 }
                 notify(buildNotification(state.elapsedMs, state.isPaused))
@@ -106,7 +146,7 @@ class RecordingService : Service() {
 
     private fun refreshNow() {
         val state = RecordingController.instance?.state?.value ?: run {
-            stopSelf()
+            enterStandby()
             return
         }
         notify(buildNotification(state.elapsedMs, state.isPaused))
@@ -123,6 +163,24 @@ class RecordingService : Service() {
             this, requestCode, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    private fun buildStandbyNotification(): Notification {
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pending = PendingIntent.getActivity(
+            this, 0, openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText("待命中 · 长按音量键开始录音")
+            .setSmallIcon(R.drawable.ic_stat_recording)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(pending)
+            .build()
     }
 
     private fun buildNotification(elapsedMs: Long, isPaused: Boolean): Notification {

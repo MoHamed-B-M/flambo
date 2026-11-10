@@ -3,6 +3,7 @@ package com.flambo.recorder
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import com.flambo.recorder.record.RecordingService
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -160,6 +161,14 @@ class MainActivity : ComponentActivity() {
         }
 
         app = application as FlamboApp
+
+        // 应用可见时把录音服务拎成常驻前台服务（待命），
+        // 之后熄屏触发录音就不会再被判成"后台启动麦克风服务"。
+        runCatching {
+            val idle = Intent(this, RecordingService::class.java)
+                .setAction(RecordingService.ACTION_IDLE)
+            ContextCompat.startForegroundService(this, idle)
+        }
         refreshPermissionStates()
 
         lifecycleScope.launch {
@@ -221,15 +230,15 @@ class MainActivity : ComponentActivity() {
                     if (showRationale) {
                         AlertDialog(
                             onDismissRequest = { showRationale = false },
-                            title = { Text("Microphone access") },
-                            text = { Text("Flambo needs microphone permission to record. You can grant it in system settings.") },
+                            title = { Text("麦克风权限") },
+                            text = { Text("Flambo 需要麦克风权限才能录音，可以在系统设置里授予。") },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showRationale = false
                                     checkPermissions()
-                                }) { Text("Try again") }
+                                }) { Text("重试") }
                             },
-                            dismissButton = { TextButton(onClick = { showRationale = false }) { Text("Not now") } },
+                            dismissButton = { TextButton(onClick = { showRationale = false }) { Text("以后再说") } },
                             shape = ShapeLargeIncreased
                         )
                     }

@@ -371,8 +371,16 @@ class RecordingController(
     }
 
     private fun stopForegroundService() {
+        // 不销毁服务，只让它退回"待命"，否则下次熄屏触发又要新起前台服务（会被系统拒）。
         try {
-            appContext.stopService(Intent(appContext, RecordingService::class.java))
+            val intent = Intent(appContext, RecordingService::class.java).apply {
+                action = RecordingService.ACTION_IDLE
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                appContext.startForegroundService(intent)
+            } else {
+                appContext.startService(intent)
+            }
         } catch (_: Exception) {}
     }
 

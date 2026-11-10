@@ -173,10 +173,10 @@ fun AboutSettingsScreen(
         Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("About", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("关于", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -194,16 +194,16 @@ fun AboutSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Guidance")
+                SectionHeader(title = "引导")
                 SegmentedPreferenceGroup {
                     item {
                         Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
                             ListItem(
-                                headlineContent = { Text("Replay onboarding") },
-                                supportingContent = { Text("Take the quick tour again") },
+                                headlineContent = { Text("重看引导") },
+                                supportingContent = { Text("再看一遍新手引导") },
                                 leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                 trailingContent = {
-                                    TextButton(onClick = onRerunOnboarding, shapes = ButtonDefaults.shapes()) { Text("Replay") }
+                                    TextButton(onClick = onRerunOnboarding, shapes = ButtonDefaults.shapes()) { Text("重播") }
                                 },
                                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                             )
@@ -242,7 +242,7 @@ fun AboutSettingsScreen(
                             }
                             AssistChip(onClick = {}, label = { Text(versionLabel) })
                         }
-                        Text("A calm, expressive voice recorder. Transcripts and recordings stay on your device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text("一款安静、富表现力的录音机。转写和录音都只留在你的设备上。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     }
                 }
             }
@@ -264,7 +264,7 @@ fun AboutSettingsScreen(
                         }
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Automation & shortcuts", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("自动化与快捷方式", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         Text(
                             "Long-press the Flambo icon for Start and Pause. Key Mapper, Tasker, and other automation apps can fire Record, Pause, Stop, and toggles headlessly — nothing opens on screen.",
                             style = MaterialTheme.typography.bodyMedium,
@@ -284,14 +284,14 @@ fun AboutSettingsScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Image(
                             painter = painterResource(id = R.drawable.github_avatar),
-                            contentDescription = "MoHamed-B-M profile picture",
+                            contentDescription = "MoHamed-B-M 的头像",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.size(64.dp).clip(CircleShape).border(2.dp, MaterialTheme.colorScheme.primaryContainer, CircleShape)
                         )
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("Hamma", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
                             Text("@MoHamed-B-M", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                            Text("Indie Android dev • voice nerd", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
+                            Text("独立安卓开发者 · 声音爱好者", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -311,7 +311,7 @@ fun AboutSettingsScreen(
                         ) {
                             Icon(Icons.Filled.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Report issue")
+                            Text("反馈问题")
                         }
                     }
                 }

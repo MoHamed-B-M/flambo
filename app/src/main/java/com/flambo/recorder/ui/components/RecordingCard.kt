@@ -174,7 +174,7 @@ fun RecordingCard(
             if (selected) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Selected",
+                    contentDescription = "已选中",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -192,7 +192,7 @@ fun RecordingCard(
             ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    contentDescription = if (isPlaying) "暂停" else "播放",
                     modifier = Modifier.padding(12.dp),
                     tint = if (isPlaying) MaterialTheme.colorScheme.onPrimary else if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -211,7 +211,7 @@ fun RecordingCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (fileMissing) {
                         Text(
-                            text = "File missing",
+                            text = "文件丢失",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -298,14 +298,14 @@ fun RecordingCard(
             ) {
                 Icon(
                     imageVector = if (recording.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = "Favorite",
+                    contentDescription = "收藏",
                     tint = if (recording.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             androidx.compose.foundation.layout.Box {
                 IconButton(onClick = { AppHaptics.tap(context); showMenu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                    Icon(Icons.Filled.MoreVert, contentDescription = "更多")
                 }
                 DropdownMenu(
                     expanded = showMenu,
@@ -336,7 +336,7 @@ fun RecordingCard(
                         ) {
                             Icon(Icons.Filled.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                            Text("Open details", modifier = Modifier.weight(1f))
+                            Text("打开详情", modifier = Modifier.weight(1f))
                         }
                         Button(
                             onClick = { showMenu = false; onFavorite() },
@@ -354,7 +354,7 @@ fun RecordingCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                            Text(if (recording.isFavorite) "Unfavorite" else "Favorite", modifier = Modifier.weight(1f))
+                            Text(if (recording.isFavorite) "取消收藏" else "收藏", modifier = Modifier.weight(1f))
                         }
                         FilledTonalButton(
                             onClick = { showMenu = false; onRename() },
@@ -364,7 +364,7 @@ fun RecordingCard(
                         ) {
                             Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                            Text("Rename", modifier = Modifier.weight(1f))
+                            Text("重命名", modifier = Modifier.weight(1f))
                         }
                         Button(
                             onClick = { showMenu = false; onDelete() },
@@ -381,7 +381,7 @@ fun RecordingCard(
                         ) {
                             Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                            Text("Delete", modifier = Modifier.weight(1f))
+                            Text("删除", modifier = Modifier.weight(1f))
                         }
                     }
                 }

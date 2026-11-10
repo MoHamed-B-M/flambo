@@ -110,7 +110,7 @@ fun OnboardingScreen(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (!isLast) {
-                    TextButton(onClick = onFinish) { Text("Skip") }
+                    TextButton(onClick = onFinish) { Text("跳过") }
                 } else {
                     Spacer(Modifier.size(48.dp))
                 }
@@ -225,7 +225,7 @@ fun OnboardingScreen(
                     TextButton(
                         onClick = { scope.launch { pagerState.animateScrollToPage(page - 1) } },
                         shapes = ButtonDefaults.shapes()
-                    ) { Text("Back") }
+                    ) { Text("返回") }
                 }
                 Spacer(Modifier.weight(1f))
                 if (isLast) {
@@ -238,7 +238,7 @@ fun OnboardingScreen(
                         Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (micGranted) "Start recording" else "Allow mic to continue",
+                            if (micGranted) "开始录音" else "Allow mic to continue",
                             style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight)
                         )
                     }
@@ -248,7 +248,7 @@ fun OnboardingScreen(
                         shapes = ButtonDefaults.shapes(),
                         contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
                     ) {
-                        Text("Next", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
+                        Text("下一步", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
                     }
                 }
             }
@@ -301,7 +301,7 @@ private fun PermissionPageContent(
         PermissionRow(
             icon = Icons.Filled.Mic,
             title = "Microphone",
-            body = "Record your voice and the room",
+            body = "录下你的声音和周围环境",
             granted = micGranted,
             onGrant = onGrantMic
         )
@@ -309,8 +309,8 @@ private fun PermissionPageContent(
             Spacer(Modifier.height(12.dp))
             PermissionRow(
                 icon = Icons.Filled.Notifications,
-                title = "Notifications",
-                body = "Recording timer and update alerts",
+                title = "通知",
+                body = "录音计时与更新提醒",
                 granted = notifGranted,
                 onGrant = onGrantNotifications
             )
@@ -357,7 +357,7 @@ private fun PermissionRow(
                     shapes = ButtonDefaults.shapes(),
                     contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight)
                 ) {
-                    Text("Allow", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
+                    Text("允许", style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight))
                 }
             }
         }

@@ -230,15 +230,15 @@ class MainActivity : ComponentActivity() {
                     if (showRationale) {
                         AlertDialog(
                             onDismissRequest = { showRationale = false },
-                            title = { Text("Microphone access") },
-                            text = { Text("Flambo needs microphone permission to record. You can grant it in system settings.") },
+                            title = { Text("麦克风权限") },
+                            text = { Text("Flambo 需要麦克风权限才能录音，可以在系统设置里授予。") },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showRationale = false
                                     checkPermissions()
-                                }) { Text("Try again") }
+                                }) { Text("重试") }
                             },
-                            dismissButton = { TextButton(onClick = { showRationale = false }) { Text("Not now") } },
+                            dismissButton = { TextButton(onClick = { showRationale = false }) { Text("以后再说") } },
                             shape = ShapeLargeIncreased
                         )
                     }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Flambo</string>
+    <string name="recording_notification_channel">录音</string>
+    <string name="recording_notification_title">正在录音</string>
+    <string name="recording_notification_text">点击返回 Flambo</string>
+    <string name="playback_channel_name">播放</string>
+    <!-- Launcher shortcut / Key Mapper intents -->
+    <string name="shortcut_start_short">开始录音</string>
+    <string name="shortcut_start_long">开始语音录音</string>
+    <string name="shortcut_pause_short">暂停 / 继续</string>
+    <string name="shortcut_pause_long">暂停或继续录音</string>
+    <string name="shortcut_stop_short">停止录音</string>
+    <string name="shortcut_stop_long">停止并保存录音</string>
+    <string name="shortcut_toggle_disabled">录音不可用</string>
+    <string name="shortcut_config_name">切换录音</string>
+    <!-- Discrete static shortcut labels (never relabeled at runtime) -->
+    <string name="shortcut_record_label">录音</string>
+    <string name="shortcut_pause_label">暂停</string>
+    <string name="shortcut_stop_label">停止</string>
+    <string name="shortcut_toggle_rp_label">录音/暂停切换</string>
+    <string name="shortcut_toggle_rs_label">录音/停止切换</string>
+</resources>

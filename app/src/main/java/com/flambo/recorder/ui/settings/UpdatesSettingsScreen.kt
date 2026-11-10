@@ -194,10 +194,10 @@ fun UpdatesSettingsScreen(
         Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Updates", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("更新", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -215,7 +215,7 @@ fun UpdatesSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(title = "Release Channel")
+                SectionHeader(title = "发布通道")
                 Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -224,7 +224,7 @@ fun UpdatesSettingsScreen(
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("Release channel", style = MaterialTheme.typography.titleMedium)
+                                Text("发布通道", style = MaterialTheme.typography.titleMedium)
                                 Text(
                                     if (installedLabel.isBlank()) "Checking installed version…" else "Installed $installedLabel",
                                     style = MaterialTheme.typography.bodySmall,
@@ -260,8 +260,8 @@ fun UpdatesSettingsScreen(
                         )
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Check on launch", style = MaterialTheme.typography.titleSmall)
-                                Text("Show a snackbar when an update is ready", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("启动时检查", style = MaterialTheme.typography.titleSmall)
+                                Text("有更新时弹出提示", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Switch(checked = autoUpdateCheck, onCheckedChange = { scope.launch { prefs.setAutoUpdateCheck(it) } })
                         }
@@ -273,7 +273,7 @@ fun UpdatesSettingsScreen(
                                 if (result.available && result.release != null) {
                                     Surface(shape = ShapeLargeIncreased, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
                                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Text("Update ready: v${result.release.version}" + if (result.release.buildNumber > 0) " • build ${result.release.buildNumber}" else "", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            Text("更新就绪：v${result.release.version}" + if (result.release.buildNumber > 0) " • build ${result.release.buildNumber}" else "", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                             Text(result.release.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f))
                                             val asset = result.release.bestApk()
                                             val downloading = updateDownload.progress != null
@@ -283,7 +283,7 @@ fun UpdatesSettingsScreen(
                                                 Text("Downloading ${asset?.name ?: "update"}… ${((updateDownload.progress ?: 0f) * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f))
                                             }
                                             if (downloadError != null) Text(downloadError ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                            if (needsUnknownSources) Text("Allow “Install unknown apps” for Flambo, then tap again.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            if (needsUnknownSources) Text("请允许 Flambo「安装未知应用」，然后重试。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                             if (savedFile != null && !downloading) {
                                                 Text("Downloaded ${savedFile.name} — kept until you install.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f))
                                                 FilledTonalButton(
@@ -302,7 +302,7 @@ fun UpdatesSettingsScreen(
                                                 ) {
                                                     Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                                     Spacer(Modifier.width(8.dp))
-                                                    Text("Install update")
+                                                    Text("安装更新")
                                                 }
                                                 TextButton(onClick = {
                                                     AppHaptics.tap(context)
@@ -310,7 +310,7 @@ fun UpdatesSettingsScreen(
                                                     updateDownload.downloadedFile = null
                                                     updateDownload.downloadedAssetName = null
                                                     scope.launch { prefs.clearPendingApkDelete() }
-                                                }, shapes = ButtonDefaults.shapes()) { Text("Delete file") }
+                                                }, shapes = ButtonDefaults.shapes()) { Text("删除文件") }
                                             } else {
                                                 FilledTonalButton(
                                                     onClick = {
@@ -357,7 +357,7 @@ fun UpdatesSettingsScreen(
                                                 ) {
                                                     Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                                     Spacer(Modifier.width(8.dp))
-                                                    Text(if (downloading) "Downloading…" else "Download update")
+                                                    Text(if (downloading) "下载中…" else "下载更新")
                                                 }
                                             }
                                         }
@@ -388,7 +388,7 @@ fun UpdatesSettingsScreen(
                         ) {
                             Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(if (checkingUpdate) "Checking…" else "Check for updates")
+                            Text(if (checkingUpdate) "检查中…" else "检查更新")
                         }
                     }
                 }

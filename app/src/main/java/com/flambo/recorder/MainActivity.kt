@@ -3,7 +3,6 @@ package com.flambo.recorder
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import androidx.core.content.ContextCompat
 import com.flambo.recorder.record.RecordingService
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager

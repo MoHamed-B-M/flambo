@@ -46,6 +46,12 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var app: RecordMasterApp
 
+    /**
+     * Route requested by a shortcut. Set before/while the NavHost composes and
+     * consumed by [LaunchedEffect] once the graph is ready.
+     */
+    private var pendingRoute by mutableStateOf<String?>(null)
+
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         PreferencesHelper.init(this)
@@ -99,6 +105,19 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = useDynamicColor,
                 useExpressive = useExpressiveColor
             ) {
+                // A shortcut (launcher long-press, Key Mapper, Tasker) must land
+                // on the recorder page, otherwise the take is only visible in
+                // the notification. Runs after the graph is set.
+                LaunchedEffect(pendingRoute) {
+                    val route = pendingRoute ?: return@LaunchedEffect
+                    pendingRoute = null
+                    runCatching {
+                        navController.navigate(route) {
+                            launchSingleTop = true
+                            popUpTo("homePage") { inclusive = false }
+                        }
+                    }
+                }
                 NavHost(
                     modifier = Modifier.background(MaterialTheme.colorScheme.surface),
                     navController = navController, startDestination = "homePage",
@@ -189,10 +208,13 @@ class MainActivity : ComponentActivity() {
             RecordingShortcut.ACTION_TOGGLE_RECORD_STOP
         )
         if (action !in known) return
-        if (!app.automationTriggersEnabled) return
 
+        // Clear first so a configuration change cannot replay the action.
         target.action = null
         setIntent(target)
+        if (!app.automationTriggersEnabled) return
+
+        pendingRoute = ROUTE_RECORD
         val interactive = isScreenInteractive()
         lifecycleScope.launch {
             when (action) {
@@ -265,6 +287,11 @@ class MainActivity : ComponentActivity() {
         (getSystemService(POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
     } catch (_: Exception) {
         true
+    }
+
+    private companion object {
+        /** Must match the `composable("record")` route in [setContent]. */
+        const val ROUTE_RECORD = "record"
     }
 }
 

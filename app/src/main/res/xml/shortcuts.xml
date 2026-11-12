@@ -1,0 +1,38 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Static launcher shortcuts. Kept to three so that the two dynamic
+         shortcuts (start/stop, pause/resume) stay within the launcher's
+         five-shortcut budget per activity. -->
+    <shortcut
+        android:shortcutId="action_record"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_record_label"
+        android:shortcutDisabledMessage="@string/shortcut_toggle_disabled">
+        <intent
+            android:action="com.flambo.recorder.ACTION_RECORD"
+            android:targetPackage="com.flambo.recorder"
+            android:targetClass="com.pranshulgg.recordmaster.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="action_pause"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_pause_label"
+        android:shortcutDisabledMessage="@string/shortcut_toggle_disabled">
+        <intent
+            android:action="com.flambo.recorder.ACTION_PAUSE"
+            android:targetPackage="com.flambo.recorder"
+            android:targetClass="com.pranshulgg.recordmaster.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="action_stop"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_stop_label"
+        android:shortcutDisabledMessage="@string/shortcut_toggle_disabled">
+        <intent
+            android:action="com.flambo.recorder.ACTION_STOP"
+            android:targetPackage="com.flambo.recorder"
+            android:targetClass="com.pranshulgg.recordmaster.MainActivity" />
+    </shortcut>
+</shortcuts>

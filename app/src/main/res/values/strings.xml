@@ -3,4 +3,18 @@
     <string name="recording_notification_channel">Recording</string>
     <string name="recording_notification_text">Tap to return to Flambo</string>
     <string name="playback_channel_name">Playback</string>
+
+    <!-- Launcher / automation shortcuts -->
+    <string name="shortcut_start_short">Start recording</string>
+    <string name="shortcut_start_long">Start recording</string>
+    <string name="shortcut_stop_short">Stop recording</string>
+    <string name="shortcut_pause_short">Pause</string>
+    <string name="shortcut_resume_short">Resume</string>
+    <string name="shortcut_record_label">Record</string>
+    <string name="shortcut_pause_label">Pause recording</string>
+    <string name="shortcut_stop_label">Stop recording</string>
+    <string name="shortcut_toggle_rp_label">Toggle record / pause</string>
+    <string name="shortcut_toggle_rs_label">Toggle record / stop</string>
+    <string name="shortcut_config_title">Select the desired shortcut</string>
+    <string name="shortcut_toggle_disabled">Flambo can\'t run this shortcut right now</string>
 </resources>

@@ -10,8 +10,10 @@ import com.pranshulgg.recordmaster.core.data.RecordingRepository
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.data.StorageWatcher
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
+import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.core.record.RecordingController
 import com.pranshulgg.recordmaster.core.stt.TranscriptionManager
+import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -56,6 +58,14 @@ class RecordMasterApp : Application() {
 
     internal val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Whether Key Mapper / Tasker / launcher-shortcut triggers are allowed.
+     * Backed by [PreferencesHelper] because the receiver and trampoline need a
+     * synchronous answer without waiting on DataStore.
+     */
+    val automationTriggersEnabled: Boolean
+        get() = PreferencesHelper.getBool(AutomationTriggers.PREF_KEY) ?: false
+
     private var storageWatcher: StorageWatcher? = null
 
     /** Defaults to RecordMaster's existing `Music/` tree; never moves old files. */
@@ -83,6 +93,16 @@ class RecordMasterApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        PreferencesHelper.init(this)
+        // Component state survives process death, but re-apply so a cleared
+        // data dir or a manual disable converges back to the stored choice.
+        runCatching {
+            AutomationTriggers.setEnabled(
+                this,
+                PreferencesHelper.getBool(AutomationTriggers.PREF_KEY) ?: false
+            )
+        }
 
         // The microphone must never pick up speaker output.
         recorder.onRecordingStarted = { runCatching { playback.stop() } }

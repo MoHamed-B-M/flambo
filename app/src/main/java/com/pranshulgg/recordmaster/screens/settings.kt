@@ -244,6 +244,14 @@ fun SettingsPage(
             }
             item {
                 Spacer(Modifier.height(10.dp))
+                AutomationSettingsSection(
+                    app = app,
+                    scope = scope,
+                    showMessage = showMessage
+                )
+            }
+            item {
+                Spacer(Modifier.height(10.dp))
                 StorageSettingsSection(
                     app = app,
                     scope = scope,

@@ -5,7 +5,9 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
@@ -13,6 +15,8 @@ import com.pranshulgg.recordmaster.core.audio.EnhanceStrength
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
+import com.pranshulgg.recordmaster.core.record.AutomationTriggers
+import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.ui.components.SettingSection
 import com.pranshulgg.recordmaster.ui.components.SettingTile
 import com.pranshulgg.recordmaster.ui.components.SettingsTileIcon
@@ -112,6 +116,40 @@ fun RecordingSettingsSection(
                 onTextSubmitted = { newPrefix ->
                     scope.launch {
                         app.prefs.setRecordingPrefix(newPrefix.ifBlank { "User" })
+                    }
+                }
+            )
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun AutomationSettingsSection(
+    app: RecordMasterApp,
+    scope: CoroutineScope,
+    showMessage: suspend (String) -> Unit
+) {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(app.automationTriggersEnabled) }
+
+    SettingSection(
+        title = "Automation",
+        tiles = listOf(
+            SettingTile.SwitchTile(
+                leading = { SettingsTileIcon(R.drawable.fiber_manual_record_24px) },
+                title = "Allow automation triggers",
+                description = "Let Key Mapper, Tasker and launcher shortcuts start and stop recordings",
+                checked = enabled,
+                onCheckedChange = { checked ->
+                    enabled = checked
+                    PreferencesHelper.setBool(AutomationTriggers.PREF_KEY, checked)
+                    AutomationTriggers.setEnabled(context, checked)
+                    scope.launch {
+                        showMessage(
+                            if (checked) "Automation triggers enabled"
+                            else "Automation triggers disabled"
+                        )
                     }
                 }
             )

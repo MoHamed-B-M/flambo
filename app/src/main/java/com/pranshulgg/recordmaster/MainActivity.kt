@@ -1,6 +1,10 @@
 package com.pranshulgg.recordmaster
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.PowerManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,10 +22,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.pranshulgg.recordmaster.core.record.RecordingShortcut
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.helpers.SnackbarManager
 import com.pranshulgg.recordmaster.screens.AboutScreen
@@ -38,11 +44,13 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
+    private lateinit var app: RecordMasterApp
+
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         PreferencesHelper.init(this)
         super.onCreate(savedInstanceState)
-        val app = application as RecordMasterApp
+        app = application as RecordMasterApp
         val playbackController = app.playback
         runCatching { playbackController.connect() }
         lifecycleScope.launch {
@@ -158,6 +166,105 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        handleShortcutIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShortcutIntent(intent)
+    }
+
+    /**
+     * Automation entry point (launcher shortcuts, Key Mapper, Tasker). The
+     * intent action is cleared so a configuration change cannot replay it.
+     */
+    private fun handleShortcutIntent(intent: Intent?) {
+        val target = intent ?: return
+        val action = target.action ?: return
+        val known = setOf(
+            RecordingShortcut.ACTION_START_RECORDING, RecordingShortcut.ACTION_PAUSE_RECORDING,
+            RecordingShortcut.ACTION_RECORD, RecordingShortcut.ACTION_PAUSE,
+            RecordingShortcut.ACTION_STOP, RecordingShortcut.ACTION_TOGGLE_RECORD_PAUSE,
+            RecordingShortcut.ACTION_TOGGLE_RECORD_STOP
+        )
+        if (action !in known) return
+        if (!app.automationTriggersEnabled) return
+
+        target.action = null
+        setIntent(target)
+        val interactive = isScreenInteractive()
+        lifecycleScope.launch {
+            when (action) {
+                RecordingShortcut.ACTION_START_RECORDING -> startFromExternal()
+                RecordingShortcut.ACTION_PAUSE_RECORDING -> pauseFromExternal()
+                RecordingShortcut.ACTION_RECORD -> recordOnlyFromExternal()
+                RecordingShortcut.ACTION_PAUSE -> pauseOnlyFromExternal()
+                RecordingShortcut.ACTION_STOP -> stopFromExternal()
+                RecordingShortcut.ACTION_TOGGLE_RECORD_PAUSE -> toggleRecordPauseFromExternal()
+                RecordingShortcut.ACTION_TOGGLE_RECORD_STOP -> startFromExternal()
+            }
+        }
+        if (!interactive) moveTaskToBack(true)
+    }
+
+    // Explicit Record: no-op if already recording (vs. startFromExternal's toggle-to-stop).
+    private suspend fun recordOnlyFromExternal() {
+        if (app.recorder.state.value.isRecording) return
+        startFromExternal()
+    }
+
+    private suspend fun pauseOnlyFromExternal() {
+        val s = app.recorder.state.value
+        if (s.isRecording && !s.isPaused) app.recorder.pause()
+    }
+
+    private suspend fun stopFromExternal() {
+        if (app.recorder.state.value.isRecording) {
+            app.recorder.stop()
+            RecordingShortcut.refresh(this, false, false)
+        }
+    }
+
+    private suspend fun toggleRecordPauseFromExternal() {
+        val s = app.recorder.state.value
+        when {
+            !s.isRecording -> recordOnlyFromExternal()
+            s.isPaused -> app.recorder.resume()
+            else -> app.recorder.pause()
+        }
+    }
+
+    private suspend fun startFromExternal() {
+        val recorder = app.recorder
+        if (recorder.state.value.isRecording) {
+            recorder.stop()
+            RecordingShortcut.refresh(this, false, false)
+            return
+        }
+        val micGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!micGranted) {
+            SnackbarManager.showMessage("Microphone permission is required")
+            return
+        }
+        val quality = app.prefs.qualityFlow.first()
+        val noiseReduction = app.prefs.noiseReductionFlow.first()
+        recorder.start(quality, noiseReduction)
+        RecordingShortcut.refresh(this, true, false)
+    }
+
+    private suspend fun pauseFromExternal() {
+        val s = app.recorder.state.value
+        if (!s.isRecording) return
+        if (s.isPaused) app.recorder.resume() else app.recorder.pause()
+    }
+
+    private fun isScreenInteractive(): Boolean = try {
+        (getSystemService(POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
+    } catch (_: Exception) {
+        true
     }
 }
 

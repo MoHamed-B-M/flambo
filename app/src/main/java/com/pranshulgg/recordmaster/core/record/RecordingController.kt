@@ -152,6 +152,15 @@ class RecordingController(
         return start(quality, noiseReduction)
     }
 
+    /** Automation entry point: start a take, or finish the current one. */
+    suspend fun toggleHeadless(): Boolean {
+        if (_state.value.isRecording) {
+            stop()
+            return true
+        }
+        return startHeadless()
+    }
+
     /**
      * Title the current take will get when it is saved. Used by the recording
      * screen to keep its existing `User_###` top-bar title without owning the

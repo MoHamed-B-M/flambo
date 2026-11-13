@@ -272,7 +272,8 @@ fun SettingsPage(
                 SpeechSettingsSection(
                     app = app,
                     scope = scope,
-                    showMessage = showMessage
+                    showMessage = showMessage,
+                    onOpenModels = { navController.navigate("OpenSpeechModels") }
                 )
             }
             item {

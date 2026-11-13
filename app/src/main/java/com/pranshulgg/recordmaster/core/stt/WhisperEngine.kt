@@ -23,6 +23,13 @@ class WhisperEngine {
     external fun nativeTranscribe(ctxPtr: Long, pcm: ShortArray, language: String?): String
 
     /**
+     * Cheaply load a model and report what it is, without keeping the context.
+     * Returns "type|multilingual" (e.g. "small|1"), or null when the file is
+     * not a model whisper.cpp can load.
+     */
+    external fun nativeInspect(modelPath: String): String?
+
+    /**
      * Free the whisper context.
      */
     external fun nativeFree(ctxPtr: Long)

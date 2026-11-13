@@ -12,6 +12,7 @@ import com.pranshulgg.recordmaster.core.data.StorageWatcher
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.core.record.RecordingController
+import com.pranshulgg.recordmaster.core.stt.SpeechModelStore
 import com.pranshulgg.recordmaster.core.stt.TranscriptionManager
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import kotlinx.coroutines.CoroutineScope
@@ -48,7 +49,8 @@ class RecordMasterApp : Application() {
     }
 
     val recorder by lazy { RecordingController(this, repository) }
-    val transcription by lazy { TranscriptionManager(this, prefs) }
+    val speechModels by lazy { SpeechModelStore(prefs) }
+    val transcription by lazy { TranscriptionManager(this, prefs, speechModels) }
 
     /**
      * One playback engine for the whole process. It outlives Activity
@@ -106,6 +108,9 @@ class RecordMasterApp : Application() {
 
         // The microphone must never pick up speaker output.
         recorder.onRecordingStarted = { runCatching { playback.stop() } }
+
+        // Remove `.part` files left behind if a previous import was killed.
+        runCatching { transcription.modelManager.cleanupStaleParts() }
 
         appScope.launch {
             storageVolumeId = runCatching { prefs.recordingsVolume() }

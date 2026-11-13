@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.ArrayBlockingQueue
@@ -52,7 +51,6 @@ class WhisperTranscriptionService : Service() {
     val transcriptionResult: SharedFlow<String> = _transcriptionResult.asSharedFlow()
 
     private lateinit var transcriptionManager: TranscriptionManager
-    private lateinit var whisperEngine: WhisperEngine
 
     companion object {
         private const val SAMPLE_RATE = 16000
@@ -70,7 +68,6 @@ class WhisperTranscriptionService : Service() {
         super.onCreate()
         val app = applicationContext as? com.pranshulgg.recordmaster.RecordMasterApp
         transcriptionManager = app?.transcription ?: TranscriptionManager(this, com.pranshulgg.recordmaster.core.data.PreferencesManager(this))
-        whisperEngine = WhisperEngine()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -125,24 +122,22 @@ class WhisperTranscriptionService : Service() {
     private fun startInferenceLoop() {
         inferenceJob?.cancel()
         inferenceJob = serviceScope.launch(Dispatchers.Default) {
-            val ctxPtr = getContextPtr()
-            if (ctxPtr == 0L) {
+            if (!transcriptionManager.ensureModelLoaded()) {
                 _state.value = WhisperState.IDLE
+                isRunning.set(false)
                 return@launch
             }
-            
+
             while (isRunning.get()) {
                 try {
                     val pcmChunk = pcmQueue.take() // Blocking take for backpressure
                     if (!isRunning.get()) break
-                    
+
                     _state.value = WhisperState.TRANSCRIBING
-                    withContext(Dispatchers.IO) {
-                        val text = whisperEngine.nativeTranscribe(ctxPtr, pcmChunk)
-                        if (text.isNotBlank()) {
-                            _finalText.value = text
-                            _transcriptionResult.emit(text)
-                        }
+                    val text = transcriptionManager.transcribePcm(pcmChunk)
+                    if (text.isNotBlank()) {
+                        _finalText.value = text
+                        _transcriptionResult.emit(text)
                     }
                     _state.value = if (isRunning.get()) WhisperState.LISTENING else WhisperState.IDLE
                 } catch (e: InterruptedException) {
@@ -153,17 +148,6 @@ class WhisperTranscriptionService : Service() {
                     }
                 }
             }
-        }
-    }
-
-    private fun getContextPtr(): Long {
-        // Access via reflection or store reference
-        return try {
-            val field = transcriptionManager::class.java.getDeclaredField("ctxPtr")
-            field.isAccessible = true
-            field.getLong(transcriptionManager)
-        } catch (e: Exception) {
-            0L
         }
     }
 

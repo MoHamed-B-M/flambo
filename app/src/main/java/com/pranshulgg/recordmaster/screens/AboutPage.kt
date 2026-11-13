@@ -142,12 +142,12 @@ fun AboutScreen(snackbarHostState: SnackbarHostState, navController: NavControll
             )
             ListItem(
                 headlineContent = { Text("Email") },
-                supportingContent = { Text("pranshul.devmain@gmail.com") },
+                supportingContent = { Text("benmohamedm715@gmail.com") },
                 leadingContent = { IconAvatarLeading(R.drawable.mail_24px) },
                 modifier = Modifier
                     .clickable(
                         onClick = {
-                            uriHandler.openUri("mailto:pranshul.devmain@gmail.com")
+                            uriHandler.openUri("mailto:benmohamedm715@gmail.com")
                         }
                     )
                     .height(68.dp)
@@ -391,7 +391,7 @@ These Terms & Conditions may be updated in the future. Updates will be posted in
 
 ## Contact  
 If you have any questions about these Terms & Conditions, please contact:  
-📧 **pranshul.devmain@gmail.com**
+📧 **benmohamedm715@gmail.com**
 """
 
     Scaffold(
@@ -468,7 +468,7 @@ If this Privacy Policy changes, we will update it here. Continued use of the app
 
 ## Contact  
 If you have any questions about privacy while using Flambo, please contact us at:  
-📧 **pranshul.devmain@gmail.com**  
+📧 **benmohamedm715@gmail.com**  
 
 """
 

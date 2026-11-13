@@ -168,6 +168,46 @@ Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeFree(
 }
 
 JNIEXPORT jstring JNICALL
+Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeInspect(
+        JNIEnv *env,
+        jobject /* thiz */,
+        jstring model_path) {
+
+    if (model_path == nullptr) {
+        return nullptr;
+    }
+
+    const char *path = env->GetStringUTFChars(model_path, nullptr);
+    if (path == nullptr) {
+        LOGE("nativeInspect: GetStringUTFChars failed");
+        return nullptr;
+    }
+
+    struct whisper_context_params cparams = whisper_context_default_params();
+    cparams.use_gpu = false;
+    cparams.flash_attn = false;
+
+    struct whisper_context *ctx = whisper_init_from_file_with_params(path, cparams);
+    env->ReleaseStringUTFChars(model_path, path);
+
+    if (ctx == nullptr) {
+        LOGE("nativeInspect: model could not be loaded");
+        return nullptr;
+    }
+
+    const char *type = whisper_model_type_readable(ctx);
+    const bool multilingual = whisper_is_multilingual(ctx);
+
+    std::string payload = std::string(type == nullptr ? "unknown" : type);
+    payload += multilingual ? "|1" : "|0";
+
+    whisper_free(ctx);
+
+    LOGD("nativeInspect: %s", payload.c_str());
+    return env->NewStringUTF(payload.c_str());
+}
+
+JNIEXPORT jstring JNICALL
 Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeVersion(
         JNIEnv *env,
         jobject /* thiz */) {

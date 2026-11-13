@@ -16,10 +16,12 @@ import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
+import com.pranshulgg.recordmaster.core.stt.SpeechModelCatalog
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.ui.components.SettingSection
 import com.pranshulgg.recordmaster.ui.components.SettingTile
 import com.pranshulgg.recordmaster.ui.components.SettingsTileIcon
+import com.pranshulgg.recordmaster.utils.formatBytes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -229,9 +231,20 @@ fun PlaybackSettingsSection(
 fun SpeechSettingsSection(
     app: RecordMasterApp,
     scope: CoroutineScope,
-    showMessage: suspend (String) -> Unit
+    showMessage: suspend (String) -> Unit,
+    onOpenModels: () -> Unit
 ) {
     val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
+    val selectedModel by app.speechModels.selectedModel.collectAsState(initial = null)
+    val modelDescription = run {
+        val model = selectedModel ?: SpeechModelCatalog.DEFAULT
+        buildString {
+            append(model.displayName)
+            append(" \u00B7 ")
+            append(formatBytes(model.sizeBytes))
+            if (!app.transcription.modelManager.isInstalled(model)) append(" \u00B7 not downloaded")
+        }
+    }
     val whisperLanguages = listOf(
         "" to "Auto-detect",
         "en" to "English",
@@ -277,10 +290,11 @@ fun SpeechSettingsSection(
                     }
                 }
             ),
-            SettingTile.TextTile(
+            SettingTile.ActionTile(
                 leading = { SettingsTileIcon(R.drawable.notes_24px) },
-                title = "Default model",
-                description = "ggml-tiny-q8_0.bin (multilingual, int8, 42 MB)"
+                title = "Speech model",
+                description = modelDescription,
+                onClick = onOpenModels
             )
         )
     )

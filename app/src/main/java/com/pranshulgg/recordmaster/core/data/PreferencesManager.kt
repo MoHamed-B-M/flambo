@@ -24,6 +24,8 @@ class PreferencesManager(private val context: Context) {
     private object Keys {
         val QUALITY = stringPreferencesKey("quality")
         val STT_LANGUAGE = stringPreferencesKey("stt_language")
+        val STT_MODEL_ID = stringPreferencesKey("stt_model_id")
+        val STT_IMPORTED_MODELS = stringPreferencesKey("stt_imported_models_json")
         val NOISE_REDUCTION = booleanPreferencesKey("noise_reduction")
         val ENHANCE_STRENGTH = stringPreferencesKey("enhance_strength")
         val KEEP_ORIGINAL = booleanPreferencesKey("keep_original")
@@ -132,6 +134,28 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setSttLanguage(tag: String) {
         context.recordMasterDataStore.edit { it[Keys.STT_LANGUAGE] = tag }
+    }
+
+    /** Id of the selected speech model; empty means the built-in default. */
+    val sttModelIdFlow: Flow<String> =
+        context.recordMasterDataStore.data.map { it[Keys.STT_MODEL_ID] ?: "" }
+
+    suspend fun sttModelId(): String =
+        context.recordMasterDataStore.data.map { it[Keys.STT_MODEL_ID] ?: "" }.first()
+
+    suspend fun setSttModelId(id: String) {
+        context.recordMasterDataStore.edit { it[Keys.STT_MODEL_ID] = id }
+    }
+
+    /** JSON array of user-imported models. Built-ins are not stored here. */
+    val sttImportedModelsFlow: Flow<String> =
+        context.recordMasterDataStore.data.map { it[Keys.STT_IMPORTED_MODELS] ?: "" }
+
+    suspend fun sttImportedModelsJson(): String =
+        context.recordMasterDataStore.data.map { it[Keys.STT_IMPORTED_MODELS] ?: "" }.first()
+
+    suspend fun setSttImportedModelsJson(json: String) {
+        context.recordMasterDataStore.edit { it[Keys.STT_IMPORTED_MODELS] = json }
     }
 
     companion object {

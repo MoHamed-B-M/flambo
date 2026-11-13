@@ -67,7 +67,10 @@ class WhisperTranscriptionService : Service() {
     override fun onCreate() {
         super.onCreate()
         val app = applicationContext as? com.pranshulgg.recordmaster.RecordMasterApp
-        transcriptionManager = app?.transcription ?: TranscriptionManager(this, com.pranshulgg.recordmaster.core.data.PreferencesManager(this))
+        transcriptionManager = app?.transcription ?: run {
+            val prefs = com.pranshulgg.recordmaster.core.data.PreferencesManager(this)
+            TranscriptionManager(this, prefs, SpeechModelStore(prefs))
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

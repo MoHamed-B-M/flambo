@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 sealed interface FileResult {
@@ -28,44 +30,64 @@ enum class WhisperState {
  */
 class TranscriptionManager(
     context: Context,
-    private val prefs: PreferencesManager
+    private val prefs: PreferencesManager,
+    private val modelStore: SpeechModelStore
 ) {
     private val appContext = context.applicationContext
 
     val modelManager = WhisperModelManager(appContext)
     val whisper = WhisperEngine()
 
-    private val _modelProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
-    val modelProgress: StateFlow<Map<String, Float>> = _modelProgress.asStateFlow()
-
     private val _whisperState = MutableStateFlow(WhisperState.IDLE)
     val whisperState: StateFlow<WhisperState> = _whisperState.asStateFlow()
 
+    private val loadMutex = Mutex()
     private var ctxPtr: Long = 0L
+    private var loadedModelId: String? = null
 
-    suspend fun ensureModelLoaded(): Boolean = withContext(Dispatchers.IO) {
-        if (ctxPtr != 0L) {
+    /**
+     * Loads the selected model, or falls back to the built-in default when the
+     * selection is missing/corrupt. A different selection always reloads.
+     */
+    suspend fun ensureModelLoaded(): Boolean = loadMutex.withLock {
+        withContext(Dispatchers.IO) {
+            val selected = runCatching { modelStore.selectedModel.first() }.getOrNull()
+                ?: SpeechModelCatalog.DEFAULT
+
+            if (ctxPtr != 0L && loadedModelId == selected.id) {
+                _whisperState.value = WhisperState.IDLE
+                return@withContext true
+            }
+
+            freeContext()
+            _whisperState.value = WhisperState.MODEL_LOADING
+
+            val candidates = listOf(selected, SpeechModelCatalog.DEFAULT)
+                .distinctBy { it.id }
+            for (model in candidates) {
+                var file = modelManager.ensureModel(model).getOrNull() ?: continue
+                var ptr = whisper.nativeLoadModel(file.absolutePath)
+                if (ptr == 0L && model.isBuiltIn) {
+                    // A corrupt built-in download is disposable; fetch it once
+                    // more. Imported files are never deleted here.
+                    runCatching { file.delete() }
+                    file = modelManager.ensureModel(model).getOrNull() ?: continue
+                    ptr = whisper.nativeLoadModel(file.absolutePath)
+                }
+                if (ptr != 0L) {
+                    ctxPtr = ptr
+                    loadedModelId = model.id
+                    if (model.id != selected.id) {
+                        runCatching { modelStore.select(model.id) }
+                    }
+                    _whisperState.value = WhisperState.IDLE
+                    return@withContext true
+                }
+            }
+
             _whisperState.value = WhisperState.IDLE
-            return@withContext true
+            false
         }
-
-        _whisperState.value = WhisperState.MODEL_LOADING
-        val modelResult = modelManager.ensureDefaultModel()
-        if (modelResult.isFailure) {
-            _whisperState.value = WhisperState.IDLE
-            return@withContext false
-        }
-
-        val path = modelResult.getOrNull()?.absolutePath ?: modelManager.modelPath()
-        ctxPtr = whisper.nativeLoadModel(path)
-        val ok = ctxPtr != 0L
-        if (!ok) {
-            // The file exists but whisper could not parse it (corrupt or
-            // incomplete download). Drop it so the next attempt re-downloads.
-            runCatching { java.io.File(path).takeIf { it.exists() }?.delete() }
-        }
-        _whisperState.value = WhisperState.IDLE
-        ok
     }
 
     suspend fun transcribeFileWithProgress(
@@ -73,32 +95,31 @@ class TranscriptionManager(
         onProgress: (Float) -> Unit
     ): FileResult = withContext(Dispatchers.IO) {
         try {
-            if (ctxPtr == 0L) {
-                // Surface the one-time model download on the same progress bar
-                // instead of leaving it frozen at 0% while 42 MB arrives.
-                val downloadProgress = launch {
-                    modelManager.progress.collect { map ->
-                        map[WhisperModelCatalog.DEFAULT.code]?.let { onProgress(it * 0.2f) }
-                    }
+            // Surface a model download on the same progress bar instead of
+            // leaving it frozen at 0%.
+            val downloadProgress = launch {
+                modelManager.progress.collect { map ->
+                    map.values.maxOrNull()?.let { onProgress(it * 0.2f) }
                 }
-                val loaded = try {
-                    ensureModelLoaded()
-                } finally {
-                    downloadProgress.cancel()
-                }
-                onProgress(0.25f)
-                if (!loaded || ctxPtr == 0L) {
-                    return@withContext FileResult.Failed(
-                        "Speech model unavailable. Connect to the internet once to download it, then try again."
-                    )
-                }
+            }
+            val loaded = try {
+                ensureModelLoaded()
+            } finally {
+                downloadProgress.cancel()
+            }
+            onProgress(0.2f)
+            if (!loaded || ctxPtr == 0L) {
+                return@withContext FileResult.Failed(
+                    "No speech model available. Download one or import a model " +
+                        "in Settings \u2192 Speech models."
+                )
             }
 
             _whisperState.value = WhisperState.TRANSCRIBING
-            onProgress(0.1f)
+            onProgress(0.3f)
 
             val pcm = PcmDecoder.decodeTo16kMono(path)
-            onProgress(0.3f)
+            onProgress(0.5f)
             if (pcm.isEmpty()) {
                 _whisperState.value = WhisperState.IDLE
                 return@withContext FileResult.Failed("This recording contains no audio.")
@@ -123,7 +144,7 @@ class TranscriptionManager(
      * speech was recognised.
      */
     suspend fun transcribePcm(pcm: ShortArray): String = withContext(Dispatchers.IO) {
-        if (ctxPtr == 0L && !ensureModelLoaded()) return@withContext ""
+        if (!ensureModelLoaded()) return@withContext ""
         if (ctxPtr == 0L || pcm.isEmpty()) return@withContext ""
         try {
             whisper.nativeTranscribe(ctxPtr, pcm, languageTag()).trim()
@@ -135,6 +156,11 @@ class TranscriptionManager(
     private suspend fun languageTag(): String = prefs.sttLanguageFlow.first()
 
     fun release() {
+        freeContext()
+        _whisperState.value = WhisperState.IDLE
+    }
+
+    private fun freeContext() {
         if (ctxPtr != 0L) {
             try {
                 whisper.nativeFree(ctxPtr)
@@ -142,6 +168,6 @@ class TranscriptionManager(
             }
             ctxPtr = 0L
         }
-        _whisperState.value = WhisperState.IDLE
+        loadedModelId = null
     }
 }

@@ -36,6 +36,7 @@ import com.pranshulgg.recordmaster.screens.PlayRecordingScreen
 import com.pranshulgg.recordmaster.screens.PolicyPage
 import com.pranshulgg.recordmaster.screens.RecordingScreen
 import com.pranshulgg.recordmaster.screens.SettingsPage
+import com.pranshulgg.recordmaster.screens.SpeechModelsScreen
 import com.pranshulgg.recordmaster.screens.TermsPage
 import com.pranshulgg.recordmaster.ui.theme.RecordMasterTheme
 import com.pranshulgg.recordmaster.utils.NavTransitions
@@ -168,6 +169,14 @@ class MainActivity : ComponentActivity() {
 
                         ) {
                         AboutScreen(
+                            snackbarHostState = snackbarHostState,
+                            navController = navController
+                        )
+                    }
+                    composable(
+                        "OpenSpeechModels",
+                    ) {
+                        SpeechModelsScreen(
                             snackbarHostState = snackbarHostState,
                             navController = navController
                         )

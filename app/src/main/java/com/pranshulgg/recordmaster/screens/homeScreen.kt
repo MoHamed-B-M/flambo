@@ -489,8 +489,13 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        grouped.forEach { (month, files) ->
+                        grouped.forEachIndexed { index, entry ->
+                            val month = entry.key
+                            val files = entry.value
                             item {
+                                    // Only sections after the first need a gap;
+                                    // the LazyColumn's contentPadding handles the top.
+                                    if (index > 0) Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = month,
                                         color = MaterialTheme.colorScheme.primary,
@@ -592,12 +597,11 @@ fun HomeScreen(
 
                                 )
                             }
-
-
-
-                            item {
-                                Spacer(modifier = Modifier.height(140.dp))
-                            }
+                        }
+                        // Bottom clearance for the FAB / mini player: once for
+                        // the whole list, not per month section.
+                        item {
+                            Spacer(modifier = Modifier.height(140.dp))
                         }
                     }
                 }

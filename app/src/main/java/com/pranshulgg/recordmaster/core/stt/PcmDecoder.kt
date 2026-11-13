@@ -51,10 +51,10 @@ object PcmDecoder {
                     val cap = (sourceRate * 60L * maxMinutes * channels.coerceAtLeast(1))
                         .coerceAtMost(Int.MAX_VALUE.toLong())
                         .toInt()
-                    val raw = decodeAll(codec, extractor, cap)
+                    val decoded = decodeAll(codec, extractor, cap, sourceRate, channels)
 
-                    if (raw.size > cap) error("Audio is longer than $maxMinutes minutes.")
-                    PcmAudio(raw, sourceRate, channels)
+                    if (decoded.samples.size > cap) error("Audio is longer than $maxMinutes minutes.")
+                    PcmAudio(decoded.samples, decoded.sampleRate, decoded.channels)
                 } finally {
                     runCatching { codec.stop() }
                     runCatching { codec.release() }
@@ -90,8 +90,8 @@ object PcmDecoder {
             try {
                 codec.configure(audioFormat, null, null, 0)
                 codec.start()
-                val raw = decodeAll(codec, extractor, TARGET_RATE * 60 * MAX_MINUTES * 3)
-                toMono16k(raw, channels, sourceRate)
+                val raw = decodeAll(codec, extractor, TARGET_RATE * 60 * MAX_MINUTES * 3, sourceRate, channels)
+                toMono16k(raw.samples, raw.channels, raw.sampleRate)
             } finally {
                 runCatching { codec.stop() }
                 runCatching { codec.release() }
@@ -104,55 +104,82 @@ object PcmDecoder {
     private fun MediaFormat.getIntOrDefault(key: String, fallback: Int): Int =
         if (containsKey(key)) getInteger(key) else fallback
 
+    private data class Decoded(
+        val samples: ShortArray,
+        val sampleRate: Int,
+        val channels: Int
+    )
+
     private fun decodeAll(
         codec: MediaCodec,
         extractor: MediaExtractor,
-        capSamples: Int
-    ): ShortArray {
+        capSamples: Int,
+        fallbackRate: Int,
+        fallbackChannels: Int
+    ): Decoded {
         val chunks = ArrayList<ShortArray>(64)
         var total = 0
+        var outRate = fallbackRate
+        var outChannels = fallbackChannels
 
         val info = MediaCodec.BufferInfo()
         var inputDone = false
+        var outputDone = false
+        // A decoder can briefly report INFO_TRY_AGAIN_LATER after the input has
+        // ended, before the final frames come out. Give it ~1s of grace instead
+        // of dropping the tail (or the whole buffer) immediately.
+        var idleRetries = 0
 
-        while (true) {
+        while (!outputDone) {
             if (!inputDone) {
                 val inputIndex = codec.dequeueInputBuffer(10_000)
                 if (inputIndex >= 0) {
-                    val buffer = codec.getInputBuffer(inputIndex) ?: break
-                    val size = extractor.readSampleData(buffer, 0)
-                    if (size < 0) {
-                        codec.queueInputBuffer(
-                            inputIndex,
-                            0,
-                            0,
-                            0,
-                            MediaCodec.BUFFER_FLAG_END_OF_STREAM
-                        )
+                    val buffer = codec.getInputBuffer(inputIndex)
+                    if (buffer == null) {
                         inputDone = true
                     } else {
-                        codec.queueInputBuffer(inputIndex, 0, size, extractor.sampleTime, 0)
-                        extractor.advance()
+                        val size = extractor.readSampleData(buffer, 0)
+                        if (size < 0) {
+                            codec.queueInputBuffer(
+                                inputIndex,
+                                0,
+                                0,
+                                0,
+                                MediaCodec.BUFFER_FLAG_END_OF_STREAM
+                            )
+                            inputDone = true
+                        } else {
+                            codec.queueInputBuffer(inputIndex, 0, size, extractor.sampleTime, 0)
+                            extractor.advance()
+                        }
                     }
                 }
             }
             val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
             when {
+                outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    val format = codec.outputFormat
+                    outRate = format.getIntOrDefault(MediaFormat.KEY_SAMPLE_RATE, outRate)
+                    outChannels = format.getIntOrDefault(MediaFormat.KEY_CHANNEL_COUNT, outChannels)
+                }
                 outputIndex >= 0 -> {
+                    idleRetries = 0
                     val buffer = codec.getOutputBuffer(outputIndex)
                     if (buffer != null && info.size > 0) {
                         val shorts = readPcm16(buffer, info.offset, info.size)
                         chunks += shorts
                         total += shorts.size
-                        if (total > capSamples) {
-                            codec.releaseOutputBuffer(outputIndex, false)
-                            break
-                        }
                     }
+                    val endOfStream =
+                        info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
                     codec.releaseOutputBuffer(outputIndex, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                    if (endOfStream || total > capSamples) {
+                        outputDone = true
+                    }
                 }
-                outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> if (inputDone) break
+                outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                    if (inputDone && ++idleRetries > 100) outputDone = true
+                }
                 else -> Unit
             }
         }
@@ -162,7 +189,7 @@ object PcmDecoder {
             chunk.copyInto(out, position)
             position += chunk.size
         }
-        return out
+        return Decoded(out, outRate, outChannels)
     }
 
     private fun readPcm16(buffer: ByteBuffer, offset: Int, size: Int): ShortArray {

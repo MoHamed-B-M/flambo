@@ -3,6 +3,8 @@
 #include <vector>
 #include <cstdlib>
 #include <cstddef>
+#include <cstring>
+#include <thread>
 #include <android/log.h>
 
 #include "whisper.h"
@@ -31,8 +33,8 @@ Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeLoadModel(
     }
 
     struct whisper_context_params cparams = whisper_context_default_params();
-    // Keep defaults; GPU off by default in this build. Use CPU path.
-    cparams.use_gpu = true;
+    // This build only ships the CPU backend, so never request a GPU backend.
+    cparams.use_gpu = false;
     cparams.flash_attn = false;
 
     struct whisper_context *ctx = whisper_init_from_file_with_params(path, cparams);
@@ -52,7 +54,8 @@ Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeTranscribe(
         JNIEnv *env,
         jobject /* thiz */,
         jlong ctx_ptr,
-        jshortArray pcm_array) {
+        jshortArray pcm_array,
+        jstring language) {
 
     if (ctx_ptr == 0LL) {
         LOGE("nativeTranscribe: invalid context");
@@ -91,20 +94,31 @@ Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeTranscribe(
     params.print_realtime = false;
     params.print_timestamps = false;
 
-    // Transcription behavior
+    // Transcription behavior. Timestamps stay enabled so whisper can split long
+    // audio into segments; they are not printed into the returned text.
     params.translate = false;
     params.single_segment = false;
     params.no_context = true;
-    params.no_timestamps = true;
+    params.no_timestamps = false;
 
-    // Language: nullptr/empty lets whisper auto-detect in many configs,
-    // but better to be explicit. We'll default to auto by leaving as-is
-    // from defaults where possible; set to nullptr for auto-detect.
-    params.language = nullptr;
-    params.detect_language = true;
+    // Language: an empty/null/"auto" tag means "detect and transcribe".
+    // detect_language MUST stay false - when it is true whisper.cpp only
+    // performs language detection and returns 0 segments (empty transcript).
+    const char *language_chars = nullptr;
+    if (language != nullptr) {
+        language_chars = env->GetStringUTFChars(language, nullptr);
+    }
+    if (language_chars == nullptr || language_chars[0] == '\0' ||
+        strcmp(language_chars, "auto") == 0) {
+        params.language = nullptr;
+    } else {
+        params.language = language_chars;
+    }
+    params.detect_language = false;
 
     // Threading
-    params.n_threads = 4;
+    const unsigned int cores = std::thread::hardware_concurrency();
+    params.n_threads = cores == 0 ? 4 : (int)(cores > 4 ? 4 : cores);
 
     // Avoid unnecessary callbacks
     params.new_segment_callback = nullptr;
@@ -112,8 +126,14 @@ Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeTranscribe(
     params.encoder_begin_callback = nullptr;
     params.abort_callback = nullptr;
 
-    if (whisper_full(ctx, params, pcmf32.data(), (int)pcmf32.size()) != 0) {
-        LOGE("nativeTranscribe: whisper_full failed");
+    const int rc = whisper_full(ctx, params, pcmf32.data(), (int)pcmf32.size());
+
+    if (language != nullptr && language_chars != nullptr) {
+        env->ReleaseStringUTFChars(language, language_chars);
+    }
+
+    if (rc != 0) {
+        LOGE("nativeTranscribe: whisper_full failed with code %d", rc);
         return env->NewStringUTF("");
     }
 
@@ -126,6 +146,9 @@ Java_com_pranshulgg_recordmaster_core_stt_WhisperEngine_nativeTranscribe(
             result += text;
         }
     }
+
+    LOGD("nativeTranscribe: %d segment(s), %zu sample(s), %zu char(s)",
+         n_segments, pcmf32.size(), result.size());
 
     return env->NewStringUTF(result.c_str());
 }

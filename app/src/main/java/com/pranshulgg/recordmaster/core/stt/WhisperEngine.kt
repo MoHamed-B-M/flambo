@@ -16,9 +16,11 @@ class WhisperEngine {
     /**
      * Transcribe raw 16-bit mono PCM samples (16 kHz expected).
      * PCM is converted to float32 in [-1,1] natively.
+     *
+     * @param language ISO-639-1 tag (e.g. "en"), or null/""/"auto" to detect.
      * Returns concatenated transcript text for all segments.
      */
-    external fun nativeTranscribe(ctxPtr: Long, pcm: ShortArray): String
+    external fun nativeTranscribe(ctxPtr: Long, pcm: ShortArray, language: String?): String
 
     /**
      * Free the whisper context.

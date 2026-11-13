@@ -280,7 +280,7 @@ fun SpeechSettingsSection(
             SettingTile.TextTile(
                 leading = { SettingsTileIcon(R.drawable.notes_24px) },
                 title = "Default model",
-                description = "ggml-tiny.en-q8_0.bin (int8, \u00B77 MB)"
+                description = "ggml-tiny-q8_0.bin (multilingual, int8, 42 MB)"
             )
         )
     )

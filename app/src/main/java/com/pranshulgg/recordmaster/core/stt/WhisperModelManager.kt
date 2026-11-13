@@ -20,16 +20,21 @@ data class WhisperModel(
 )
 
 object WhisperModelCatalog {
-    // Default: GGML int8-quantized tiny.en model. No FP16 models are shipped/selected.
+    // Default: multilingual GGML int8-quantized tiny model (~42 MB). The
+    // multilingual build is required for the language picker in Settings;
+    // the English-only "tiny.en" model cannot transcribe other languages.
     val DEFAULT = WhisperModel(
-        code = "tiny.en",
-        label = "English (tiny, int8)",
-        filename = "ggml-tiny.en-q8_0.bin",
-        url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q8_0.bin",
-        sizeMb = 77
+        code = "tiny",
+        label = "Multilingual (tiny, int8)",
+        filename = "ggml-tiny-q8_0.bin",
+        url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q8_0.bin",
+        sizeMb = 42
     )
 
     val CATALOG = listOf(DEFAULT)
+
+    /** App-managed models replaced by [DEFAULT]; deleted once the new one is in place. */
+    internal val LEGACY_FILENAMES = listOf("ggml-tiny.en-q8_0.bin")
 }
 
 class WhisperModelManager(private val context: Context) {
@@ -51,6 +56,12 @@ class WhisperModelManager(private val context: Context) {
 
     fun modelPath(code: String = WhisperModelCatalog.DEFAULT.code): String = modelFile(code).absolutePath
 
+    private fun deleteLegacyModels() {
+        WhisperModelCatalog.LEGACY_FILENAMES.forEach { name ->
+            runCatching { File(modelsDir, name).takeIf { it.exists() }?.delete() }
+        }
+    }
+
     suspend fun ensureDefaultModel(): Result<File> = downloadIfMissing(WhisperModelCatalog.DEFAULT.code)
 
     suspend fun downloadIfMissing(code: String): Result<File> = withContext(Dispatchers.IO) {
@@ -59,6 +70,7 @@ class WhisperModelManager(private val context: Context) {
         val outFile = File(modelsDir, model.filename)
 
         if (outFile.exists() && outFile.length() > 1024 * 1024) {
+            deleteLegacyModels()
             return@withContext Result.success(outFile)
         }
 
@@ -78,8 +90,11 @@ class WhisperModelManager(private val context: Context) {
             }
 
             val total = conn.contentLengthLong
+            // Download to a temp file first so an interrupted download can
+            // never be mistaken for a complete model on the next launch.
+            val partFile = File(modelsDir, model.filename + ".part")
             conn.inputStream.use { input ->
-                FileOutputStream(outFile).use { output ->
+                FileOutputStream(partFile).use { output ->
                     val buffer = ByteArray(8192)
                     var downloaded: Long = 0
                     var read: Int
@@ -96,16 +111,18 @@ class WhisperModelManager(private val context: Context) {
             }
             conn.disconnect()
             _progress.value = _progress.value - model.code
-            if (outFile.exists() && outFile.length() > 1024 * 1024) {
+            val complete = partFile.length() > 1024 * 1024 &&
+                (total <= 0 || partFile.length() == total)
+            if (complete && partFile.renameTo(outFile)) {
+                deleteLegacyModels()
                 Result.success(outFile)
             } else {
-                Result.failure(Exception("Downloaded file is too small or missing"))
+                partFile.delete()
+                Result.failure(Exception("Downloaded file is incomplete"))
             }
         } catch (e: Exception) {
             _progress.value = _progress.value - code
-            if (outFile.exists()) {
-                outFile.delete()
-            }
+            File(modelsDir, model.filename + ".part").delete()
             Result.failure(e)
         }
     }

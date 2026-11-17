@@ -530,5 +530,6 @@ private fun metaText(model: SpeechModel, installed: Boolean): String = buildStri
     append(" \u00B7 ")
     append(if (model.multilingual) "multilingual" else "English only")
     append(" \u00B7 ")
-    if (installed) append(formatBytes(model.sizeBytes)) else append("not downloaded")
+    append(formatBytes(model.sizeBytes))
+    if (!installed) append(if (model.isBuiltIn) " \u00B7 tap to download" else " \u00B7 file missing")
 }

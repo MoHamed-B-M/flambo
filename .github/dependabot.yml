@@ -1,0 +1,62 @@
+version: 2
+updates:
+  # --- Gradle (Android/Kotlin) Dependencies ---
+  - package-ecosystem: "gradle"
+    directory: "/" # Change to "/android" or "/app" if your build.gradle.kts is nested
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Tunis" # Adjust to your timezone
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "android"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Group all AndroidX libraries into one PR
+      androidx:
+        patterns:
+          - "androidx.*"
+      # Group Kotlin and KotlinX libraries
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.kotlinx*"
+      # Group Google Play Services and Firebase
+      google:
+        patterns:
+          - "com.google.android.*"
+          - "com.google.firebase.*"
+      # Group Gradle plugins (AGP, KSP, etc.)
+      gradle-plugins:
+        patterns:
+          - "*gradle*"
+          - "com.android.tools.build:gradle"
+      # Group testing libraries
+      testing:
+        patterns:
+          - "junit:*"
+          - "org.mockito*"
+          - "androidx.test.*"
+          - "io.mockk:*"
+
+  # --- GitHub Actions (CI/CD Workflows) ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Tunis"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns:
+          - "*"

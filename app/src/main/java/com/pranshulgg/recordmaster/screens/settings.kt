@@ -26,6 +26,7 @@ import androidx.navigation.NavController
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
+import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -33,6 +34,7 @@ import com.pranshulgg.recordmaster.ui.components.SettingSection
 import com.pranshulgg.recordmaster.ui.components.SettingTile
 import com.pranshulgg.recordmaster.ui.components.SettingsTileIcon
 import com.pranshulgg.recordmaster.ui.components.Symbol
+import com.pranshulgg.recordmaster.ui.expressive.rememberSystemReducedMotion
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 
 /**
@@ -57,6 +59,9 @@ fun SettingsPage(
     val volumeId by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
     val speed by app.prefs.playbackSpeedFlow.collectAsState(initial = 1f)
     val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
+    val reduceAnimations by app.prefs.reduceAnimationsFlow.collectAsState(initial = false)
+    val animationSpeed by app.prefs.animationSpeedFlow.collectAsState(initial = AnimationSpeed.Default)
+    val systemReducedMotion = rememberSystemReducedMotion()
 
     // SharedPreferences has no flow. Reading it without `remember` means the
     // row refreshes when this screen recomposes on the way back from a detail.
@@ -70,6 +75,11 @@ fun SettingsPage(
         else -> "Default color"
     }
     val volumeLabel = volumes.firstOrNull { it.id == volumeId }?.label ?: "Phone storage"
+    val motionLabel = when {
+        systemReducedMotion -> "Android reduced motion"
+        reduceAnimations -> "Reduced motion"
+        else -> "Full motion \u00B7 ${animationSpeed.label}"
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -155,6 +165,19 @@ fun SettingsPage(
                             title = "Speech-to-text",
                             description = "Whisper \u00B7 ${whisperLanguageLabel(languageTag)}",
                             onClick = { navController.navigate("SettingsSpeech") }
+                        )
+                    )
+                )
+            }
+            item {
+                SettingSection(
+                    title = "Accessibility",
+                    tiles = listOf(
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.accessibility_new_24px) },
+                            title = "Motion & animation",
+                            description = motionLabel,
+                            onClick = { navController.navigate("SettingsAccessibility") }
                         )
                     )
                 )

@@ -5,8 +5,15 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -205,14 +213,53 @@ fun RecordingScreen(onDone: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
+                    // The dot breathes while a take is live, so the timer reads
+                    // as active without adding a second label. Reduced motion
+                    // leaves it still and lets the colour carry the state.
+                    //
+                    // The animated value is kept as state and read inside
+                    // graphicsLayer below: reading it here would recompose this
+                    // whole screen on every frame of the take, while the device
+                    // is also encoding audio.
+                    val dotActive = isRecording && !isPaused
+                    val dotPulse: State<Float>? = if (dotActive && !reducedMotion) {
+                        rememberInfiniteTransition(label = "recordingDot").animateFloat(
+                            initialValue = 0f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(
+                                    durationMillis = 900,
+                                    easing = FastOutSlowInEasing
+                                ),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "recordingDotPulse"
+                        )
+                    } else {
+                        null
+                    }
+                    val dotColor by animateColorAsState(
+                        targetValue = if (dotActive) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        },
+                        animationSpec = standardSpring(),
+                        label = "recordingDotColor"
+                    )
+
                     Box(
                         modifier = Modifier
                             .size(30.dp)
+                            .graphicsLayer {
+                                val pulse = dotPulse?.value ?: 0f
+                                val scale = if (dotActive) 1f + 0.12f * pulse else 1f
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = if (dotActive) 1f - 0.3f * pulse else 1f
+                            }
                             .clip(CircleShape)
-                            .background(
-                                if (isRecording && !isPaused) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-                            )
+                            .background(dotColor)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = formatElapsed(elapsedSeconds), fontSize = 40.sp, color = MaterialTheme.colorScheme.secondary)

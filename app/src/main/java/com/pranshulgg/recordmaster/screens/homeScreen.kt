@@ -99,6 +99,7 @@ fun HomeScreen(
     val playbackState by playback.state.collectAsState()
     val recordings by app.repository.observeRecordings().collectAsState(initial = emptyList())
     val recordingsByPath = remember(recordings) { recordings.associateBy { it.filePath } }
+    val reducedMotion = LocalReducedMotion.current
 
     val playingPath = playbackState.currentPath
     val isPlaying = playbackState.isPlaying
@@ -520,6 +521,7 @@ fun HomeScreen(
                                     file = file,
                                     isThisPlaying = playingPath == file.absolutePath && isPlaying,
                                     progress = if (playingPath == file.absolutePath && duration > 0) (currentPos.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
+                                    modifier = if (reducedMotion) Modifier else Modifier.animateItem(),
                                     currentPositionMillis = currentPos,
                                     currentDurationMillis = duration,
                                     onItemClick = {

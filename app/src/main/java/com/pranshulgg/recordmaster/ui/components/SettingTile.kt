@@ -71,7 +71,8 @@ sealed class SettingTile {
         val selectedOption: String?,
         val onOptionSelected: (String) -> Unit,
         val optionLabel: (String) -> String = { it },
-        val dialogTitle: String? = null
+        val dialogTitle: String? = null,
+        val enabled: Boolean = true
     ) : SettingTile()
 
     data class ThemeModeTile(
@@ -206,7 +207,8 @@ fun SettingSection(
                     selectedOption = tile.selectedOption,
                     onOptionSelected = tile.onOptionSelected,
                     optionLabel = tile.optionLabel,
-                    dialogTitle = tile.dialogTitle
+                    dialogTitle = tile.dialogTitle,
+                    enabled = tile.enabled
                 )
 
                 is SettingTile.ThemeModeTile -> ThemeModeTile(

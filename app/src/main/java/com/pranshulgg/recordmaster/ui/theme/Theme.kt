@@ -20,6 +20,7 @@ import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.pranshulgg.recordmaster.ui.expressive.ExpressiveMotion
 import com.pranshulgg.recordmaster.ui.expressive.ExpressiveShapes
+import com.pranshulgg.recordmaster.ui.expressive.LocalMotionSpeed
 import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
 import com.pranshulgg.recordmaster.ui.expressive.rememberSystemReducedMotion
 
@@ -30,9 +31,20 @@ fun RecordMasterTheme(
     dynamicColor: Boolean = true,
     seedColor: Color = Color.Yellow,
     useExpressive: Boolean = true,
-    reducedMotion: Boolean = rememberSystemReducedMotion(),
+    reduceAnimations: Boolean = false,
+    motionSpeed: Float = 1f,
     content: @Composable () -> Unit,
 ) {
+    // The in-app switch and Android's Remove animations both reduce motion;
+    // either one wins, and the speed choice only applies when motion is on.
+    val systemReducedMotion = rememberSystemReducedMotion()
+    val effectiveReducedMotion = reduceAnimations || systemReducedMotion
+    val effectiveSpeed = if (effectiveReducedMotion) {
+        1f
+    } else {
+        ExpressiveMotion.speed(motionSpeed)
+    }
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
@@ -57,12 +69,15 @@ fun RecordMasterTheme(
         }
     }
 
-    CompositionLocalProvider(LocalReducedMotion provides reducedMotion) {
+    CompositionLocalProvider(
+        LocalReducedMotion provides effectiveReducedMotion,
+        LocalMotionSpeed provides effectiveSpeed,
+    ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
             typography = Typography,
             shapes = ExpressiveShapes,
-            motionScheme = ExpressiveMotion.motionScheme(reducedMotion),
+            motionScheme = ExpressiveMotion.motionScheme(effectiveReducedMotion, effectiveSpeed),
             content = content
         )
     }

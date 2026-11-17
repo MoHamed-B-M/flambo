@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.motionScheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,10 +28,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.record.RecordingShortcut
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.helpers.SnackbarManager
 import com.pranshulgg.recordmaster.screens.AboutScreen
+import com.pranshulgg.recordmaster.screens.AccessibilitySettingsPage
 import com.pranshulgg.recordmaster.screens.AppLooksSettingsPage
 import com.pranshulgg.recordmaster.screens.AutomationSettingsPage
 import com.pranshulgg.recordmaster.screens.HomeScreen
@@ -103,6 +106,10 @@ class MainActivity : ComponentActivity() {
                     PreferencesHelper.getBool("useExpressiveColor") ?: true
                 )
             }
+            val reduceAnimations by app.prefs.reduceAnimationsFlow.collectAsState(initial = false)
+            val animationSpeed by app.prefs.animationSpeedFlow.collectAsState(
+                initial = AnimationSpeed.Default
+            )
 
             val context = LocalContext.current;
 
@@ -110,7 +117,9 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 seedColor = parseSeedColor(colorSeed),
                 dynamicColor = useDynamicColor,
-                useExpressive = useExpressiveColor
+                useExpressive = useExpressiveColor,
+                reduceAnimations = reduceAnimations,
+                motionSpeed = animationSpeed.multiplier,
             ) {
                 // Read the scheme inside the theme so NavHost transitions follow
                 // the reduced-motion scheme when "Remove animations" is on.
@@ -173,6 +182,12 @@ class MainActivity : ComponentActivity() {
                             useExpressiveColor = useExpressiveColors
                         },
                     ) }
+                    composable("SettingsAccessibility") {
+                        AccessibilitySettingsPage(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState
+                        )
+                    }
                     composable("SettingsRecording") {
                         RecordingSettingsPage(
                             navController = navController,

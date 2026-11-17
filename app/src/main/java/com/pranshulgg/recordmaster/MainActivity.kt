@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.motionScheme
@@ -20,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -31,14 +31,22 @@ import com.pranshulgg.recordmaster.core.record.RecordingShortcut
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.helpers.SnackbarManager
 import com.pranshulgg.recordmaster.screens.AboutScreen
+import com.pranshulgg.recordmaster.screens.AppLooksSettingsPage
+import com.pranshulgg.recordmaster.screens.AutomationSettingsPage
 import com.pranshulgg.recordmaster.screens.HomeScreen
 import com.pranshulgg.recordmaster.screens.PlayRecordingScreen
+import com.pranshulgg.recordmaster.screens.PlaybackSettingsPage
 import com.pranshulgg.recordmaster.screens.PolicyPage
 import com.pranshulgg.recordmaster.screens.RecordingScreen
+import com.pranshulgg.recordmaster.screens.RecordingSettingsPage
 import com.pranshulgg.recordmaster.screens.SettingsPage
 import com.pranshulgg.recordmaster.screens.SpeechModelsScreen
+import com.pranshulgg.recordmaster.screens.SpeechSettingsPage
+import com.pranshulgg.recordmaster.screens.StorageSettingsPage
 import com.pranshulgg.recordmaster.screens.TermsPage
+import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 import com.pranshulgg.recordmaster.ui.theme.RecordMasterTheme
+import com.pranshulgg.recordmaster.ui.theme.parseSeedColor
 import com.pranshulgg.recordmaster.utils.NavTransitions
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -70,18 +78,16 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             val navController = rememberNavController()
-            val currentMotionScheme = motionScheme
-            val motionScheme = remember(currentMotionScheme) { currentMotionScheme }
 
             LaunchedEffect(Unit) {
                 SnackbarManager.init(snackbarHostState, scope)
             }
 
-            var darkTheme by remember {
-                mutableStateOf(
-                    PreferencesHelper.getBool("dark_theme") ?: false
-                )
+            var themeMode by remember {
+                mutableStateOf(AppThemeMode.current())
             }
+            val systemInDarkTheme = isSystemInDarkTheme()
+            val darkTheme = themeMode.isDark(systemInDarkTheme)
             var colorSeed by remember {
                 mutableStateOf(
                     PreferencesHelper.getString("seedColor") ?: "0xff0000FF"
@@ -102,10 +108,14 @@ class MainActivity : ComponentActivity() {
 
             RecordMasterTheme(
                 darkTheme = darkTheme,
-                seedColor = Color(colorSeed.removePrefix("0x").toLong(16).toInt()),
+                seedColor = parseSeedColor(colorSeed),
                 dynamicColor = useDynamicColor,
                 useExpressive = useExpressiveColor
             ) {
+                // Read the scheme inside the theme so NavHost transitions follow
+                // the reduced-motion scheme when "Remove animations" is on.
+                val motionScheme = MaterialTheme.motionScheme
+
                 // A shortcut (launcher long-press, Key Mapper, Tasker) must land
                 // on the recorder page, otherwise the take is only visible in
                 // the notification. Runs after the graph is set.
@@ -143,8 +153,15 @@ class MainActivity : ComponentActivity() {
                     composable("OpenSettings") { SettingsPage(
                         navController = navController,
                         context = context,
-                        onThemeChanged = { isDark ->
-                            darkTheme = isDark
+                        currentTheme = themeMode,
+                        snackbarHostState = snackbarHostState,
+                    ) }
+                    composable("SettingsAppLooks") { AppLooksSettingsPage(
+                        navController = navController,
+                        currentTheme = themeMode,
+                        snackbarHostState = snackbarHostState,
+                        onThemeChanged = { mode ->
+                            themeMode = mode
                         },
                         onSeedChanged = { color ->
                             colorSeed = color
@@ -155,9 +172,37 @@ class MainActivity : ComponentActivity() {
                         onExpressiveColorChanged = { useExpressiveColors ->
                             useExpressiveColor = useExpressiveColors
                         },
-                        snackbarHostState = snackbarHostState,
-                        playback = playbackController,
                     ) }
+                    composable("SettingsRecording") {
+                        RecordingSettingsPage(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState
+                        )
+                    }
+                    composable("SettingsAutomation") {
+                        AutomationSettingsPage(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState
+                        )
+                    }
+                    composable("SettingsStorage") {
+                        StorageSettingsPage(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState
+                        )
+                    }
+                    composable("SettingsPlayback") {
+                        PlaybackSettingsPage(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState
+                        )
+                    }
+                    composable("SettingsSpeech") {
+                        SpeechSettingsPage(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState
+                        )
+                    }
                     composable("play/{path}") { backStackEntry ->
                         val encoded = backStackEntry.arguments?.getString("path")
 

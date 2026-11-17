@@ -16,26 +16,26 @@ object NavTransitions {
         slideInHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
             initialOffsetX = { it }
-        ) + fadeIn()
+        ) + fadeIn(animationSpec = motionScheme.defaultEffectsSpec())
 
     fun exit(motionScheme: MotionScheme): ExitTransition =
         slideOutHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
             targetOffsetX = { -it }
-        ) + fadeOut()
+        ) + fadeOut(animationSpec = motionScheme.defaultEffectsSpec())
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     fun popEnter(motionScheme: MotionScheme): EnterTransition =
         slideInHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
             initialOffsetX = { -it }
-        ) + fadeIn()
+        ) + fadeIn(animationSpec = motionScheme.defaultEffectsSpec())
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     fun popExit(motionScheme: MotionScheme): ExitTransition =
         slideOutHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
             targetOffsetX = { it }
-        ) + fadeOut()
+        ) + fadeOut(animationSpec = motionScheme.defaultEffectsSpec())
 }
 

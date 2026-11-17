@@ -1,145 +1,78 @@
 package com.pranshulgg.recordmaster.screens
 
 import android.content.Context
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.github.skydoves.colorpicker.compose.ColorPickerController
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
-import com.pranshulgg.recordmaster.core.playback.PlaybackController
+import com.pranshulgg.recordmaster.core.data.StorageVolumes
+import com.pranshulgg.recordmaster.core.domain.RecordingQuality
+import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
-import com.pranshulgg.recordmaster.ui.components.ColorPickerSheetTheme
 import com.pranshulgg.recordmaster.ui.components.SettingSection
 import com.pranshulgg.recordmaster.ui.components.SettingTile
 import com.pranshulgg.recordmaster.ui.components.SettingsTileIcon
 import com.pranshulgg.recordmaster.ui.components.Symbol
-import kotlinx.coroutines.launch
+import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 
+/**
+ * Settings is an index, not a form: every group of controls is one row that
+ * opens its own screen (see [settingsCategories.kt]). Each row keeps showing
+ * the group's current value so the top level stays readable without a tap.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsPage(
     navController: NavController,
     context: Context,
-    onThemeChanged: (Boolean) -> Unit,
-    onSeedChanged: (String) -> Unit,
-    onDynamicColorChanged: (Boolean) -> Unit,
-    onExpressiveColorChanged: (Boolean) -> Unit,
-    snackbarHostState: SnackbarHostState,
-    playback: PlaybackController
+    currentTheme: AppThemeMode,
+    snackbarHostState: SnackbarHostState
 ) {
     val app = context.applicationContext as RecordMasterApp
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val showMessage: suspend (String) -> Unit = { message ->
-        snackbarHostState.currentSnackbarData?.dismiss()
-        snackbarHostState.showSnackbar(message)
+    val volumes = remember { StorageVolumes.list(context) }
+
+    val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
+    val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
+    val volumeId by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
+    val speed by app.prefs.playbackSpeedFlow.collectAsState(initial = 1f)
+    val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
+
+    // SharedPreferences has no flow. Reading it without `remember` means the
+    // row refreshes when this screen recomposes on the way back from a detail.
+    val automationOn = PreferencesHelper.getBool(AutomationTriggers.PREF_KEY) ?: false
+    val wallpaperColor = PreferencesHelper.getBool("useDynamicColors") ?: false
+    val customColor = PreferencesHelper.getBool("useCustomColor") ?: false
+
+    val colorSource = when {
+        wallpaperColor -> "Wallpaper colors"
+        customColor -> "Custom color"
+        else -> "Default color"
     }
-    val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
-    var showBottomSheet by remember { mutableStateOf(false) }
-    val controller = remember { ColorPickerController() }
-    val defaultPickerColor = PreferencesHelper.getString("seedColor") ?: "0xff0000FF"
-    val initialColorInt = remember(defaultPickerColor) {
-        Color(defaultPickerColor.removePrefix("0x").toLong(16).toInt())
-    }
-    var pickedColor = PreferencesHelper.getString("seedColor") ?: "0xff0000FF"
-    var currentTheme by remember {
-        mutableStateOf(
-            PreferencesHelper.getString("AppTheme") ?: "Light"
-        )
-    }
-
-    var useCustomColor by remember {
-        mutableStateOf(
-            PreferencesHelper.getBool("useCustomColor") ?: false
-        )
-    }
-
-    var useDynamicColor by remember {
-        mutableStateOf(
-            PreferencesHelper.getBool("useDynamicColors") ?: false
-        )
-    }
-
-    var useExpressiveColor by remember {
-        mutableStateOf(
-            PreferencesHelper.getBool("useExpressiveColor") ?: true
-        )
-    }
-
-    fun hideColorSheet() {
-        scope.launch { sheetState.hide() }.invokeOnCompletion {
-            if (!sheetState.isVisible) {
-                showBottomSheet = false
-            }
-        }
-    }
-
-    @Composable
-    fun openColorPickerLead() {
-        Surface(
-            shape = RoundedCornerShape(50.dp),
-            border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Box(
-
-                modifier = Modifier
-                    .width(24.dp)
-                    .height(36.dp)
-                    .background(
-                        color = Color(
-                            defaultPickerColor.removePrefix("0x").toLong(16).toInt()
-                        )
-                    )
-                    .clickable(
-//                        onClick = { showBottomSheet = true }
-                        onClick = {
-                            showBottomSheet = true
-
-                        }
-                    ),
-            ) {
-            }
-        }
-    }
-
-
-
-    val isSysDark = isSystemInDarkTheme()
+    val volumeLabel = volumes.firstOrNull { it.id == volumeId }?.label ?: "Phone storage"
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
                 title = { Text("Settings") },
@@ -158,169 +91,87 @@ fun SettingsPage(
             )
         }
     ) { innerPadding ->
-
         LazyColumn(
             modifier = Modifier
                 .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = PaddingValues(
+                top = 4.dp,
+                bottom = innerPadding.calculateBottomPadding() + 16.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
                 SettingSection(
-                    title = "App looks",
+                    title = "Appearance",
                     tiles = listOf(
-                        SettingTile.DialogOptionTile(
+                        SettingTile.NavigationTile(
                             leading = { SettingsTileIcon(R.drawable.routine_24px) },
-                            title = "App Theme",
-                            options = listOf("Light", "Dark", "System"),
-                            selectedOption = currentTheme,
-                            onOptionSelected = { selectedOption ->
-                                currentTheme = selectedOption
-                                val isDark = when (selectedOption) {
-                                    "Light" -> false
-                                    "Dark" -> true
-                                    "System" -> isSysDark
-                                    else -> false
-                                }
-                                PreferencesHelper.setBool("dark_theme", isDark)
-                                PreferencesHelper.setString("AppTheme", selectedOption)
-
-                                onThemeChanged(isDark)
-
-                            }
-                        ),
-                        SettingTile.SwitchTile(
-                            leading = {
-                                if (useCustomColor) openColorPickerLead() else SettingsTileIcon(
-                                    R.drawable.colorize_24px
-                                )
-                            },
-                            title = "Use custom color",
-                            description = "Select a seed color to generate the theme",
-                            checked = useCustomColor,
-                            enabled = !useDynamicColor,
-                            onCheckedChange = { checked ->
-                                PreferencesHelper.setBool("useCustomColor", checked)
-
-                                useCustomColor = checked
-
-                                if (!checked) {
-                                    PreferencesHelper.setString("seedColor", "0xff0000FF")
-                                    onSeedChanged("0xff0000FF")
-                                }
-
-                            }
-                        ),
-                        SettingTile.SwitchTile(
-                            leading = {
-                                SettingsTileIcon(
-                                    R.drawable.image_24px
-                                )
-                            },
-                            title = "Dynamic colors",
-                            description = "Use wallpaper colors",
-                            checked = useDynamicColor,
-                            enabled = !useCustomColor,
-                            onCheckedChange = { checked ->
-                                PreferencesHelper.setBool("useDynamicColors", checked)
-                                PreferencesHelper.setBool("useCustomColor", !checked)
-                                onDynamicColorChanged(checked)
-                                if (useCustomColor) {
-                                    useCustomColor = !checked
-                                }
-                                useDynamicColor = checked
-                            }
-                        ),
+                            title = "App looks",
+                            description = "${currentTheme.storageValue} theme \u00B7 $colorSource",
+                            onClick = { navController.navigate("SettingsAppLooks") }
+                        )
                     )
                 )
             }
             item {
-                Spacer(Modifier.height(10.dp))
-                RecordingSettingsSection(
-                    app = app,
-                    scope = scope,
-                    showMessage = showMessage
+                SettingSection(
+                    title = "Recording",
+                    tiles = listOf(
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
+                            title = "Recording",
+                            description = "${quality.label} \u00B7 Noise reduction ${if (noiseReduction) "on" else "off"}",
+                            onClick = { navController.navigate("SettingsRecording") }
+                        ),
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.fiber_manual_record_24px) },
+                            title = "Automation",
+                            description = if (automationOn) "On \u00B7 Shortcuts allowed" else "Off \u00B7 Shortcuts blocked",
+                            onClick = { navController.navigate("SettingsAutomation") }
+                        ),
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.storage_24px) },
+                            title = "Storage",
+                            description = volumeLabel,
+                            onClick = { navController.navigate("SettingsStorage") }
+                        )
+                    )
                 )
             }
             item {
-                Spacer(Modifier.height(10.dp))
-                AutomationSettingsSection(
-                    app = app,
-                    scope = scope,
-                    showMessage = showMessage
+                SettingSection(
+                    title = "Playback & speech",
+                    tiles = listOf(
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.play_arrow_24px) },
+                            title = "Playback",
+                            description = "Default speed ${playbackSpeedLabel(speed)}",
+                            onClick = { navController.navigate("SettingsPlayback") }
+                        ),
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.notes_24px) },
+                            title = "Speech-to-text",
+                            description = "Whisper \u00B7 ${whisperLanguageLabel(languageTag)}",
+                            onClick = { navController.navigate("SettingsSpeech") }
+                        )
+                    )
                 )
             }
             item {
-                Spacer(Modifier.height(10.dp))
-                StorageSettingsSection(
-                    app = app,
-                    scope = scope,
-                    showMessage = showMessage
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
-                PlaybackSettingsSection(
-                    app = app,
-                    playback = playback,
-                    scope = scope,
-                    showMessage = showMessage
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
-                SpeechSettingsSection(
-                    app = app,
-                    scope = scope,
-                    showMessage = showMessage,
-                    onOpenModels = { navController.navigate("OpenSpeechModels") }
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
                 SettingSection(
                     title = "Additional",
                     tiles = listOf(
-                        SettingTile.ActionTile(
-                            leading = {SettingsTileIcon(R.drawable.info_24px)},
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.info_24px) },
                             title = "About app",
                             description = "Terms, Version, License, and More",
-                            onClick = {
-                                navController.navigate("OpenAboutScreen")
-                            },
+                            onClick = { navController.navigate("OpenAboutScreen") }
                         )
                     )
                 )
             }
         }
-
-        if(showBottomSheet){
-            ColorPickerSheetTheme (
-                onShowSheet = showBottomSheet,
-                sheetState = sheetState,
-                initialColorInt = initialColorInt,
-                controller = controller,
-                onPickedColor = { argbHex ->
-                    pickedColor = argbHex
-                },
-                onExpressiveColorChanged = { checked ->
-                    PreferencesHelper.setBool("useExpressiveColor", checked)
-
-                    useExpressiveColor = checked
-                    onExpressiveColorChanged(checked)
-                },
-                useExpressiveColor = useExpressiveColor,
-                onSeedChanged = {
-                    onSeedChanged(pickedColor)
-                    PreferencesHelper.setString("seedColor", pickedColor)
-                },
-                hideColorSheet ={
-                    hideColorSheet()
-                }
-            )
-        }
-
     }
 }
-
-

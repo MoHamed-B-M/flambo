@@ -25,6 +25,8 @@ import com.pranshulgg.recordmaster.core.data.AudioFileStore
 import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.stt.FileResult
 import com.pranshulgg.recordmaster.ui.components.Symbol
+import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
+import com.pranshulgg.recordmaster.ui.expressive.progressSpring
 import com.pranshulgg.recordmaster.utils.formatMillis
 import com.pranshulgg.recordmaster.utils.moveFileToDir
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -234,22 +236,31 @@ fun RecordingRow(
             val animatedProgress by
             animateFloatAsState(
                 targetValue = progress.coerceIn(0f, 1f),
-                animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
-
+                animationSpec = progressSpring(),
                 )
 
             Column(modifier = Modifier.padding(end = 16.dp)) {
-                LinearWavyProgressIndicator(
-                    progress = { animatedProgress  },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp)
-                        .height(5.dp),
-                    wavelength = 20.dp,
-                    // Flat while paused; wavy only while this row is actually playing.
-                    amplitude = { _ -> if (isThisPlaying) 1f else 0f }
-
+                if (LocalReducedMotion.current) {
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                            .height(5.dp),
                     )
+                } else {
+                    LinearWavyProgressIndicator(
+                        progress = { animatedProgress  },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                            .height(5.dp),
+                        wavelength = 20.dp,
+                        // Flat while paused; wavy only while this row is actually playing.
+                        amplitude = { _ -> if (isThisPlaying) 1f else 0f }
+
+                        )
+                }
             }
 
             if (showBottomSheet) {

@@ -2,6 +2,10 @@ package com.pranshulgg.recordmaster.ui.components.tiles
 
 import android.app.AlertDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -35,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -50,6 +55,7 @@ fun <T> DialogOptionTile(
     dialogTitle: String? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    val reducedMotion = LocalReducedMotion.current
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -131,6 +137,8 @@ fun <T> DialogOptionTile(
 
                     AnimatedVisibility(
                         visible = showTopDivider,
+                        enter = if (reducedMotion) EnterTransition.None else fadeIn(),
+                        exit = if (reducedMotion) ExitTransition.None else fadeOut(),
                         modifier = Modifier.align(Alignment.TopCenter)
                     ) {
                         HorizontalDivider(modifier = Modifier.fillMaxWidth())
@@ -138,6 +146,8 @@ fun <T> DialogOptionTile(
 
                     AnimatedVisibility(
                         visible = showBottomDivider,
+                        enter = if (reducedMotion) EnterTransition.None else fadeIn(),
+                        exit = if (reducedMotion) ExitTransition.None else fadeOut(),
                         modifier = Modifier.align(Alignment.BottomCenter)
                     ) {
                         HorizontalDivider(modifier = Modifier.fillMaxWidth())

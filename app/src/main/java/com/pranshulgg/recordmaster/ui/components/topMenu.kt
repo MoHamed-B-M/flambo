@@ -372,6 +372,7 @@ fun DropdownMenu(
             message = "The recording will be permanently deleted and cannot be undone",
             confirmText = "Delete",
             cancelText = "Cancel",
+            holdToConfirm = true,
             onConfirm = {
                 onDelete()
                 showCurrentRecordDeleteDialog = false

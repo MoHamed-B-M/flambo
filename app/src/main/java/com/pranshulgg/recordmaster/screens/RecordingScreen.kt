@@ -157,6 +157,7 @@ fun RecordingScreen(onDone: () -> Unit) {
                             message = "This recording will be permanently deleted. This cannot be undone",
                             confirmText = "Delete",
                             cancelText = "Cancel",
+                            holdToConfirm = true,
                             onConfirm = {
                                 controller.cancel()
                                 showConfirmDeleteDialog = false

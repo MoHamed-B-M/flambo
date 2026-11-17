@@ -8,14 +8,11 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pranshulgg.recordmaster.R
-import com.pranshulgg.recordmaster.ui.components.Symbol
+import com.pranshulgg.recordmaster.ui.expressive.ExpressiveSwitch
 
 @Composable
 fun SwitchTile(
@@ -48,33 +45,14 @@ fun SwitchTile(
                 if (description != null) Text(description)
             },
             trailingContent = {
-                Switch(
-                    enabled = switchEnabled,
+                ExpressiveSwitch(
                     checked = checked,
                     onCheckedChange = { newChecked ->
                         if (checked != newChecked) {
                             onCheckedChange(newChecked)
                         }
                     },
-                    thumbContent = if (checked) {
-                        {
-                            Symbol(
-                                R.drawable.check,
-                                size = SwitchDefaults.IconSize,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                        }
-                    } else {
-                        {
-                            Symbol(
-                                R.drawable.close_24px,
-                                size = SwitchDefaults.IconSize,
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest
-                            )
-
-                        }
-                    }
+                    enabled = switchEnabled
                 )
             }
         )
@@ -113,33 +91,14 @@ fun SingleSwitchTile(
                 if (description != null) Text(description)
             },
             trailingContent = {
-                Switch(
-                    enabled = switchEnabled,
+                ExpressiveSwitch(
                     checked = checked,
                     onCheckedChange = { newChecked ->
                         if (checked != newChecked) {
                             onCheckedChange(newChecked)
                         }
                     },
-                    thumbContent = if (checked) {
-                        {
-                            Symbol(
-                                R.drawable.check,
-                                size = SwitchDefaults.IconSize,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                        }
-                    } else {
-                        {
-                            Symbol(
-                                R.drawable.close_24px,
-                                size = SwitchDefaults.IconSize,
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest
-                            )
-
-                        }
-                    }
+                    enabled = switchEnabled
                 )
             }
         )

@@ -6,10 +6,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -18,6 +18,10 @@ import androidx.core.view.WindowCompat
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
+import com.pranshulgg.recordmaster.ui.expressive.ExpressiveMotion
+import com.pranshulgg.recordmaster.ui.expressive.ExpressiveShapes
+import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
+import com.pranshulgg.recordmaster.ui.expressive.rememberSystemReducedMotion
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -26,6 +30,7 @@ fun RecordMasterTheme(
     dynamicColor: Boolean = true,
     seedColor: Color = Color.Yellow,
     useExpressive: Boolean = true,
+    reducedMotion: Boolean = rememberSystemReducedMotion(),
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
@@ -52,10 +57,13 @@ fun RecordMasterTheme(
         }
     }
 
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        motionScheme = MotionScheme.expressive(),
-        content = content
-    )
+    CompositionLocalProvider(LocalReducedMotion provides reducedMotion) {
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = ExpressiveShapes,
+            motionScheme = ExpressiveMotion.motionScheme(reducedMotion),
+            content = content
+        )
+    }
 }

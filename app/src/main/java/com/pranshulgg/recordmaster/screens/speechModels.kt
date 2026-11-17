@@ -20,7 +20,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -57,6 +56,7 @@ import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.stt.ModelImportState
 import com.pranshulgg.recordmaster.core.stt.SpeechModel
 import com.pranshulgg.recordmaster.core.stt.SpeechModelCatalog
+import com.pranshulgg.recordmaster.ui.expressive.ExpressiveActionButton
 import com.pranshulgg.recordmaster.utils.formatBytes
 import com.pranshulgg.recordmaster.utils.topPadding
 import kotlinx.coroutines.Job
@@ -273,15 +273,13 @@ fun SpeechModelsScreen(
             }
 
             item {
-                FilledTonalButton(
+                ExpressiveActionButton(
                     onClick = { showImportSheet = true },
+                    text = "Import model",
                     enabled = importState is ModelImportState.Idle,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                ) {
-                    Text("Import model")
-                }
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 52.dp,
+                )
             }
 
             item {

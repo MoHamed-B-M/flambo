@@ -244,6 +244,7 @@ fun HomeScreen(
             message = "The selected recording(s) will be permanently deleted and cannot be undone",
             confirmText = "Delete",
             cancelText = "Cancel",
+            holdToConfirm = true,
             onConfirm = {
                 val files = filesToDelete
                 filesToDelete = emptyList()
@@ -274,6 +275,7 @@ fun HomeScreen(
             message = "The recording will be permanently deleted and cannot be undone",
             confirmText = "Delete",
             cancelText = "Cancel",
+            holdToConfirm = true,
             onConfirm = {
                 showGarbageConfirmDeleteDialog = false
                 filePendingDelete = null

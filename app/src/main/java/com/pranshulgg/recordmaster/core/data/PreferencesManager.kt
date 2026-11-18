@@ -31,9 +31,12 @@ class PreferencesManager(private val context: Context) {
         val KEEP_ORIGINAL = booleanPreferencesKey("keep_original")
         val RECORDINGS_VOLUME = stringPreferencesKey("recordings_volume")
         val RECORDING_PREFIX = stringPreferencesKey("recording_prefix")
+        val RECORDING_NAME_PATTERN = stringPreferencesKey("recording_name_pattern")
         val TRASH_AUTO_PURGE = booleanPreferencesKey("trash_auto_purge")
         val TRASH_RETENTION_DAYS = intPreferencesKey("trash_retention_days")
         val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
+        val SORT_ORDER = stringPreferencesKey("sort_order")
+        val LIST_FILTER = stringPreferencesKey("list_filter")
     }
 
     // ---- Recording ----
@@ -65,6 +68,22 @@ class PreferencesManager(private val context: Context) {
     suspend fun setRecordingPrefix(prefix: String) {
         context.recordMasterDataStore.edit {
             it[Keys.RECORDING_PREFIX] = prefix.trim().ifBlank { DEFAULT_PREFIX }
+        }
+    }
+
+    val recordingNamePatternFlow: Flow<String> =
+        context.recordMasterDataStore.data.map {
+            it[Keys.RECORDING_NAME_PATTERN] ?: DEFAULT_NAME_PATTERN
+        }
+
+    suspend fun recordingNamePattern(): String =
+        context.recordMasterDataStore.data.map {
+            it[Keys.RECORDING_NAME_PATTERN] ?: DEFAULT_NAME_PATTERN
+        }.first()
+
+    suspend fun setRecordingNamePattern(pattern: String) {
+        context.recordMasterDataStore.edit {
+            it[Keys.RECORDING_NAME_PATTERN] = pattern.trim().ifBlank { DEFAULT_NAME_PATTERN }
         }
     }
 
@@ -127,6 +146,28 @@ class PreferencesManager(private val context: Context) {
         context.recordMasterDataStore.edit { it[Keys.TRASH_RETENTION_DAYS] = days.coerceIn(1, 365) }
     }
 
+    // ---- Library sorting / filtering ----
+
+    val sortOrderFlow: Flow<RecordingSort> =
+        context.recordMasterDataStore.data.map { prefs ->
+            runCatching { RecordingSort.valueOf(prefs[Keys.SORT_ORDER] ?: "") }
+                .getOrDefault(RecordingSort.DATE_DESC)
+        }
+
+    suspend fun setSortOrder(order: RecordingSort) {
+        context.recordMasterDataStore.edit { it[Keys.SORT_ORDER] = order.name }
+    }
+
+    val listFilterFlow: Flow<RecordingFilter> =
+        context.recordMasterDataStore.data.map { prefs ->
+            runCatching { RecordingFilter.valueOf(prefs[Keys.LIST_FILTER] ?: "") }
+                .getOrDefault(RecordingFilter.ALL)
+        }
+
+    suspend fun setListFilter(filter: RecordingFilter) {
+        context.recordMasterDataStore.edit { it[Keys.LIST_FILTER] = filter.name }
+    }
+
     // ---- Speech-to-text (Whisper, on-device) ----
 
     val sttLanguageFlow: Flow<String> =
@@ -161,5 +202,7 @@ class PreferencesManager(private val context: Context) {
     companion object {
         /** Keeps RecordMaster's existing `User_###` naming as the default. */
         const val DEFAULT_PREFIX = "User"
+        /** Default pattern preserves legacy prefix_counter behavior (e.g. User_001). */
+        const val DEFAULT_NAME_PATTERN = "{prefix}_{counter}"
     }
 }

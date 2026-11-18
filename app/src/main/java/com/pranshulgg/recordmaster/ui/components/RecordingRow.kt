@@ -91,6 +91,7 @@ fun RecordingRow(
     var transcribing by remember { mutableStateOf(false) }
     var transcribeProgress by remember { mutableStateOf(0f) }
     var cleaning by remember { mutableStateOf(false) }
+    var editRecording by remember { mutableStateOf<Recording?>(null) }
 
     fun hideSheet() {
         scope.launch { sheetState.hide() }.invokeOnCompletion {
@@ -180,7 +181,7 @@ fun RecordingRow(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        file.nameWithoutExtension,
+                        recording?.displayTitle?.takeIf { it.isNotBlank() } ?: file.nameWithoutExtension,
                         fontSize = 26.sp,
                         maxLines = 1,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -333,6 +334,24 @@ fun RecordingRow(
                                             renameText = file.name
                                             showRenameDialog = true
                                             hideSheet()
+                                        }
+                                    )
+                                )
+                                add(
+                                    SettingTile.ActionTile(
+                                        leading = {SettingsTileIcon(R.drawable.info_24px)},
+                                        title = "Edit details",
+                                        description = recording?.authorName?.takeIf { it.isNotBlank() },
+                                        onClick = {
+                                            hideSheet()
+                                            scope.launch {
+                                                val rec = rowRecording()
+                                                if (rec == null) {
+                                                    onShowMessage("Could not index this recording")
+                                                } else {
+                                                    editRecording = rec
+                                                }
+                                            }
                                         }
                                     )
                                 )
@@ -788,6 +807,30 @@ fun RecordingRow(
                             shapes = ButtonDefaults.shapes(),
                             onClick = { showTranscriptDialog = false }
                         ) { Text("Close", fontWeight = FontWeight.W600, fontSize = 16.sp) }
+                    }
+                )
+            }
+
+            val currentEditRecording = editRecording
+            if (currentEditRecording != null) {
+                val info = remember(file.absolutePath, currentEditRecording.fileSize, currentEditRecording.durationMs) {
+                    getAudioInfo(file)
+                }
+                EditRecordingDetailsSheet(
+                    recording = currentEditRecording,
+                    info = info,
+                    onDismiss = { editRecording = null },
+                    onSave = { customName, authorName ->
+                        scope.launch {
+                            app.repository.update(
+                                currentEditRecording.copy(
+                                    customName = customName,
+                                    authorName = authorName
+                                )
+                            )
+                            onMetadataChanged()
+                            onShowMessage("Details updated")
+                        }
                     }
                 )
             }

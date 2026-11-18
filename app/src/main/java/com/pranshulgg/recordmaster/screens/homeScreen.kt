@@ -36,6 +36,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -55,7 +67,10 @@ import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
+import com.pranshulgg.recordmaster.core.data.Recording
+import com.pranshulgg.recordmaster.core.data.RecordingFilter
 import com.pranshulgg.recordmaster.core.data.RecordingRepository
+import com.pranshulgg.recordmaster.core.data.RecordingSort
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.ui.components.ConfirmDialog
 import com.pranshulgg.recordmaster.ui.components.DrawerContent
@@ -80,7 +95,7 @@ private fun File.isLibraryAudio(): Boolean =
         !name.startsWith(RecordingRepository.TEMP_PREFIX) &&
         !nameWithoutExtension.endsWith(RecordingRepository.ENHANCED_SUFFIX)
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -123,6 +138,10 @@ fun HomeScreen(
     var showDeleteFolderDialog by remember { mutableStateOf(false) }
     var folderToDeleteName by remember { mutableStateOf<String?>(null) }
     var selectedFolderKey by remember { mutableStateOf(0L) }
+
+    val sortOrder by app.prefs.sortOrderFlow.collectAsState(initial = RecordingSort.DATE_DESC)
+    val activeFilter by app.prefs.listFilterFlow.collectAsState(initial = RecordingFilter.ALL)
+    var showSortFilterSheet by remember { mutableStateOf(false) }
 
     val showMessage: suspend (String) -> Unit = { msg ->
         if (snackbarHostState != null) {
@@ -412,7 +431,10 @@ fun HomeScreen(
                     onCloseSelection = {
                         selectedPaths = emptySet()
                     },
-                    selectedCount = selectedPaths.size.toString()
+                    selectedCount = selectedPaths.size.toString(),
+                    sortOrder = sortOrder,
+                    activeFilter = activeFilter,
+                    onSortFilterClick = { showSortFilterSheet = true }
                 )
 
             }
@@ -452,7 +474,7 @@ fun HomeScreen(
                     )
                 }
 
-                val displayedRecordings = if (searchQuery.isBlank()) {
+                val baseRecordings = if (searchQuery.isBlank()) {
                     when (currentTab) {
                         "home" -> rootFiles
                         "garbage" -> garbageFiles
@@ -474,48 +496,195 @@ fun HomeScreen(
                         .distinctBy { it.absolutePath }
                         .filter { file ->
                             val rec = recordingsByPath[file.absolutePath]
+                            val displayName = rec?.displayTitle?.takeIf { it.isNotBlank() } ?: rec?.title
                             file.name.contains(query, ignoreCase = true) ||
-                                rec?.title?.contains(query, ignoreCase = true) == true ||
+                                displayName?.contains(query, ignoreCase = true) == true ||
                                 rec?.tagList?.any { it.contains(query, ignoreCase = true) } == true ||
                                 rec?.transcriptText?.contains(query, ignoreCase = true) == true
                         }
-                        .sortedByDescending { it.lastModified() }
                 }
 
+                fun effectiveDuration(file: File, rec: Recording?): Long {
+                    val fromMeta = rec?.duration?.takeIf { it > 0L } ?: rec?.durationMs ?: 0L
+                    return if (fromMeta > 0L) fromMeta else file.lastModified()
+                }
 
-
-
-                if (displayedRecordings.isEmpty()) {
-                    EmptyContainerPlaceholder(R.drawable.graphic_eq_24px, "No recordings")
+                val filteredRecordings = if (currentTab == "garbage") {
+                    baseRecordings
                 } else {
+                    baseRecordings.filter { file ->
+                        val rec = recordingsByPath[file.absolutePath]
+                        when (activeFilter) {
+                            RecordingFilter.ALL -> true
+                            RecordingFilter.FAVORITES -> rec?.isFavorite == true
+                            RecordingFilter.TRANSCRIBED -> !rec?.transcriptText.isNullOrBlank()
+                            RecordingFilter.TAGGED -> rec?.tagList?.isNotEmpty() == true
+                        }
+                    }
+                }
+
+                val sortedRecordings = if (currentTab == "garbage") {
+                    filteredRecordings.sortedByDescending { it.lastModified() }
+                } else {
+                    when (sortOrder) {
+                        RecordingSort.DATE_DESC -> filteredRecordings.sortedByDescending { it.lastModified() }
+                        RecordingSort.DATE_ASC -> filteredRecordings.sortedBy { it.lastModified() }
+                        RecordingSort.NAME_ASC -> filteredRecordings.sortedBy {
+                            (recordingsByPath[it.absolutePath]?.displayTitle?.takeIf { n -> n.isNotBlank() }
+                                ?: recordingsByPath[it.absolutePath]?.title
+                                ?: it.nameWithoutExtension).lowercase()
+                        }
+                        RecordingSort.NAME_DESC -> filteredRecordings.sortedByDescending {
+                            (recordingsByPath[it.absolutePath]?.displayTitle?.takeIf { n -> n.isNotBlank() }
+                                ?: recordingsByPath[it.absolutePath]?.title
+                                ?: it.nameWithoutExtension).lowercase()
+                        }
+                        RecordingSort.DURATION_DESC -> filteredRecordings.sortedByDescending {
+                            effectiveDuration(it, recordingsByPath[it.absolutePath])
+                        }
+                        RecordingSort.DURATION_ASC -> filteredRecordings.sortedBy {
+                            effectiveDuration(it, recordingsByPath[it.absolutePath])
+                        }
+                        RecordingSort.SIZE_DESC -> filteredRecordings.sortedByDescending {
+                            recordingsByPath[it.absolutePath]?.fileSize?.takeIf { s -> s > 0L } ?: it.length()
+                        }
+                        RecordingSort.SIZE_ASC -> filteredRecordings.sortedBy {
+                            recordingsByPath[it.absolutePath]?.fileSize?.takeIf { s -> s > 0L } ?: it.length()
+                        }
+                    }
+                }
+
+                val emptyMessage = if (searchQuery.isNotBlank()) {
+                    "No results for \"$searchQuery\""
+                } else if (currentTab != "garbage" && activeFilter != RecordingFilter.ALL) {
+                    "No recordings match \"${activeFilter.label}\""
+                } else {
+                    "No recordings"
+                }
+
+                if (sortedRecordings.isEmpty()) {
+                    EmptyContainerPlaceholder(R.drawable.graphic_eq_24px, emptyMessage)
+                } else {
+                    val groupByDate =
+                        sortOrder == RecordingSort.DATE_DESC || sortOrder == RecordingSort.DATE_ASC || currentTab == "garbage"
                     val sdfMonth = SimpleDateFormat("MMMM", Locale.getDefault())
-                    val grouped = displayedRecordings
-                        .groupBy { sdfMonth.format(Date(it.lastModified())) }
-                        .entries
-                        .sortedByDescending { entry -> entry.value.maxOf { it.lastModified() } }
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        grouped.forEachIndexed { index, entry ->
-                            val month = entry.key
-                            val files = entry.value
-                            item {
-                                    // Only sections after the first need a gap;
-                                    // the LazyColumn's contentPadding handles the top.
+                        if (groupByDate) {
+                            val grouped = sortedRecordings
+                                .groupBy { sdfMonth.format(Date(it.lastModified())) }
+                                .let { map ->
+                                    val entries = map.entries.toList()
+                                    if (sortOrder == RecordingSort.DATE_ASC && currentTab != "garbage") {
+                                        entries.sortedBy { entry -> entry.value.minOf { it.lastModified() } }
+                                    } else {
+                                        entries.sortedByDescending { entry -> entry.value.maxOf { it.lastModified() } }
+                                    }
+                                }
+                            grouped.forEachIndexed { index, entry ->
+                                val month = entry.key
+                                val files = entry.value
+                                item(key = "header_$month") {
                                     if (index > 0) Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = month,
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.W700,
                                         fontSize = 16.sp
-
                                     )
                                     Spacer(modifier = Modifier.height(6.dp))
+                                }
+                                items(files, key = { it.absolutePath }) { file ->
+                                    RecordingRow(
+                                        file = file,
+                                        isThisPlaying = playingPath == file.absolutePath && isPlaying,
+                                        progress = if (playingPath == file.absolutePath && duration > 0) (currentPos.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
+                                        currentPositionMillis = currentPos,
+                                        currentDurationMillis = duration,
+                                        onItemClick = {
+                                            if (selectedPaths.isNotEmpty()) {
+                                                toggleSelection(file.absolutePath)
+                                            } else {
+                                                val encoded = Uri.encode(file.absolutePath)
+                                                navController.navigate("play/$encoded")
+                                            }
+                                        },
+                                        onLongClick = {
+                                            toggleSelection(file.absolutePath)
+                                        },
+                                        onPlayPause = {
+                                            if (playingPath == file.absolutePath) {
+                                                playback.toggle()
+                                            } else {
+                                                playback.play(
+                                                    file.absolutePath,
+                                                    file.nameWithoutExtension
+                                                )
+                                            }
+                                        },
+                                        isGarbage = currentTab == "garbage",
+                                        musicDir = musicDir,
+                                        onDelete = {
+                                            if (currentTab == "garbage") {
+                                                filePendingDelete = file
+                                                showGarbageConfirmDeleteDialog = true
+                                            } else {
+                                                scope.launch {
+                                                    playback.stopIfCurrent(file.absolutePath)
+                                                    val rec = recordingsByPath[file.absolutePath]
+                                                        ?: app.repository.getByPath(file.absolutePath)
+                                                    if (rec != null) {
+                                                        app.repository.softDelete(rec.id)
+                                                    } else {
+                                                        runCatching { moveFileToDir(file, garbageDir) }
+                                                    }
+                                                    selectedPaths = selectedPaths - file.absolutePath
+                                                    refreshLibrary()
+                                                    app.syncStorage()
+                                                    showMessage("Moved to garbage")
+                                                }
+                                            }
+                                        },
+                                        isSelected = selectedPaths.contains(file.absolutePath),
+                                        onRestore = {
+                                            scope.launch {
+                                                val rec = recordingsByPath[file.absolutePath]
+                                                    ?: app.repository.getByPath(file.absolutePath)
+                                                if (rec != null) {
+                                                    app.repository.restore(rec.id)
+                                                } else {
+                                                    runCatching { moveFileToDir(file, musicDir) }
+                                                }
+                                                refreshLibrary()
+                                                app.syncStorage()
+                                            }
+                                        },
+                                        onMoved = {
+                                            refreshLibrary()
+                                            app.syncStorage()
+                                        },
+                                        onRenamed = {
+                                            refreshLibrary()
+                                            app.syncStorage()
+                                        },
+                                        onShowMessage = { message ->
+                                            scope.launch {
+                                                showMessage(message)
+                                            }
+                                        },
+                                        currentTab = currentTab,
+                                        recording = recordingsByPath[file.absolutePath],
+                                        onMetadataChanged = {
+                                            refreshLibrary()
+                                        }
+                                    )
+                                }
                             }
-
-                            items(files, key = { it.absolutePath }) { file ->
+                        } else {
+                            items(sortedRecordings, key = { it.absolutePath }) { file ->
                                 RecordingRow(
                                     file = file,
                                     isThisPlaying = playingPath == file.absolutePath && isPlaying,
@@ -543,7 +712,6 @@ fun HomeScreen(
                                             )
                                         }
                                     },
-
                                     isGarbage = currentTab == "garbage",
                                     musicDir = musicDir,
                                     onDelete = {
@@ -567,9 +735,7 @@ fun HomeScreen(
                                             }
                                         }
                                     },
-
                                     isSelected = selectedPaths.contains(file.absolutePath),
-
                                     onRestore = {
                                         scope.launch {
                                             val rec = recordingsByPath[file.absolutePath]
@@ -583,12 +749,10 @@ fun HomeScreen(
                                             app.syncStorage()
                                         }
                                     },
-
                                     onMoved = {
                                         refreshLibrary()
                                         app.syncStorage()
                                     },
-
                                     onRenamed = {
                                         refreshLibrary()
                                         app.syncStorage()
@@ -603,14 +767,72 @@ fun HomeScreen(
                                     onMetadataChanged = {
                                         refreshLibrary()
                                     }
-
                                 )
                             }
                         }
-                        // Bottom clearance for the FAB / mini player: once for
-                        // the whole list, not per month section.
-                        item {
-                            Spacer(modifier = Modifier.height(140.dp))
+                        item { Spacer(modifier = Modifier.height(140.dp)) }
+                    }
+                }
+
+                if (showSortFilterSheet) {
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    ModalBottomSheet(
+                        onDismissRequest = { showSortFilterSheet = false },
+                        sheetState = sheetState
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "Sort by",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.W700
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            RecordingSort.values().forEach { option ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            scope.launch { app.prefs.setSortOrder(option) }
+                                        }
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = sortOrder == option,
+                                        onClick = { scope.launch { app.prefs.setSortOrder(option) } }
+                                    )
+                                    Text(
+                                        text = option.label,
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        fontSize = 16.sp
+                                    )
+                                }
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                            Text(
+                                text = "Filter",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.W700
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                RecordingFilter.values().forEach { option ->
+                                    FilterChip(
+                                        selected = activeFilter == option,
+                                        onClick = { scope.launch { app.prefs.setListFilter(option) } },
+                                        label = { Text(option.label) }
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
                         }
                     }
                 }

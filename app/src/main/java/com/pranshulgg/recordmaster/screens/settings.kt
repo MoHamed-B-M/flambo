@@ -57,6 +57,7 @@ fun SettingsPage(
     val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
     val volumeId by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
+    val folderUri by app.prefs.recordingsFolderUriFlow.collectAsState(initial = "")
     val speed by app.prefs.playbackSpeedFlow.collectAsState(initial = 1f)
     val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
     val reduceAnimations by app.prefs.reduceAnimationsFlow.collectAsState(initial = false)
@@ -74,7 +75,11 @@ fun SettingsPage(
         customColor -> "Custom color"
         else -> "Default color"
     }
-    val volumeLabel = volumes.firstOrNull { it.id == volumeId }?.label ?: "Phone storage"
+    val volumeLabel = if (folderUri.isNotBlank()) {
+        StorageVolumes.folderDisplayName(context, folderUri)
+    } else {
+        volumes.firstOrNull { it.id == volumeId }?.label ?: "Phone storage (Recorder)"
+    }
     val motionLabel = when {
         systemReducedMotion -> "Android reduced motion"
         reduceAnimations -> "Reduced motion"

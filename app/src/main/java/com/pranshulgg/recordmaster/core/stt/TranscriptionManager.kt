@@ -2,6 +2,7 @@ package com.pranshulgg.recordmaster.core.stt
 
 import android.content.Context
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -133,6 +134,9 @@ class TranscriptionManager(
             } else {
                 FileResult.Done(text.trim(), offline = true)
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            _whisperState.value = WhisperState.IDLE
+            throw e
         } catch (e: Exception) {
             _whisperState.value = WhisperState.IDLE
             FileResult.Failed(e.message ?: "Transcription failed")

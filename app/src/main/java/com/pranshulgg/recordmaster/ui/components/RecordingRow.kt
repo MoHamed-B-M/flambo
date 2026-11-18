@@ -26,6 +26,7 @@ import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.stt.FileResult
 import com.pranshulgg.recordmaster.ui.components.Symbol
 import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
+import com.pranshulgg.recordmaster.ui.expressive.expressiveSpring
 import com.pranshulgg.recordmaster.ui.expressive.progressSpring
 import com.pranshulgg.recordmaster.utils.formatMillis
 import com.pranshulgg.recordmaster.utils.moveFileToDir
@@ -71,7 +72,8 @@ fun RecordingRow(
     onLongClick: () -> Unit,
     isSelected: Boolean = false,
     recording: Recording? = null,
-    onMetadataChanged: () -> Unit = {}
+    onMetadataChanged: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as RecordMasterApp }
@@ -156,7 +158,7 @@ fun RecordingRow(
     )
 
     Box (
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(shape = RoundedCornerShape(20.dp))
@@ -250,6 +252,11 @@ fun RecordingRow(
                             .height(5.dp),
                     )
                 } else {
+                    // The wave rises when playback starts instead of popping on.
+                    val waveAmplitude by animateFloatAsState(
+                        targetValue = if (isThisPlaying) 1f else 0f,
+                        animationSpec = expressiveSpring(),
+                    )
                     LinearWavyProgressIndicator(
                         progress = { animatedProgress  },
                         modifier = Modifier
@@ -258,7 +265,7 @@ fun RecordingRow(
                             .height(5.dp),
                         wavelength = 20.dp,
                         // Flat while paused; wavy only while this row is actually playing.
-                        amplitude = { _ -> if (isThisPlaying) 1f else 0f }
+                        amplitude = { waveAmplitude }
 
                         )
                 }

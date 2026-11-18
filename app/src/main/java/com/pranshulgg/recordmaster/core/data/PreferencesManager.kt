@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -37,6 +38,8 @@ class PreferencesManager(private val context: Context) {
         val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
         val SORT_ORDER = stringPreferencesKey("sort_order")
         val LIST_FILTER = stringPreferencesKey("list_filter")
+        val REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
+        val ANIMATION_SPEED = stringPreferencesKey("animation_speed")
     }
 
     // ---- Recording ----
@@ -99,6 +102,28 @@ class PreferencesManager(private val context: Context) {
         context.recordMasterDataStore.edit {
             it[Keys.PLAYBACK_SPEED] = speed.coerceIn(0.5f, 2f)
         }
+    }
+
+    // ---- Motion / accessibility ----
+
+    /** User override that shortens or removes motion across the app. */
+    val reduceAnimationsFlow: Flow<Boolean> =
+        context.recordMasterDataStore.data.map { it[Keys.REDUCE_ANIMATIONS] ?: false }
+
+    suspend fun setReduceAnimations(enabled: Boolean) {
+        context.recordMasterDataStore.edit { it[Keys.REDUCE_ANIMATIONS] = enabled }
+    }
+
+    /** Multiplier applied to Flambo's springs and transitions. */
+    val animationSpeedFlow: Flow<AnimationSpeed> =
+        context.recordMasterDataStore.data.map { prefs ->
+            prefs[Keys.ANIMATION_SPEED]
+                ?.let { stored -> AnimationSpeed.entries.firstOrNull { it.name == stored } }
+                ?: AnimationSpeed.Default
+        }
+
+    suspend fun setAnimationSpeed(speed: AnimationSpeed) {
+        context.recordMasterDataStore.edit { it[Keys.ANIMATION_SPEED] = speed.name }
     }
 
     val enhanceStrengthFlow: Flow<String> =

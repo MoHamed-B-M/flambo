@@ -71,10 +71,11 @@ fun ExpressiveActionButton(
     var tapGeneration by remember { mutableIntStateOf(0) }
     var tapped by remember { mutableStateOf(false) }
     val reducedMotion = LocalReducedMotion.current
+    val tapFeedbackMillis = tapFeedbackDurationMillis()
     LaunchedEffect(tapGeneration) {
         if (tapGeneration > 0 && !reducedMotion) {
             tapped = true
-            delay(ExpressiveMotion.TapDurationMillis)
+            delay(tapFeedbackMillis)
             tapped = false
         }
     }

@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,38 +53,45 @@ fun <T> DialogOptionTile(
     optionLabel: (T) -> String = { it.toString() },
     leading: @Composable (() -> Unit)? = null,
     shapes: RoundedCornerShape,
-    dialogTitle: String? = null
+    dialogTitle: String? = null,
+    enabled: Boolean = true
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val reducedMotion = LocalReducedMotion.current
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.6f),
 
         shape = shapes,
     ) {
         ListItem(
 
             modifier = Modifier
-                .clickable { showDialog = true },
+                .clickable(enabled = enabled) { showDialog = true },
             colors = ListItemDefaults.colors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
             ),
             leadingContent = leading,
             headlineContent = { Text(headline) },
             supportingContent = {
-                if (description != null) Text(description)
-                else selectedOption?.let {
-                    Text(
-                        optionLabel(it),
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
+                if (description != null) {
+                    Text(description)
+                } else {
+                    selectedOption?.let {
+                        Text(
+                            optionLabel(it),
+                            color = if (enabled) MaterialTheme.colorScheme.tertiary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             },
         )
     }
 
-    if (showDialog) {
+    if (showDialog && enabled) {
         var tempSelection by remember { mutableStateOf(selectedOption) }
         AlertDialog(
             onDismissRequest = { showDialog = false },

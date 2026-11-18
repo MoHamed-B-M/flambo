@@ -35,6 +35,7 @@ class RecordMasterApp : Application() {
 
     /** Mirrors prefs for callers that cannot suspend (services, notifications). */
     var storageVolumeId by mutableStateOf(StorageVolumes.ID_DEFAULT)
+    var recordingsFolderUri by mutableStateOf("")
     @Volatile var recordingPrefix: String = PreferencesManager.DEFAULT_PREFIX
 
     val prefs by lazy { PreferencesManager(this) }
@@ -70,9 +71,16 @@ class RecordMasterApp : Application() {
 
     private var storageWatcher: StorageWatcher? = null
 
-    /** Defaults to RecordMaster's existing `Music/` tree; never moves old files. */
-    fun recordingsDir(): File =
-        StorageVolumes.resolveDir(this, storageVolumeId).apply { mkdirs() }
+    /**
+     * Active recordings directory. Prefers a user-picked exact folder (SAF tree
+     * resolved to a filesystem path) and otherwise falls back to the selected
+     * volume/default, which creates a "Recorder" folder in phone storage.
+     */
+    fun recordingsDir(): File {
+        val custom = StorageVolumes.resolveTreeUriToDir(this, recordingsFolderUri)
+        if (custom != null) return custom.apply { mkdirs() }
+        return StorageVolumes.resolveDir(this, storageVolumeId).apply { mkdirs() }
+    }
 
     fun garbageDir(): File =
         File(recordingsDir(), RecordingRepository.GARBAGE_DIR_NAME).apply { mkdirs() }
@@ -115,6 +123,8 @@ class RecordMasterApp : Application() {
         appScope.launch {
             storageVolumeId = runCatching { prefs.recordingsVolume() }
                 .getOrDefault(StorageVolumes.ID_DEFAULT)
+            recordingsFolderUri = runCatching { prefs.recordingsFolderUri() }
+                .getOrDefault("")
             recordingPrefix = runCatching { prefs.recordingPrefix() }
                 .getOrDefault(PreferencesManager.DEFAULT_PREFIX)
 

@@ -92,6 +92,7 @@ fun RecordingRow(
     var transcriptText by remember { mutableStateOf("") }
     var transcribing by remember { mutableStateOf(false) }
     var transcribeProgress by remember { mutableStateOf(0f) }
+    var transcribeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var cleaning by remember { mutableStateOf(false) }
     var editRecording by remember { mutableStateOf<Recording?>(null) }
 
@@ -462,29 +463,35 @@ fun RecordingRow(
                                                 transcriptText = recording?.transcriptText.orEmpty()
                                                 showTranscriptDialog = true
                                             } else {
-                                                scope.launch {
+                                                transcribeJob = scope.launch {
                                                     transcribing = true
                                                     transcribeProgress = 0f
-                                                    val result = app.transcription
-                                                        .transcribeFileWithProgress(file.absolutePath) {
-                                                            transcribeProgress = it
-                                                        }
-                                                    transcribing = false
-                                                    when (result) {
-                                                        is FileResult.Done -> {
-                                                            transcriptText = result.text
-                                                            val rec = rowRecording()
-                                                            if (rec != null) {
-                                                                app.repository.saveTranscript(
-                                                                    rec.id,
-                                                                    result.text
-                                                                )
-                                                                onMetadataChanged()
+                                                    try {
+                                                        val result = app.transcription
+                                                            .transcribeFileWithProgress(file.absolutePath) {
+                                                                transcribeProgress = it
                                                             }
-                                                            showTranscriptDialog = true
-                                                        }
+                                                        when (result) {
+                                                            is FileResult.Done -> {
+                                                                transcriptText = result.text
+                                                                val rec = rowRecording()
+                                                                if (rec != null) {
+                                                                    app.repository.saveTranscript(
+                                                                        rec.id,
+                                                                        result.text
+                                                                    )
+                                                                    onMetadataChanged()
+                                                                }
+                                                                showTranscriptDialog = true
+                                                            }
 
-                                                        is FileResult.Failed -> onShowMessage(result.message)
+                                                            is FileResult.Failed -> onShowMessage(result.message)
+                                                        }
+                                                    } catch (_: kotlinx.coroutines.CancellationException) {
+                                                        // Transcription cancelled by the user.
+                                                    } finally {
+                                                        transcribing = false
+                                                        transcribeJob = null
                                                     }
                                                 }
                                             }
@@ -753,7 +760,7 @@ fun RecordingRow(
 
             if (transcribing) {
                 AlertDialog(
-                    onDismissRequest = { },
+                    onDismissRequest = { transcribeJob?.cancel() },
                     title = { Text("Transcribing") },
                     text = {
                         Column {
@@ -765,7 +772,14 @@ fun RecordingRow(
                             )
                         }
                     },
-                    confirmButton = { }
+                    confirmButton = {
+                        TextButton(
+                            onClick = { transcribeJob?.cancel() },
+                            shapes = ButtonDefaults.shapes()
+                        ) {
+                            Text("Cancel", fontWeight = FontWeight.W600, fontSize = 16.sp)
+                        }
+                    }
                 )
             }
 

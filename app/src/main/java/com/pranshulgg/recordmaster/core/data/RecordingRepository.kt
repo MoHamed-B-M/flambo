@@ -269,7 +269,10 @@ class RecordingRepository(
             rec.copy(
                 filePath = target.absolutePath,
                 enhancedPath = "",
-                title = base
+                title = base,
+                fileSize = target.length().takeIf { it > 0 } ?: rec.fileSize,
+                durationMs = readDuration(target.absolutePath).takeIf { it > 0 } ?: rec.durationMs,
+                duration = readDuration(target.absolutePath).takeIf { it > 0 } ?: rec.duration
             )
         )
         true
@@ -352,17 +355,46 @@ class RecordingRepository(
                 if (AudioFileStore.isContentUri(rec.filePath)) continue
                 val file = File(rec.filePath)
                 val insideGarbage = isInside(rec.filePath, garbage)
+                var updated = rec
+
                 if (insideGarbage && !rec.isTrashed) {
-                    dao.update(
-                        rec.copy(
-                            isTrashed = true,
-                            trashedAt = rec.trashedAt
-                                ?: file.lastModified().takeIf { it > 0 }
-                                ?: System.currentTimeMillis()
-                        )
+                    updated = updated.copy(
+                        isTrashed = true,
+                        trashedAt = rec.trashedAt
+                            ?: file.lastModified().takeIf { it > 0 }
+                            ?: System.currentTimeMillis()
                     )
                 } else if (!insideGarbage && rec.isTrashed && file.exists()) {
-                    dao.update(rec.copy(isTrashed = false, trashedAt = null))
+                    updated = updated.copy(isTrashed = false, trashedAt = null)
+                }
+
+                if (file.exists()) {
+                    val actualSize = file.length().takeIf { it > 0 } ?: 0L
+                    val actualDuration = if (updated.durationMs <= 0L || updated.duration <= 0L) {
+                        readDuration(updated.filePath)
+                    } else {
+                        0L
+                    }
+                    val resolvedDuration = when {
+                        actualDuration > 0L -> actualDuration
+                        updated.durationMs > 0L -> updated.durationMs
+                        updated.duration > 0L -> updated.duration
+                        else -> 0L
+                    }
+                    if (updated.fileSize != actualSize ||
+                        updated.durationMs != resolvedDuration ||
+                        updated.duration != resolvedDuration
+                    ) {
+                        updated = updated.copy(
+                            fileSize = actualSize,
+                            durationMs = resolvedDuration,
+                            duration = resolvedDuration
+                        )
+                    }
+                }
+
+                if (updated != rec) {
+                    dao.update(updated)
                 }
             }
 
@@ -389,16 +421,19 @@ class RecordingRepository(
 
     private suspend fun insertForeignFile(file: File, path: String, trashed: Boolean): Boolean {
         val modified = file.lastModified().takeIf { it > 0 } ?: System.currentTimeMillis()
+        val durationMs = readDuration(path)
         return runCatching {
             dao.insert(
                 Recording(
                     title = file.nameWithoutExtension.ifBlank { "Recording" },
                     filePath = path,
-                    durationMs = readDuration(path),
+                    durationMs = durationMs,
                     createdAt = modified,
                     isTrashed = trashed,
                     trashedAt = if (trashed) modified else null,
-                    quality = "HIGH"
+                    quality = "HIGH",
+                    fileSize = file.length().takeIf { it > 0 } ?: 0L,
+                    duration = durationMs
                 )
             )
         }.isSuccess

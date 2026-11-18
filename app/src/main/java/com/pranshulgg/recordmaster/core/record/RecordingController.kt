@@ -387,7 +387,9 @@ class RecordingController(
             durationMs = durationMs,
             createdAt = System.currentTimeMillis(),
             amplitudePeaks = peaksString,
-            quality = qualityName
+            quality = qualityName,
+            fileSize = actualFile.length().takeIf { it > 0 } ?: 0L,
+            duration = durationMs
         )
         val id = repository.insert(recording)
         withContext(Dispatchers.Main) {

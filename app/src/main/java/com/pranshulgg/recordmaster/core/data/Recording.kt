@@ -27,7 +27,11 @@ data class Recording(
     val amplitudePeaks: String = "",
     val quality: String = "HIGH",
     val transcriptText: String = "",
-    val enhancedPath: String = ""
+    val enhancedPath: String = "",
+    val authorName: String = "",
+    val customName: String = "",
+    val fileSize: Long = 0L,
+    val duration: Long = 0L
 ) {
     val tagList: List<String>
         get() = if (tags.isBlank()) emptyList()
@@ -36,4 +40,8 @@ data class Recording(
     val peakList: List<Float>
         get() = if (amplitudePeaks.isBlank()) emptyList()
         else amplitudePeaks.split(",").mapNotNull { it.toFloatOrNull() }
+
+    /** Display name preferring user-edited metadata. */
+    val displayTitle: String
+        get() = customName.ifBlank { title }
 }

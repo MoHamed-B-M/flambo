@@ -22,6 +22,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarScrollBehavior
 import com.pranshulgg.recordmaster.R
+import com.pranshulgg.recordmaster.core.data.RecordingFilter
+import com.pranshulgg.recordmaster.core.data.RecordingSort
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -41,7 +43,10 @@ fun TopBarWithSearch(
     onDeleteSelected: () -> Unit,
     onShareSelected: () -> Unit,
     onCloseSelection: () -> Unit,
-    selectedCount: String
+    selectedCount: String,
+    sortOrder: RecordingSort = RecordingSort.DATE_DESC,
+    activeFilter: RecordingFilter = RecordingFilter.ALL,
+    onSortFilterClick: (() -> Unit)? = null
 ) {
     TopAppBar(
         scrollBehavior = scrollBehavior,
@@ -61,6 +66,18 @@ fun TopBarWithSearch(
                             R.drawable.search_24px,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                    }
+                    if (onSortFilterClick != null && currentTab != "garbage") {
+                        IconButton(
+                            onClick = onSortFilterClick,
+                            shapes = IconButtonDefaults.shapes()
+                        ) {
+                            val active = sortOrder != RecordingSort.DATE_DESC || activeFilter != RecordingFilter.ALL
+                            Symbol(
+                                R.drawable.filter_list_24px,
+                                color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 } else {
                     IconButton(

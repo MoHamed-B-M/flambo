@@ -87,6 +87,7 @@ fun DropdownMenu(
     var showTagsDialog by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showTranscriptDialog by remember { mutableStateOf(false) }
+    var showEditDetails by remember { mutableStateOf(false) }
     var transcriptText by remember { mutableStateOf("") }
     var transcribing by remember { mutableStateOf(false) }
     var transcribeProgress by remember { mutableStateOf(0f) }
@@ -180,6 +181,16 @@ fun DropdownMenu(
             },
             leadingIcon = { DropDownMenuIcon(R.drawable.label_24px) }
         )
+        if (recording != null) {
+            DropdownMenuItem(
+                text = { DropDownMenuText("Edit details") },
+                onClick = {
+                    showEditDetails = true
+                    expanded = false
+                },
+                leadingIcon = { DropDownMenuIcon(R.drawable.edit_24px) }
+            )
+        }
         DropdownMenuItem(
             text = {
                 DropDownMenuText(
@@ -509,6 +520,26 @@ fun DropdownMenu(
         )
     }
 
+    if (showEditDetails && recording != null) {
+        EditRecordingDetailsSheet(
+            recording = recording,
+            info = info,
+            onDismiss = { showEditDetails = false },
+            onSave = { customName, authorName ->
+                scope.launch {
+                    app.repository.update(
+                        recording.copy(
+                            customName = customName,
+                            authorName = authorName
+                        )
+                    )
+                    onMetadataChanged()
+                    onShowMessage("Details updated")
+                }
+            }
+        )
+    }
+
 }
 
 
@@ -536,22 +567,37 @@ fun getAudioInfo(file: File): AudioInfo {
         val durationMs =
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
                 ?: 0L
+        val sampleRate = runCatching {
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+        }.getOrNull().orEmpty()
 
         retriever.release()
 
         AudioInfo(
-            encoding = mime ?: file.extension,
+            encoding = mime ?: file.extension.ifBlank { "Unknown" },
             duration = durationMs,
             size = file.length(),
-            path = file.absolutePath
+            path = file.absolutePath,
+            sampleRate = formatSampleRate(sampleRate)
         )
     } catch (e: Exception) {
         AudioInfo(
-            encoding = file.extension,
+            encoding = file.extension.ifBlank { "Unknown" },
             duration = 0L,
             size = file.length(),
-            path = file.absolutePath
+            path = file.absolutePath,
+            sampleRate = "Unknown"
         )
+    }
+}
+
+fun formatSampleRate(raw: String?): String {
+    val hz = raw?.trim()?.toIntOrNull() ?: return "Unknown"
+    if (hz <= 0) return "Unknown"
+    return if (hz % 1000 == 0) {
+        "${hz / 1000} kHz"
+    } else {
+        String.format(Locale.getDefault(), "%.1f kHz", hz / 1000f)
     }
 }
 
@@ -559,7 +605,8 @@ data class AudioInfo(
     val encoding: String,
     val duration: Long,
     val size: Long,
-    val path: String
+    val path: String,
+    val sampleRate: String = "Unknown"
 )
 
 fun formatDuration(ms: Long): String {

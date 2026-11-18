@@ -41,12 +41,13 @@ fun RecordButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val reducedMotion = LocalReducedMotion.current
+    val tapFeedbackMillis = tapFeedbackDurationMillis()
     var tapGeneration by remember { mutableIntStateOf(0) }
     var tapped by remember { mutableStateOf(false) }
     LaunchedEffect(tapGeneration) {
         if (tapGeneration > 0 && !reducedMotion) {
             tapped = true
-            delay(ExpressiveMotion.TapDurationMillis)
+            delay(tapFeedbackMillis)
             tapped = false
         }
     }

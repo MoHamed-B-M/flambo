@@ -26,6 +26,7 @@ import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.stt.FileResult
 import com.pranshulgg.recordmaster.ui.components.Symbol
 import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
+import com.pranshulgg.recordmaster.ui.expressive.expressiveSpring
 import com.pranshulgg.recordmaster.ui.expressive.progressSpring
 import com.pranshulgg.recordmaster.utils.formatMillis
 import com.pranshulgg.recordmaster.utils.moveFileToDir
@@ -71,7 +72,8 @@ fun RecordingRow(
     onLongClick: () -> Unit,
     isSelected: Boolean = false,
     recording: Recording? = null,
-    onMetadataChanged: () -> Unit = {}
+    onMetadataChanged: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as RecordMasterApp }
@@ -91,6 +93,7 @@ fun RecordingRow(
     var transcribing by remember { mutableStateOf(false) }
     var transcribeProgress by remember { mutableStateOf(0f) }
     var cleaning by remember { mutableStateOf(false) }
+    var editRecording by remember { mutableStateOf<Recording?>(null) }
 
     fun hideSheet() {
         scope.launch { sheetState.hide() }.invokeOnCompletion {
@@ -155,7 +158,7 @@ fun RecordingRow(
     )
 
     Box (
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(shape = RoundedCornerShape(20.dp))
@@ -180,7 +183,7 @@ fun RecordingRow(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        file.nameWithoutExtension,
+                        recording?.displayTitle?.takeIf { it.isNotBlank() } ?: file.nameWithoutExtension,
                         fontSize = 26.sp,
                         maxLines = 1,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -249,6 +252,11 @@ fun RecordingRow(
                             .height(5.dp),
                     )
                 } else {
+                    // The wave rises when playback starts instead of popping on.
+                    val waveAmplitude by animateFloatAsState(
+                        targetValue = if (isThisPlaying) 1f else 0f,
+                        animationSpec = expressiveSpring(),
+                    )
                     LinearWavyProgressIndicator(
                         progress = { animatedProgress  },
                         modifier = Modifier
@@ -257,7 +265,7 @@ fun RecordingRow(
                             .height(5.dp),
                         wavelength = 20.dp,
                         // Flat while paused; wavy only while this row is actually playing.
-                        amplitude = { _ -> if (isThisPlaying) 1f else 0f }
+                        amplitude = { waveAmplitude }
 
                         )
                 }
@@ -333,6 +341,24 @@ fun RecordingRow(
                                             renameText = file.name
                                             showRenameDialog = true
                                             hideSheet()
+                                        }
+                                    )
+                                )
+                                add(
+                                    SettingTile.ActionTile(
+                                        leading = {SettingsTileIcon(R.drawable.info_24px)},
+                                        title = "Edit details",
+                                        description = recording?.authorName?.takeIf { it.isNotBlank() },
+                                        onClick = {
+                                            hideSheet()
+                                            scope.launch {
+                                                val rec = rowRecording()
+                                                if (rec == null) {
+                                                    onShowMessage("Could not index this recording")
+                                                } else {
+                                                    editRecording = rec
+                                                }
+                                            }
                                         }
                                     )
                                 )
@@ -788,6 +814,30 @@ fun RecordingRow(
                             shapes = ButtonDefaults.shapes(),
                             onClick = { showTranscriptDialog = false }
                         ) { Text("Close", fontWeight = FontWeight.W600, fontSize = 16.sp) }
+                    }
+                )
+            }
+
+            val currentEditRecording = editRecording
+            if (currentEditRecording != null) {
+                val info = remember(file.absolutePath, currentEditRecording.fileSize, currentEditRecording.durationMs) {
+                    getAudioInfo(file)
+                }
+                EditRecordingDetailsSheet(
+                    recording = currentEditRecording,
+                    info = info,
+                    onDismiss = { editRecording = null },
+                    onSave = { customName, authorName ->
+                        scope.launch {
+                            app.repository.update(
+                                currentEditRecording.copy(
+                                    customName = customName,
+                                    authorName = authorName
+                                )
+                            )
+                            onMetadataChanged()
+                            onShowMessage("Details updated")
+                        }
                     }
                 )
             }

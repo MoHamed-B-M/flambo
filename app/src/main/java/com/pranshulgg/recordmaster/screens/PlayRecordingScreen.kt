@@ -7,6 +7,7 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.audiofx.Visualizer
 import android.net.Uri
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -182,8 +183,12 @@ fun PlayRecordingScreen(
                     Symbol(R.drawable.arrow_back_24px, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
-            title = { Text(file.nameWithoutExtension) },
-            subtitle = {Text("$date at $time")},
+            title = {
+                Text(
+                    recording?.displayTitle?.takeIf { it.isNotBlank() } ?: file.nameWithoutExtension
+                )
+            },
+            subtitle = { Text("$date at $time") },
             actions = {
                 DropdownMenu(
                     navController,
@@ -433,6 +438,17 @@ private fun ExpressiveTransportRow(
         label = "playCornerRadius"
     )
 
+    // The play/pause button shifts between containers instead of swapping.
+    val playContainerColor by animateColorAsState(
+        targetValue = if (isPlaying) {
+            MaterialTheme.colorScheme.errorContainer
+        } else {
+            MaterialTheme.colorScheme.primaryContainer
+        },
+        animationSpec = standardSpring(),
+        label = "playContainerColor"
+    )
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -460,11 +476,7 @@ private fun ExpressiveTransportRow(
                 .weight(playWeight)
                 .height(ButtonDefaults.LargeContainerHeight),
             shape = RoundedCornerShape(playCornerRadius),
-            containerColor = if (isPlaying) {
-                MaterialTheme.colorScheme.errorContainer
-            } else {
-                MaterialTheme.colorScheme.primaryContainer
-            },
+            containerColor = playContainerColor,
             onClick = {
                 press(TransportAction.PLAY_PAUSE, onPlayPause)
             }

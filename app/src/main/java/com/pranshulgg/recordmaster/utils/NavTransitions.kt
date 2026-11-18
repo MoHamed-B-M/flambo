@@ -15,27 +15,28 @@ object NavTransitions {
     fun enter(motionScheme: MotionScheme): EnterTransition =
         slideInHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
-            initialOffsetX = { it }
+            // A short travel reads as depth rather than a full page swap.
+            initialOffsetX = { it / 4 }
         ) + fadeIn(animationSpec = motionScheme.defaultEffectsSpec())
 
     fun exit(motionScheme: MotionScheme): ExitTransition =
         slideOutHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
-            targetOffsetX = { -it }
+            targetOffsetX = { -it / 4 }
         ) + fadeOut(animationSpec = motionScheme.defaultEffectsSpec())
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     fun popEnter(motionScheme: MotionScheme): EnterTransition =
         slideInHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
-            initialOffsetX = { -it }
+            initialOffsetX = { -it / 4 }
         ) + fadeIn(animationSpec = motionScheme.defaultEffectsSpec())
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     fun popExit(motionScheme: MotionScheme): ExitTransition =
         slideOutHorizontally(
             animationSpec = motionScheme.defaultSpatialSpec(),
-            targetOffsetX = { it }
+            targetOffsetX = { it / 4 }
         ) + fadeOut(animationSpec = motionScheme.defaultEffectsSpec())
 }
 

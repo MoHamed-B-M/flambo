@@ -1,5 +1,6 @@
 package com.pranshulgg.recordmaster.screens
 
+import android.os.StatFs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +22,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,6 +49,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,7 +62,6 @@ import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.stt.ModelImportState
 import com.pranshulgg.recordmaster.core.stt.SpeechModel
 import com.pranshulgg.recordmaster.core.stt.SpeechModelCatalog
-import com.pranshulgg.recordmaster.ui.expressive.ExpressiveActionButton
 import com.pranshulgg.recordmaster.utils.formatBytes
 import com.pranshulgg.recordmaster.utils.topPadding
 import kotlinx.coroutines.Job
@@ -75,6 +80,7 @@ fun SpeechModelsScreen(
     val models by app.speechModels.models.collectAsState(initial = SpeechModelCatalog.BUILT_INS)
     val selectedId by app.speechModels.selectedModelId
         .collectAsState(initial = SpeechModelCatalog.DEFAULT.id)
+    val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
     val importState by app.transcription.modelManager.importState
         .collectAsState(initial = ModelImportState.Idle)
     val downloadProgress by app.transcription.modelManager.progress
@@ -86,6 +92,7 @@ fun SpeechModelsScreen(
     var deleteTarget by remember { mutableStateOf<SpeechModel?>(null) }
     var busyModelId by remember { mutableStateOf<String?>(null) }
     var importJob by remember { mutableStateOf<Job?>(null) }
+    var importError by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableStateOf(0) }
 
     val installed = remember(models, refreshTick) {
@@ -98,35 +105,47 @@ fun SpeechModelsScreen(
 
     suspend fun handleImport(result: Result<SpeechModel>) {
         result.onSuccess { model ->
+            importError = null
             app.speechModels.add(model)
             app.speechModels.select(model.id)
             app.transcription.release()
+            refreshTick++
             message("Model imported")
         }.onFailure { error ->
-            message(error.message ?: "Import failed.")
+            if (error is kotlinx.coroutines.CancellationException) return@onFailure
+            importError = error.message ?: "Import failed."
         }
     }
 
-    fun useModel(model: SpeechModel) {
+    fun useModel(model: SpeechModel, forceDownload: Boolean = false) {
         if (busyModelId != null || importState !is ModelImportState.Idle) return
         scope.launch {
-            if (!app.transcription.modelManager.isInstalled(model)) {
+            var needsDownload = !app.transcription.modelManager.isInstalled(model)
+            if (forceDownload && model.isBuiltIn) {
+                needsDownload = true
+                runCatching { app.transcription.modelManager.modelFile(model).delete() }
+                refreshTick++
+            }
+            if (needsDownload) {
                 if (!model.isBuiltIn) {
-                    message("This model isn't on this device. Import it again.")
+                    importError = "This model isn't on this device. Import it again."
                     return@launch
                 }
                 busyModelId = model.id
+                importError = null
                 val download = app.transcription.modelManager.ensureModel(model)
                 busyModelId = null
                 refreshTick++
                 if (download.isFailure) {
-                    message(download.exceptionOrNull()?.message ?: "Download failed.")
+                    importError = download.exceptionOrNull()?.message ?: "Download failed."
                     return@launch
                 }
             }
             app.speechModels.select(model.id)
             app.transcription.release()
-            message("Using ${model.displayName}")
+            refreshTick++
+            if (forceDownload) message("Downloaded ${model.displayName}")
+            else message("Using ${model.displayName}")
         }
     }
 
@@ -134,16 +153,25 @@ fun SpeechModelsScreen(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
+            importError = null
             importJob = scope.launch {
                 handleImport(app.transcription.modelManager.importFromUri(uri))
             }
         }
     }
 
+    val activeModel = models.firstOrNull { it.id == selectedId }
+        ?: models.firstOrNull { it.id == SpeechModelCatalog.DEFAULT.id }
+    val availableModels = models.filter { it.id != activeModel?.id }
+
     val installedCount = models.count { installed[it.id] == true }
     val usedBytes = models
         .filter { installed[it.id] == true }
-        .sumOf { it.sizeBytes }
+        .sumOf { app.transcription.modelManager.modelFile(it).let { f -> if (f.exists()) f.length() else it.sizeBytes } }
+    val freeBytes = remember(refreshTick, installedCount) { context.filesDir.usableSpace }
+
+    val working = importState as? ModelImportState.Working
+    val busy = busyModelId != null || working != null
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -203,30 +231,30 @@ fun SpeechModelsScreen(
                 }
             }
 
-            item {
-                Text(
-                    text = "Speech models",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.W700,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 6.dp, start = 3.dp)
-                )
+            if (importError != null) {
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Couldn't import model",
+                                fontWeight = FontWeight.W600,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = importError.orEmpty(),
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
             }
 
-            items(models, key = { it.id }) { model ->
-                ModelRow(
-                    model = model,
-                    active = model.id == selectedId,
-                    installed = installed[model.id] == true,
-                    downloadProgress = downloadProgress[model.id],
-                    enabled = busyModelId == null && importState is ModelImportState.Idle,
-                    onUse = { useModel(model) },
-                    onRename = { renameTarget = model },
-                    onDelete = { deleteTarget = model }
-                )
-            }
-
-            val working = importState as? ModelImportState.Working
             if (working != null) {
                 item {
                     Surface(
@@ -272,23 +300,93 @@ fun SpeechModelsScreen(
                 }
             }
 
-            item {
-                ExpressiveActionButton(
-                    onClick = { showImportSheet = true },
-                    text = "Import model",
-                    enabled = importState is ModelImportState.Idle,
-                    modifier = Modifier.fillMaxWidth(),
-                    height = 52.dp,
-                )
+            if (activeModel != null) {
+                item {
+                    SectionLabel("Active")
+                }
+                item {
+                    ModelRow(
+                        model = activeModel,
+                        active = true,
+                        installed = installed[activeModel.id] == true,
+                        downloadProgress = downloadProgress[activeModel.id],
+                        languageTag = languageTag,
+                        enabled = !busy,
+                        onUse = { useModel(activeModel) },
+                        onDownloadAgain = { useModel(activeModel, forceDownload = true) },
+                        onRename = { renameTarget = activeModel },
+                        onDelete = { deleteTarget = activeModel }
+                    )
+                }
             }
 
             item {
+                SectionLabel(if (availableModels.isEmpty()) "Speech models" else "Available")
+            }
+
+            if (availableModels.isEmpty()) {
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "No other models available",
+                                fontWeight = FontWeight.W600
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Import a GGML .bin model or download a built-in option.",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(availableModels, key = { it.id }) { model ->
+                    ModelRow(
+                        model = model,
+                        active = false,
+                        installed = installed[model.id] == true,
+                        downloadProgress = downloadProgress[model.id],
+                        languageTag = languageTag,
+                        enabled = !busy,
+                        onUse = { useModel(model) },
+                        onDownloadAgain = { useModel(model, forceDownload = true) },
+                        onRename = { renameTarget = model },
+                        onDelete = { deleteTarget = model }
+                    )
+                }
+            }
+
+            item {
+                FilledTonalButton(
+                    onClick = { showImportSheet = true },
+                    enabled = !busy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(26.dp)
+                ) {
+                    Text("Import model")
+                }
+            }
+
+            item {
+                val footer = if (installedCount == 0) {
+                    "No model downloaded yet \u00B7 ${formatBytes(freeBytes)} free"
+                } else {
+                    "${formatBytes(usedBytes)} used by speech models \u00B7 ${formatBytes(freeBytes)} free"
+                }
                 Text(
-                    text = if (installedCount == 0) "No model downloaded yet"
-                    else "${formatBytes(usedBytes)} used by speech models",
+                    text = footer,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 3.dp)
+                    modifier = Modifier.padding(start = 3.dp),
+                    style = TextStyle(fontFeatureSettings = "tnum")
                 )
             }
         }
@@ -368,6 +466,7 @@ fun SpeechModelsScreen(
                     enabled = valid,
                     onClick = {
                         showUrlDialog = false
+                        importError = null
                         importJob = scope.launch {
                             handleImport(
                                 app.transcription.modelManager.importFromUrl(url.trim())
@@ -424,6 +523,7 @@ fun SpeechModelsScreen(
                             app.speechModels.remove(target.id)
                             if (wasActive) app.transcription.release()
                             deleteTarget = null
+                            refreshTick++
                             message("Model deleted")
                         }
                     }
@@ -437,17 +537,35 @@ fun SpeechModelsScreen(
 }
 
 @Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.W700,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(top = 4.dp, start = 3.dp)
+            .semantics { heading() }
+    )
+}
+
+@Composable
 private fun ModelRow(
     model: SpeechModel,
     active: Boolean,
     installed: Boolean,
     downloadProgress: Float?,
+    languageTag: String,
     enabled: Boolean,
     onUse: () -> Unit,
+    onDownloadAgain: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val showEnglishOnlyWarning = !model.multilingual &&
+        languageTag.isNotBlank() &&
+        !languageTag.equals("en", ignoreCase = true)
 
     Surface(
         color = if (active) MaterialTheme.colorScheme.secondaryContainer
@@ -473,8 +591,17 @@ private fun ModelRow(
                 Text(
                     text = metaText(model, installed),
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = TextStyle(fontFeatureSettings = "tnum")
                 )
+                if (showEnglishOnlyWarning) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "English-only model \u2014 can\u2019t transcribe other languages.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
                 if (downloadProgress != null) {
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
@@ -487,7 +614,7 @@ private fun ModelRow(
                 IconButton(onClick = { menuOpen = true }, enabled = enabled) {
                     Icon(
                         painter = painterResource(R.drawable.more_vert_24px),
-                        contentDescription = "More options"
+                        contentDescription = "More options for ${model.displayName}"
                     )
                 }
                 DropdownMenu(
@@ -495,13 +622,22 @@ private fun ModelRow(
                     onDismissRequest = { menuOpen = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Use") },
+                        text = { Text(if (active) "Selected" else "Use") },
+                        enabled = !active,
                         onClick = {
                             menuOpen = false
                             onUse()
                         }
                     )
-                    if (!model.isBuiltIn) {
+                    if (model.isBuiltIn) {
+                        DropdownMenuItem(
+                            text = { Text(if (installed) "Download again" else "Download") },
+                            onClick = {
+                                menuOpen = false
+                                onDownloadAgain()
+                            }
+                        )
+                    } else {
                         DropdownMenuItem(
                             text = { Text("Rename") },
                             onClick = {
@@ -529,5 +665,7 @@ private fun metaText(model: SpeechModel, installed: Boolean): String = buildStri
     append(if (model.multilingual) "multilingual" else "English only")
     append(" \u00B7 ")
     append(formatBytes(model.sizeBytes))
-    if (!installed) append(if (model.isBuiltIn) " \u00B7 tap to download" else " \u00B7 file missing")
+    if (!installed) {
+        append(if (model.isBuiltIn) " \u00B7 not downloaded" else " \u00B7 needs re-import")
+    }
 }

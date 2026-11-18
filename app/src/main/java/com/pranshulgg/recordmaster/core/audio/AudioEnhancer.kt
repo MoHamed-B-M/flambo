@@ -41,6 +41,7 @@ object AudioEnhancer {
     suspend fun enhance(
         input: File,
         strength: EnhanceStrength,
+        outputDir: File,
         onProgress: (Float) -> Unit = {}
     ): Result<EnhancedAudio> = withContext(Dispatchers.IO) {
         try {
@@ -53,8 +54,9 @@ object AudioEnhancer {
             process(pcm, strength, out) { onProgress(0.35f + 0.55f * it) }
 
             val peaks = peaksOf(out)
+            outputDir.mkdirs()
             val destination = File(
-                input.parentFile,
+                outputDir,
                 input.nameWithoutExtension + "_enhanced.wav"
             )
             val outputBytes = out.size * 2L + 44

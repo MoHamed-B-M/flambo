@@ -95,8 +95,18 @@ class RecordingRepository(
         true
     }
 
-    suspend fun toggleFavorite(id: Long) {
-        getById(id)?.let { dao.update(it.copy(isFavorite = !it.isFavorite)) }
+    suspend fun toggleFavorite(id: Long): Boolean = withContext(Dispatchers.IO) {
+        val rec = getById(id) ?: return@withContext false
+        val newFavorite = !rec.isFavorite
+        val updatedRec = rec.copy(isFavorite = newFavorite)
+        val targetDir = when {
+            newFavorite -> favoritesDir()
+            updatedRec.tagList.isNotEmpty() -> tagsDir()
+            else -> recordingsDir()
+        }
+        val moved = moveRecordingFilesTo(updatedRec, targetDir)
+        dao.update(moved)
+        newFavorite
     }
 
     /** Moves the recording (and its enhanced copy) into `garbage/`. */
@@ -229,10 +239,17 @@ class RecordingRepository(
         return touched
     }
 
-    suspend fun updateTags(id: Long, tags: List<String>) {
-        getById(id)?.let {
-            dao.update(it.copy(tags = tags.joinToString(",") { tag -> tag.trim() }.trim(',')))
+    suspend fun updateTags(id: Long, tags: List<String>) = withContext(Dispatchers.IO) {
+        val rec = getById(id) ?: return@withContext
+        val cleanTags = tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        val updatedRec = rec.copy(tags = cleanTags.joinToString(","))
+        val targetDir = when {
+            cleanTags.isNotEmpty() -> tagsDir()
+            updatedRec.isFavorite -> favoritesDir()
+            else -> recordingsDir()
         }
+        val moved = moveRecordingFilesTo(updatedRec, targetDir)
+        dao.update(moved)
     }
 
     suspend fun saveTranscript(id: Long, transcript: String) {
@@ -249,8 +266,8 @@ class RecordingRepository(
 
     /**
      * Makes the cleaned copy the primary recording (used when "Keep original"
-     * is off). Renames it back to the original base name, deletes the old file
-     * and clears [Recording.enhancedPath].
+     * is off). Moves the cleaned file into the "Cleaned audio" folder, deletes
+     * the old file and clears [Recording.enhancedPath].
      */
     suspend fun replaceWithEnhanced(id: Long): Boolean = withContext(Dispatchers.IO) {
         val rec = getById(id) ?: return@withContext false
@@ -262,10 +279,9 @@ class RecordingRepository(
         if (!enhancedFile.exists()) return@withContext false
 
         val originalFile = if (AudioFileStore.isContentUri(rec.filePath)) null else File(rec.filePath)
-        val parent = originalFile?.parentFile ?: enhancedFile.parentFile ?: recordingsDir()
         val base = originalFile?.nameWithoutExtension
             ?: enhancedFile.nameWithoutExtension.removeSuffix(ENHANCED_SUFFIX)
-        val target = uniqueFile(parent, base, enhancedFile.extension)
+        val target = uniqueFile(cleanedAudioDir(), base, enhancedFile.extension)
         if (target.absolutePath != enhancedFile.absolutePath && !moveTo(enhancedFile, target)) {
             return@withContext false
         }
@@ -414,6 +430,35 @@ class RecordingRepository(
 
     fun garbageDir(): File = garbageDirProvider().apply { mkdirs() }
 
+    fun cleanedAudioDir(): File = File(recordingsDir(), CLEANED_AUDIO_DIR_NAME).apply { mkdirs() }
+
+    fun favoritesDir(): File = File(recordingsDir(), FAVORITES_DIR_NAME).apply { mkdirs() }
+
+    fun tagsDir(): File = File(recordingsDir(), TAGS_DIR_NAME).apply { mkdirs() }
+
+    private fun moveRecordingFilesTo(rec: Recording, targetDir: File): Recording {
+        if (AudioFileStore.isContentUri(rec.filePath)) return rec
+        targetDir.mkdirs()
+        var path = rec.filePath
+        val src = File(path)
+        if (src.exists() && src.parentFile?.absolutePath != targetDir.absolutePath) {
+            val dest = uniqueFile(targetDir, src.nameWithoutExtension, src.extension)
+            if (moveTo(src, dest)) path = dest.absolutePath
+        }
+        var enhanced = rec.enhancedPath
+        if (enhanced.isNotBlank() && !AudioFileStore.isContentUri(enhanced)) {
+            val eSrc = File(enhanced)
+            val keepInCleanedDir = runCatching {
+                eSrc.parentFile?.canonicalPath == cleanedAudioDir().canonicalPath
+            }.getOrDefault(false)
+            if (eSrc.exists() && !keepInCleanedDir && eSrc.parentFile?.absolutePath != targetDir.absolutePath) {
+                val eDest = uniqueFile(targetDir, eSrc.nameWithoutExtension, eSrc.extension)
+                if (moveTo(eSrc, eDest)) enhanced = eDest.absolutePath
+            }
+        }
+        return rec.copy(filePath = path, enhancedPath = enhanced)
+    }
+
     private fun collectAudioFiles(dir: File, trashed: Boolean, out: MutableList<Pair<File, Boolean>>) {
         val children = dir.listFiles() ?: return
         for (file in children) {
@@ -502,6 +547,9 @@ class RecordingRepository(
         const val GARBAGE_DIR_NAME = "garbage"
         const val TEMP_PREFIX = "REC_"
         const val ENHANCED_SUFFIX = "_enhanced"
+        const val CLEANED_AUDIO_DIR_NAME = "Cleaned audio"
+        const val FAVORITES_DIR_NAME = "Favorites"
+        const val TAGS_DIR_NAME = "Tags"
 
         private val AUDIO_EXTENSIONS = setOf(
             "m4a", "wav", "mp3", "ogg", "opus", "aac", "flac", "3gp", "amr"

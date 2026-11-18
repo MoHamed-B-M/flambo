@@ -157,11 +157,11 @@ fun DropdownMenu(
                     if (rec == null) {
                         onShowMessage("Could not index this recording")
                     } else {
-                        app.repository.toggleFavorite(rec.id)
+                        val isFavorite = app.repository.toggleFavorite(rec.id)
                         onMetadataChanged()
                         onShowMessage(
-                            if (rec.isFavorite) "Removed from favorites"
-                            else "Added to favorites"
+                            if (isFavorite) "Added to Favorites folder"
+                            else "Removed from Favorites folder"
                         )
                     }
                 }
@@ -242,10 +242,11 @@ fun DropdownMenu(
                         cleaning = false
                         onShowMessage("Audio file is missing")
                     } else {
+                        val cleanedDir = app.repository.cleanedAudioDir()
                         val strength = EnhanceStrength.fromPref(
                             app.prefs.enhanceStrengthFlow.first()
                         )
-                        val result = AudioEnhancer.enhance(input, strength)
+                        val result = AudioEnhancer.enhance(input, strength, cleanedDir)
                         result.onSuccess { enhanced ->
                             val rec = latestRecording()
                             if (rec == null) {
@@ -253,17 +254,18 @@ fun DropdownMenu(
                             } else {
                                 app.repository.saveEnhanced(rec.id, enhanced.file.absolutePath)
                                 val keepOriginal = app.prefs.keepOriginalFlow.first()
-                                val replaced = if (!keepOriginal) {
-                                    app.repository.replaceWithEnhanced(rec.id)
+                                if (!keepOriginal) {
+                                    val replaced = app.repository.replaceWithEnhanced(rec.id)
+                                    onMetadataChanged()
+                                    if (replaced) onCleanReplaced()
+                                    onShowMessage(
+                                        "Cleaned version of the recording created in Cleaned audio folder"
+                                    )
                                 } else {
-                                    false
-                                }
-                                onMetadataChanged()
-                                if (!keepOriginal && replaced) {
-                                    onShowMessage("Cleaned audio saved")
-                                    onCleanReplaced()
-                                } else {
-                                    onShowMessage("Cleaned copy saved")
+                                    onMetadataChanged()
+                                    onShowMessage(
+                                        "Cleaned version of the recording created in Cleaned audio folder"
+                                    )
                                 }
                             }
                         }.onFailure {
@@ -405,7 +407,9 @@ fun DropdownMenu(
                     } else {
                         app.repository.updateTags(rec.id, tags)
                         onMetadataChanged()
-                        onShowMessage(if (tags.isEmpty()) "Tags cleared" else "Tags updated")
+                        onShowMessage(
+                            if (tags.isEmpty()) "Tags cleared" else "Saved to Tags folder"
+                        )
                     }
                 }
             }

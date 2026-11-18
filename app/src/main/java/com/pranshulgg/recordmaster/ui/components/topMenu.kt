@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -277,6 +278,19 @@ fun DropdownMenu(
             },
             leadingIcon = { DropDownMenuIcon(R.drawable.auto_fix_24px) }
         )
+        if (!recording?.enhancedPath.isNullOrBlank()) {
+            DropdownMenuItem(
+                text = { DropDownMenuText("Play cleaned copy") },
+                onClick = {
+                    expanded = false
+                    val path = recording?.enhancedPath
+                    if (!path.isNullOrBlank()) {
+                        navController.navigate("play/${Uri.encode(path)}")
+                    }
+                },
+                leadingIcon = { DropDownMenuIcon(R.drawable.play_arrow_24px) }
+            )
+        }
         DropdownMenuItem(
             text = { DropDownMenuText("Playback speed") },
             onClick = {

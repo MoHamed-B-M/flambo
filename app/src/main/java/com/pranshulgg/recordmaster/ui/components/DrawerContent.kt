@@ -129,10 +129,12 @@ fun DrawerContent(
 
 
                 folders.forEach { dir ->
+                    val showEnhanced = dir.name == RecordingRepository.CLEANED_AUDIO_DIR_NAME
                     val recordingsCount = dir.listFiles()?.count {
                         it.isFile &&
                             !it.name.startsWith(RecordingRepository.TEMP_PREFIX) &&
-                            !it.nameWithoutExtension.endsWith(RecordingRepository.ENHANCED_SUFFIX)
+                            (showEnhanced ||
+                                !it.nameWithoutExtension.endsWith(RecordingRepository.ENHANCED_SUFFIX))
                     } ?: 0
                     NavigationDrawerItem(
                         label = { Text(dir.name) },

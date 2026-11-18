@@ -26,6 +26,32 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/** Language choices shared by the Settings summary row and the picker dialog. */
+val WhisperLanguages: List<Pair<String, String>> = listOf(
+    "" to "Auto-detect",
+    "en" to "English",
+    "es" to "Spanish",
+    "fr" to "French",
+    "de" to "German",
+    "it" to "Italian",
+    "pt" to "Portuguese",
+    "ru" to "Russian",
+    "ja" to "Japanese",
+    "zh" to "Chinese",
+    "ko" to "Korean",
+    "ar" to "Arabic",
+    "hi" to "Hindi",
+    "tr" to "Turkish",
+    "pl" to "Polish",
+    "nl" to "Dutch"
+)
+
+fun whisperLanguageLabel(tag: String): String =
+    WhisperLanguages.firstOrNull { it.first == tag }?.second ?: "Auto-detect"
+
+fun playbackSpeedLabel(speed: Float): String =
+    if (speed == 1f) "1x" else String.format(Locale.US, "%.2fx", speed)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RecordingSettingsSection(
@@ -41,7 +67,6 @@ fun RecordingSettingsSection(
     val context = LocalContext.current
 
     SettingSection(
-        title = "Recording",
         tiles = listOf(
             SettingTile.DialogOptionTile(
                 leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
@@ -136,7 +161,6 @@ fun AutomationSettingsSection(
     var enabled by remember { mutableStateOf(app.automationTriggersEnabled) }
 
     SettingSection(
-        title = "Automation",
         tiles = listOf(
             SettingTile.SwitchTile(
                 leading = { SettingsTileIcon(R.drawable.fiber_manual_record_24px) },
@@ -171,10 +195,9 @@ fun StorageSettingsSection(
     val currentVolume by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
 
     SettingSection(
-        title = "Storage",
         tiles = listOf(
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.notes_24px) },
+                leading = { SettingsTileIcon(R.drawable.storage_24px) },
                 title = "Save location",
                 description = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Phone storage",
                 options = volumes.map { it.label },
@@ -202,17 +225,16 @@ fun PlaybackSettingsSection(
     showMessage: suspend (String) -> Unit
 ) {
     val speed by app.prefs.playbackSpeedFlow.collectAsState(initial = 1f)
-    val label = if (speed == 1f) "1x" else String.format(Locale.US, "%.2fx", speed)
+    val label = playbackSpeedLabel(speed)
 
     SettingSection(
-        title = "Playback",
         tiles = listOf(
             SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
+                leading = { SettingsTileIcon(R.drawable.play_arrow_24px) },
                 title = "Default speed",
                 description = label,
                 options = listOf("0.5x", "0.75x", "1x", "1.25x", "1.5x", "1.75x", "2x"),
-                selectedOption = if (speed == 1f) "1x" else String.format(Locale.US, "%.2fx", speed),
+                selectedOption = playbackSpeedLabel(speed),
                 onOptionSelected = { value ->
                     val parsed = value.removeSuffix("x").toFloatOrNull() ?: 1f
                     scope.launch {
@@ -245,28 +267,10 @@ fun SpeechSettingsSection(
             if (!app.transcription.modelManager.isInstalled(model)) append(" \u00B7 not downloaded")
         }
     }
-    val whisperLanguages = listOf(
-        "" to "Auto-detect",
-        "en" to "English",
-        "es" to "Spanish",
-        "fr" to "French",
-        "de" to "German",
-        "it" to "Italian",
-        "pt" to "Portuguese",
-        "ru" to "Russian",
-        "ja" to "Japanese",
-        "zh" to "Chinese",
-        "ko" to "Korean",
-        "ar" to "Arabic",
-        "hi" to "Hindi",
-        "tr" to "Turkish",
-        "pl" to "Polish",
-        "nl" to "Dutch"
-    )
+    val whisperLanguages = WhisperLanguages
     val selected = whisperLanguages.firstOrNull { it.first == languageTag } ?: whisperLanguages.first()
 
     SettingSection(
-        title = "Speech-to-text",
         tiles = listOf(
             SettingTile.TextTile(
                 leading = { SettingsTileIcon(R.drawable.notes_24px) },
@@ -290,7 +294,7 @@ fun SpeechSettingsSection(
                     }
                 }
             ),
-            SettingTile.ActionTile(
+            SettingTile.NavigationTile(
                 leading = { SettingsTileIcon(R.drawable.notes_24px) },
                 title = "Speech model",
                 description = modelDescription,

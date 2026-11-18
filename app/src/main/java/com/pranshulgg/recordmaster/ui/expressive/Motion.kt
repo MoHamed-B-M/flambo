@@ -2,7 +2,10 @@ package com.pranshulgg.recordmaster.ui.expressive
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.database.ContentObserver
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
@@ -110,8 +113,10 @@ fun <T> shakeSpring(): FiniteAnimationSpec<T> =
     if (LocalReducedMotion.current) snap() else spring(stiffness = ExpressiveMotion.ShakeStiffness)
 
 /**
- * Reads the system animator scale and refreshes it whenever the app returns to
- * the foreground, so toggling "Remove animations" takes effect without a restart.
+ * Reads the system animator scale and keeps it live while the app is in the
+ * foreground, so toggling "Remove animations" takes effect without a restart.
+ * The scale is read directly because [ValueAnimator.areAnimatorsEnabled] can
+ * lag behind the settings change on some OEM builds.
  */
 @Composable
 fun rememberSystemReducedMotion(): Boolean {
@@ -134,17 +139,39 @@ fun rememberSystemReducedMotion(): Boolean {
         }
     }
 
+    DisposableEffect(context) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                reducedMotion = readReducedMotion(context)
+            }
+        }
+        runCatching {
+            context.contentResolver.registerContentObserver(
+                Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE),
+                false,
+                observer,
+            )
+        }
+        onDispose {
+            runCatching { context.contentResolver.unregisterContentObserver(observer) }
+        }
+    }
+
     return reducedMotion
 }
 
 private fun readReducedMotion(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        return !ValueAnimator.areAnimatorsEnabled()
+    val scale = runCatching {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        )
+    }.getOrDefault(1f)
+    if (scale == 0f) return true
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        !ValueAnimator.areAnimatorsEnabled()
+    } else {
+        false
     }
-    val scale = Settings.Global.getFloat(
-        context.contentResolver,
-        Settings.Global.ANIMATOR_DURATION_SCALE,
-        1f,
-    )
-    return scale == 0f
 }

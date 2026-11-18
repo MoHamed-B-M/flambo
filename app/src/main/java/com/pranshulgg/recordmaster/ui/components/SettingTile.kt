@@ -17,9 +17,12 @@ import com.pranshulgg.recordmaster.ui.components.tiles.CategoryTile
 import com.pranshulgg.recordmaster.ui.components.tiles.DialogOptionTile
 import com.pranshulgg.recordmaster.ui.components.tiles.DialogSliderTile
 import com.pranshulgg.recordmaster.ui.components.tiles.DialogTextFieldTile
+import com.pranshulgg.recordmaster.ui.components.tiles.NavigationTile
 import com.pranshulgg.recordmaster.ui.components.tiles.SingleSwitchTile
 import com.pranshulgg.recordmaster.ui.components.tiles.SwitchTile
 import com.pranshulgg.recordmaster.ui.components.tiles.TextTile
+import com.pranshulgg.recordmaster.ui.components.tiles.ThemeModeTile
+import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 
 sealed class SettingTile {
     abstract val title: String
@@ -71,6 +74,14 @@ sealed class SettingTile {
         val dialogTitle: String? = null
     ) : SettingTile()
 
+    data class ThemeModeTile(
+        override val title: String,
+        override val description: String? = null,
+        val leading: (@Composable (() -> Unit))? = null,
+        val current: AppThemeMode,
+        val onSelect: (AppThemeMode) -> Unit,
+    ) : SettingTile()
+
     data class ActionTile(
         override val title: String,
         override val description: String? = null,
@@ -78,6 +89,13 @@ sealed class SettingTile {
         val onClick: () -> Unit,
         val colorDesc: Color = Color.Unspecified,
         val danger: Boolean = false
+    ) : SettingTile()
+
+    data class NavigationTile(
+        override val title: String,
+        override val description: String? = null,
+        val leading: (@Composable (() -> Unit))? = null,
+        val onClick: () -> Unit
     ) : SettingTile()
 
 
@@ -191,6 +209,14 @@ fun SettingSection(
                     dialogTitle = tile.dialogTitle
                 )
 
+                is SettingTile.ThemeModeTile -> ThemeModeTile(
+                    headline = tile.title,
+                    leading = tile.leading,
+                    shapes = shape,
+                    current = tile.current,
+                    onSelect = tile.onSelect,
+                )
+
                 is SettingTile.ActionTile -> ActionTile(
                     headline = tile.title,
                     description = tile.description,
@@ -199,6 +225,14 @@ fun SettingSection(
                     onClick = tile.onClick,
                     colorDesc = tile.colorDesc,
                     danger = tile.danger
+                )
+
+                is SettingTile.NavigationTile -> NavigationTile(
+                    headline = tile.title,
+                    description = tile.description,
+                    leading = tile.leading,
+                    shapes = shape,
+                    onClick = tile.onClick
                 )
 
                 is SettingTile.SwitchTile -> SwitchTile(

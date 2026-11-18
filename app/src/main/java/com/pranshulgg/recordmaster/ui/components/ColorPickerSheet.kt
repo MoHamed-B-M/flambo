@@ -21,6 +21,10 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -34,23 +38,22 @@ import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ColorPickerSheetTheme(
-    onShowSheet: Boolean,
     sheetState: SheetState,
     initialColorInt: Color,
     controller: ColorPickerController,
-    onPickedColor: (String) -> Unit,
     onExpressiveColorChanged: (Boolean) -> Unit,
     useExpressiveColor: Boolean,
     onSeedChanged: (String) -> Unit,
     hideColorSheet: () -> Unit
 ){
 
-    var pickedColor = PreferencesHelper.getString("seedColor") ?: "0xff0000FF"
+    var pickedColor by remember {
+        mutableStateOf(PreferencesHelper.getString("seedColor") ?: "0xff0000FF")
+    }
 
     ModalBottomSheet(
         onDismissRequest = {
-//            showBottomSheet = false
-            onShowSheet
+            hideColorSheet()
         },
         sheetState = sheetState,
         dragHandle = {
@@ -93,11 +96,7 @@ fun ColorPickerSheetTheme(
                 onColorChanged = { colorEnvelope: ColorEnvelope ->
                     val hexColor = colorEnvelope.hexCode
 
-                    val argbHex = "0xFF$hexColor"
-
-//                    pickedColor = argbHex
-                    onPickedColor(argbHex)
-
+                    pickedColor = "0xFF$hexColor"
                 }
             )
             Spacer(Modifier.height(12.dp))

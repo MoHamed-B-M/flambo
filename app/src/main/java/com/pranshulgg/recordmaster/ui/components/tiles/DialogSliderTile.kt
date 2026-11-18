@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
+import com.pranshulgg.recordmaster.ui.expressive.standardSpring
 import java.time.temporal.TemporalQueries.offset
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -145,8 +146,14 @@ fun LabeledSlider(
                 (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
             val thumbOffsetPx = (fraction * sliderWidth).coerceIn(0f, sliderWidth.toFloat())
 
-            val scale by animateFloatAsState(targetValue = if (showLabel) 1f else 0.8f)
-            val alpha by animateFloatAsState(targetValue = if (showLabel) 1f else 0f)
+            val scale by animateFloatAsState(
+                targetValue = if (showLabel) 1f else 0.8f,
+                animationSpec = standardSpring(),
+            )
+            val alpha by animateFloatAsState(
+                targetValue = if (showLabel) 1f else 0f,
+                animationSpec = standardSpring(),
+            )
 
             LaunchedEffect(value) {
                 showLabel = true

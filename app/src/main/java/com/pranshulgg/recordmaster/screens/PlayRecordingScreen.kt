@@ -7,10 +7,8 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.audiofx.Visualizer
 import android.net.Uri
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,9 +44,13 @@ import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.ui.components.DropdownMenu
 import com.pranshulgg.recordmaster.ui.components.Symbol
+import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
+import com.pranshulgg.recordmaster.ui.expressive.pressSpring
+import com.pranshulgg.recordmaster.ui.expressive.standardSpring
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -385,6 +387,7 @@ private fun ExpressiveTransportRow(
 ) {
     var lastClicked by remember { mutableStateOf<TransportAction?>(null) }
     var tapId by remember { mutableIntStateOf(0) }
+    val reducedMotion = LocalReducedMotion.current
 
     // Let the push effect settle, then release it so the row springs back.
     LaunchedEffect(tapId) {
@@ -401,39 +404,32 @@ private fun ExpressiveTransportRow(
     }
 
     fun press(action: TransportAction, onAction: () -> Unit) {
-        lastClicked = action
-        tapId++
+        if (!reducedMotion) {
+            lastClicked = action
+            tapId++
+        }
         onAction()
     }
 
     val rewindWeight by animateFloatAsState(
         targetValue = weightFor(TransportAction.REWIND),
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = pressSpring(),
         label = "rewindWeight"
     )
     val playWeight by animateFloatAsState(
         targetValue = weightFor(TransportAction.PLAY_PAUSE),
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = pressSpring(),
         label = "playWeight"
     )
     val forwardWeight by animateFloatAsState(
         targetValue = weightFor(TransportAction.FORWARD),
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = pressSpring(),
         label = "forwardWeight"
     )
 
     val playCornerRadius by animateDpAsState(
         targetValue = if (isPlaying) 22.dp else 50.dp,
-        animationSpec = MotionScheme.expressive().defaultSpatialSpec(),
+        animationSpec = standardSpring(),
         label = "playCornerRadius"
     )
 
@@ -667,6 +663,7 @@ private fun WaveformBars(
     isUserSeeking: Boolean = false
 ) {
     val waveformRaw = remember { mutableStateOf<ByteArray?>(null) }
+    val reducedMotion = LocalReducedMotion.current
 
     DisposableEffect(audioSessionId, staticAmps) {
         var visualizer: Visualizer? = null
@@ -776,7 +773,17 @@ private fun WaveformBars(
         }
     }
 
-    LaunchedEffect(barCount) {
+    LaunchedEffect(barCount, reducedMotion) {
+        if (reducedMotion) {
+            // Follow the target amplitudes directly instead of easing toward them.
+            snapshotFlow { targetAmps.toList() }.collect { values ->
+                for (i in 0 until barCount) {
+                    displayAmps[i] = values.getOrElse(i) { 0f }
+                }
+            }
+            return@LaunchedEffect
+        }
+
         val attack = 0.60f
         val decay = 0.12f
         val frameDelay = 33L
@@ -816,7 +823,13 @@ private fun WaveformBars(
                 onSeek(frac)
                 if (viewportWidthPx > 0) {
                     val targetScroll = (frac * totalWidthPx).coerceIn(0f, totalWidthPx)
-                    coroutineScope.launch { scrollState.animateScrollTo(targetScroll.roundToInt()) }
+                    coroutineScope.launch {
+                        if (reducedMotion) {
+                            scrollState.scrollTo(targetScroll.roundToInt())
+                        } else {
+                            scrollState.animateScrollTo(targetScroll.roundToInt())
+                        }
+                    }
                 }
             }
         }
@@ -858,7 +871,11 @@ private fun WaveformBars(
             val targetScroll = (clamped * totalWidthPx).coerceIn(0f, totalWidthPx)
             if (!scrollState.isScrollInProgress) {
                 try {
-                    scrollState.animateScrollTo(targetScroll.roundToInt())
+                    if (reducedMotion) {
+                        scrollState.scrollTo(targetScroll.roundToInt())
+                    } else {
+                        scrollState.animateScrollTo(targetScroll.roundToInt())
+                    }
                 } catch (_: Exception) {}
             }
         }

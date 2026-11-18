@@ -3,9 +3,11 @@ package com.pranshulgg.recordmaster.ui.expressive
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -68,15 +70,15 @@ fun ExpressiveActionButton(
     val pressed by interactionSource.collectIsPressedAsState()
     var tapGeneration by remember { mutableIntStateOf(0) }
     var tapped by remember { mutableStateOf(false) }
+    val reducedMotion = LocalReducedMotion.current
     LaunchedEffect(tapGeneration) {
-        if (tapGeneration > 0) {
+        if (tapGeneration > 0 && !reducedMotion) {
             tapped = true
             delay(ExpressiveMotion.TapDurationMillis)
             tapped = false
         }
     }
     val visualPressed = pressed || tapped
-    val reducedMotion = LocalReducedMotion.current
     val loadingEnter = if (reducedMotion) {
         EnterTransition.None
     } else {
@@ -142,7 +144,15 @@ fun ExpressiveActionButton(
     ) {
         AnimatedContent(
             targetState = loading,
-            transitionSpec = { loadingEnter togetherWith loadingExit },
+            transitionSpec = {
+                (loadingEnter togetherWith loadingExit).using(
+                    if (reducedMotion) {
+                        SizeTransform(clip = false) { _, _ -> snap() }
+                    } else {
+                        SizeTransform()
+                    }
+                )
+            },
             label = "button loading content",
         ) { isLoading ->
             if (isLoading) {

@@ -29,6 +29,8 @@ import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.ui.components.ConfirmDialog
 import com.pranshulgg.recordmaster.ui.components.Symbol
+import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
+import com.pranshulgg.recordmaster.ui.expressive.standardSpring
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -131,6 +133,8 @@ fun RecordingScreen(onDone: () -> Unit) {
         }
     }
 
+    val reducedMotion = LocalReducedMotion.current
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
@@ -217,7 +221,9 @@ fun RecordingScreen(onDone: () -> Unit) {
 
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().animateContentSize(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (reducedMotion) Modifier else Modifier.animateContentSize()),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = if (!isRecording) Arrangement.Center else Arrangement.spacedBy(5.dp)
                 ) {
@@ -313,8 +319,14 @@ fun RecordingScreen(onDone: () -> Unit) {
 
                     val stopVisible = isRecording
 
-                    val stopAlpha by animateFloatAsState(if (stopVisible) 1f else 0f)
-                    val stopWeight by animateFloatAsState(if (stopVisible) 1f else 0.001f)
+                    val stopAlpha by animateFloatAsState(
+                        if (stopVisible) 1f else 0f,
+                        animationSpec = standardSpring()
+                    )
+                    val stopWeight by animateFloatAsState(
+                        if (stopVisible) 1f else 0.001f,
+                        animationSpec = standardSpring()
+                    )
 
                     Box(
                         modifier = Modifier
@@ -356,6 +368,7 @@ fun RecordingScreen(onDone: () -> Unit) {
 private fun Waveform(amplitudes: List<Float>) {
     val display = remember { mutableStateListOf<Float>() }
     val colorBar = MaterialTheme.colorScheme.primary
+    val reducedMotion = LocalReducedMotion.current
 
     LaunchedEffect(amplitudes.size) {
         if (display.size < amplitudes.size) {
@@ -365,7 +378,18 @@ private fun Waveform(amplitudes: List<Float>) {
         }
     }
 
-    LaunchedEffect(amplitudes) {
+    LaunchedEffect(amplitudes, reducedMotion) {
+        if (reducedMotion) {
+            // No easing: the bars follow the input level directly.
+            if (display.size < amplitudes.size) {
+                repeat(amplitudes.size - display.size) { display.add(0f) }
+            } else if (display.size > amplitudes.size) {
+                for (i in display.size - 1 downTo amplitudes.size) display.removeAt(i)
+            }
+            for (i in amplitudes.indices) display[i] = amplitudes[i]
+            return@LaunchedEffect
+        }
+
         val frameDelay = 16L // 60 fps
         val followFactor = 0.15f
 

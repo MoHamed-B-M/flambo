@@ -1,9 +1,11 @@
 package com.pranshulgg.recordmaster.core.data
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -67,4 +69,32 @@ interface RecordingDao {
 
     @Query("UPDATE recordings SET enhancedPath = :path WHERE id = :id")
     suspend fun updateEnhancedPath(id: Long, path: String)
+
+    // --- Bookmarks (one recording -> many markers) ------------------------
+
+    @Transaction
+    @Query("SELECT * FROM recordings WHERE id = :id LIMIT 1")
+    suspend fun getWithBookmarks(id: Long): RecordingWithBookmarks?
+
+    @Transaction
+    @Query("SELECT * FROM recordings WHERE id = :id LIMIT 1")
+    fun observeWithBookmarks(id: Long): Flow<RecordingWithBookmarks?>
+
+    @Query("SELECT * FROM bookmarks WHERE recordingId = :recordingId ORDER BY timestampMs ASC")
+    suspend fun getBookmarks(recordingId: Long): List<Bookmark>
+
+    @Query("SELECT * FROM bookmarks WHERE recordingId = :recordingId ORDER BY timestampMs ASC")
+    fun observeBookmarks(recordingId: Long): Flow<List<Bookmark>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBookmark(bookmark: Bookmark): Long
+
+    @Update
+    suspend fun updateBookmark(bookmark: Bookmark)
+
+    @Delete
+    suspend fun deleteBookmark(bookmark: Bookmark)
+
+    @Query("DELETE FROM bookmarks WHERE recordingId = :recordingId")
+    suspend fun deleteBookmarks(recordingId: Long)
 }

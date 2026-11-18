@@ -29,12 +29,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
+import com.pranshulgg.recordmaster.core.playback.ReviewController
 import com.pranshulgg.recordmaster.ui.components.ConfirmDialog
 import com.pranshulgg.recordmaster.ui.components.Symbol
 import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
@@ -56,6 +59,9 @@ fun RecordingScreen(onDone: () -> Unit) {
     val app = remember(context) { context.applicationContext as RecordMasterApp }
     val controller = app.recorder
     val recorderState by controller.state.collectAsState()
+    val reviewState by app.review.state.collectAsState()
+    val pendingBookmarks by controller.pendingBookmarks.collectAsState()
+    val bookmarkCount = pendingBookmarks.size
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -157,10 +163,33 @@ fun RecordingScreen(onDone: () -> Unit) {
                     }
                 },
                 actions = {
+                    if (isRecording) {
+                        IconButton(
+                            shapes = IconButtonDefaults.shapes(),
+                            onClick = {
+                                val timestamp = controller.addBookmark()
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        if (timestamp != null) {
+                                            "Bookmark added at ${formatElapsed(timestamp / 1000L)}"
+                                        } else {
+                                            "Couldn't add bookmark"
+                                        }
+                                    )
+                                }
+                            }
+                        ) {
+                            Symbol(
+                                R.drawable.bookmark_24px,
+                                desc = "Add bookmark at current recording position"
+                            )
+                        }
+                    }
+
                     IconButton(shapes = IconButtonDefaults.shapes(), onClick = {
                         showConfirmDeleteDialog = true
                     }) {
-                        Symbol(R.drawable.delete_forever_24px)
+                        Symbol(R.drawable.delete_forever_24px, desc = "Delete recording")
                     }
 
                     if (showConfirmDeleteDialog) {
@@ -267,6 +296,42 @@ fun RecordingScreen(onDone: () -> Unit) {
                 Spacer(modifier = Modifier.height(24.dp))
 
 
+                if (isPaused) {
+                    ReviewControls(
+                        state = reviewState,
+                        bookmarkCount = bookmarkCount,
+                        onTogglePlay = { app.review.toggle() },
+                        onSeek = { ms -> app.review.seekTo(ms) },
+                        onResume = {
+                            controller.resume()
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    if (!controller.state.value.isPaused) "Resumed"
+                                    else "Couldn't resume recording"
+                                )
+                            }
+                        },
+                        onSave = {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Saving recording…")
+                            }
+                            controller.stop(
+                                onSaved = { recording ->
+                                    coroutineScope.launch {
+                                        screenTitle = recording.title
+                                        mainTitle = recording.title
+                                        onDone()
+                                    }
+                                },
+                                onError = { message ->
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(message)
+                                    }
+                                }
+                            )
+                        }
+                    )
+                } else {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -383,13 +448,20 @@ fun RecordingScreen(onDone: () -> Unit) {
                                 Button(
 
                                     onClick = {
-                                        controller.stop { recording ->
-                                            coroutineScope.launch {
-                                                screenTitle = recording.title
-                                                mainTitle = recording.title
-                                                snackbarHostState.showSnackbar("Saved: ${recording.filePath}")
+                                        controller.stop(
+                                            onSaved = { recording ->
+                                                coroutineScope.launch {
+                                                    screenTitle = recording.title
+                                                    mainTitle = recording.title
+                                                    snackbarHostState.showSnackbar("Saved: ${recording.filePath}")
+                                                }
+                                            },
+                                            onError = { message ->
+                                                coroutineScope.launch {
+                                                    snackbarHostState.showSnackbar(message)
+                                                }
                                             }
-                                        }
+                                        )
                                     },
                                     modifier = Modifier.fillMaxWidth().heightIn(ButtonDefaults.LargeContainerHeight),
                                     colors = ButtonDefaults.buttonColors(
@@ -404,11 +476,110 @@ fun RecordingScreen(onDone: () -> Unit) {
                     }
 
                 }
+                }
 
             }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 }
+}
+
+/**
+ * Paused-take controls. The recording itself is already finalized into a
+ * review file at this point, so scrubbing never touches the microphone input.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ReviewControls(
+    state: ReviewController.ReviewState,
+    bookmarkCount: Int,
+    onTogglePlay: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onResume: () -> Unit,
+    onSave: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onTogglePlay,
+                enabled = state.isReady,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Symbol(
+                    if (state.isPlaying) R.drawable.pause_24px else R.drawable.play_arrow_24px,
+                    desc = if (state.isPlaying) "Pause review playback" else "Play review playback",
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                text = formatElapsed(state.positionMs / 1000L),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Slider(
+                value = if (state.durationMs > 0L) {
+                    (state.positionMs.toFloat() / state.durationMs.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    0f
+                },
+                onValueChange = { fraction ->
+                    if (state.durationMs > 0L) {
+                        onSeek((fraction * state.durationMs.toFloat()).toLong())
+                    }
+                },
+                enabled = state.isReady,
+                track = { sliderState ->
+                    SliderDefaults.Track(
+                        sliderState = sliderState,
+                        modifier = Modifier.height(5.dp)
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics {
+                        contentDescription =
+                            "Review position ${formatElapsed(state.positionMs / 1000L)} " +
+                                "of ${formatElapsed(state.durationMs / 1000L)}"
+                    }
+            )
+            Text(
+                text = formatElapsed(state.durationMs / 1000L),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilledTonalButton(onClick = onResume, modifier = Modifier.weight(1f)) {
+                Symbol(R.drawable.fiber_manual_record_24px, size = 20.dp)
+                Spacer(Modifier.width(6.dp))
+                Text("Resume recording", fontWeight = FontWeight.Bold)
+            }
+            Button(onClick = onSave, modifier = Modifier.weight(1f)) {
+                Symbol(R.drawable.check, size = 20.dp)
+                Spacer(Modifier.width(6.dp))
+                Text("Save & exit", fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (bookmarkCount > 0) {
+            Text(
+                text = "$bookmarkCount bookmark${if (bookmarkCount == 1) "" else "s"} saved",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable

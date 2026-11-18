@@ -24,11 +24,9 @@ fun DialogTextFieldTile(
     dialogSupportingText: String? = null,
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var textFieldValue by remember(initialText, showDialog) {
-        mutableStateOf(if (showDialog) textFieldValue else initialText)
-    }
+    var textFieldValue by remember { mutableStateOf(initialText) }
 
-    LaunchedEffect(showDialog, initialText) {
+    LaunchedEffect(showDialog) {
         if (showDialog) textFieldValue = initialText
     }
 

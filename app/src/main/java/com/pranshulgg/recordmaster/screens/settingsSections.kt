@@ -63,7 +63,8 @@ fun RecordingSettingsSection(
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
     val keepOriginal by app.prefs.keepOriginalFlow.collectAsState(initial = true)
     val strengthValue by app.prefs.enhanceStrengthFlow.collectAsState(initial = "balanced")
-    val prefix by app.prefs.recordingPrefixFlow.collectAsState(initial = "User")
+    val prefix by app.prefs.recordingPrefixFlow.collectAsState(initial = PreferencesManager.DEFAULT_PREFIX)
+    val namePattern by app.prefs.recordingNamePatternFlow.collectAsState(initial = PreferencesManager.DEFAULT_NAME_PATTERN)
     val context = LocalContext.current
 
     SettingSection(
@@ -136,13 +137,30 @@ fun RecordingSettingsSection(
             SettingTile.DialogTextFieldTile(
                 leading = { SettingsTileIcon(R.drawable.notes_24px) },
                 title = "Recording name prefix",
-                description = "Default prefix for new recordings",
-                placeholderTextField = "User",
-                placeholder = prefix.ifBlank { "User" },
+                description = "Used by {prefix} in the file naming pattern",
+                placeholderTextField = PreferencesManager.DEFAULT_PREFIX,
+                placeholder = prefix.ifBlank { PreferencesManager.DEFAULT_PREFIX },
                 initialText = prefix,
                 onTextSubmitted = { newPrefix ->
                     scope.launch {
-                        app.prefs.setRecordingPrefix(newPrefix.ifBlank { "User" })
+                        app.prefs.setRecordingPrefix(newPrefix.ifBlank { PreferencesManager.DEFAULT_PREFIX })
+                    }
+                }
+            ),
+            SettingTile.DialogTextFieldTile(
+                leading = { SettingsTileIcon(R.drawable.notes_24px) },
+                title = "File naming pattern",
+                description = namePattern.ifBlank { PreferencesManager.DEFAULT_NAME_PATTERN },
+                placeholderTextField = PreferencesManager.DEFAULT_NAME_PATTERN,
+                placeholder = PreferencesManager.DEFAULT_NAME_PATTERN,
+                initialText = namePattern,
+                dialogSupportingText = "Use variables to name new recordings. Available: {date}, {time}, {datetime}, {year}, {month}, {day}, {weekday}, {timestamp}, {prefix}, {counter}, {custom_name}. Example: {date}_{time}_{custom_name}",
+                onTextSubmitted = { newPattern ->
+                    scope.launch {
+                        app.prefs.setRecordingNamePattern(
+                            newPattern.ifBlank { PreferencesManager.DEFAULT_NAME_PATTERN }
+                        )
+                        showMessage("File naming pattern updated")
                     }
                 }
             )

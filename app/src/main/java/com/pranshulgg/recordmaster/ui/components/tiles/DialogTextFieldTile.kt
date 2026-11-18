@@ -21,9 +21,16 @@ fun DialogTextFieldTile(
     placeholder: String,
     placeholderTextField: String,
     shapes: RoundedCornerShape,
+    dialogSupportingText: String? = null,
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var textFieldValue by remember { mutableStateOf(initialText) }
+    var textFieldValue by remember(initialText, showDialog) {
+        mutableStateOf(if (showDialog) textFieldValue else initialText)
+    }
+
+    LaunchedEffect(showDialog, initialText) {
+        if (showDialog) textFieldValue = initialText
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -38,9 +45,10 @@ fun DialogTextFieldTile(
             headlineContent = { Text(headline) },
             supportingContent = {
                 if (description != null) Text(description)
-                else if (textFieldValue.isNotEmpty()) Text(
-                    textFieldValue,
-                    color = MaterialTheme.colorScheme.tertiary
+                else if (initialText.isNotBlank()) Text(
+                    initialText,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    maxLines = 2
                 ) else {
                     Text(
                         placeholder,
@@ -56,14 +64,27 @@ fun DialogTextFieldTile(
             onDismissRequest = { showDialog = false },
             title = { Text(headline) },
             text = {
-                OutlinedTextField(
-                    value = textFieldValue,
-                    onValueChange = { textFieldValue = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    placeholder = { Text(placeholderTextField) },
-                )
+                Column {
+                    if (!dialogSupportingText.isNullOrBlank()) {
+                        Text(
+                            text = dialogSupportingText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    OutlinedTextField(
+                        value = textFieldValue,
+                        onValueChange = { textFieldValue = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        placeholder = { Text(placeholderTextField) },
+                        singleLine = false,
+                        minLines = 1,
+                        maxLines = 3
+                    )
+                }
             },
             confirmButton = {
                 TextButton(

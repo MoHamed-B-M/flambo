@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.log10
 
@@ -55,6 +57,7 @@ class RecordingController(
     private var pauseAccumMs: Long = 0L
     private var pauseStartMs: Long = 0L
     private var amplitudeJob: Job? = null
+    private var pendingTitle: String? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     companion object {
@@ -149,6 +152,7 @@ class RecordingController(
         val app = appContext as? RecordMasterApp ?: return false
         val quality = app.prefs.qualityFlow.first()
         val noiseReduction = app.prefs.noiseReductionFlow.first()
+        pendingTitle = generateRecordingName(System.currentTimeMillis())
         return start(quality, noiseReduction)
     }
 
@@ -162,11 +166,16 @@ class RecordingController(
     }
 
     /**
-     * Title the current take will get when it is saved. Used by the recording
-     * screen to keep its existing `User_###` top-bar title without owning the
-     * naming logic.
+     * Title the current/next take will get when saved. Cached per active take so
+     * the recording screen and finalized file/DB record stay consistent.
      */
-    suspend fun peekNextTitle(): String = sanitizeFileName(generateTitle())
+    suspend fun peekNextTitle(): String {
+        val current = pendingTitle
+        if (_state.value.isRecording && current != null) return current
+        val name = generateRecordingName(System.currentTimeMillis())
+        if (_state.value.isRecording) pendingTitle = name
+        return name
+    }
 
     fun pause() {
         val current = _state.value
@@ -222,7 +231,9 @@ class RecordingController(
         val file = current.currentFile
         val peaks = current.peaks
         val qualityName = current.quality.name
+        val titleToUse = pendingTitle
         _state.value = RecorderState()
+        pendingTitle = null
         stopForegroundService()
 
         if (file != null && file.exists() && file.length() > 0) {
@@ -232,6 +243,7 @@ class RecordingController(
                     peaks = peaks,
                     durationMs = elapsed,
                     qualityName = qualityName,
+                    preferredTitle = titleToUse,
                     onSaved = onSaved
                 )
             }
@@ -253,6 +265,7 @@ class RecordingController(
         recorder = null
         _state.value.currentFile?.let { runCatching { it.delete() } }
         _state.value = RecorderState()
+        pendingTitle = null
         stopForegroundService()
     }
 
@@ -314,24 +327,67 @@ class RecordingController(
         }
     }
 
-    private suspend fun generateTitle(): String {
-        val prefix = runCatching {
-            (appContext as? RecordMasterApp)?.prefs?.recordingPrefix()
-        }.getOrNull()?.ifBlank { PreferencesManager.DEFAULT_PREFIX }
+    private suspend fun generateRecordingName(createdAtMs: Long): String {
+        val app = appContext as? RecordMasterApp
+        val prefs = app?.prefs
+        val pattern = prefs?.recordingNamePattern() ?: PreferencesManager.DEFAULT_NAME_PATTERN
+        val prefix = prefs?.recordingPrefix()?.ifBlank { PreferencesManager.DEFAULT_PREFIX }
             ?: PreferencesManager.DEFAULT_PREFIX
 
-        val pattern = Regex("^${Regex.escape(prefix)}_(\\d+)$")
         val dbTitles = runCatching { repository.activeTitles() }.getOrDefault(emptyList())
         val fileTitles = runCatching {
-            repository.recordingsDir().listFiles()
-                ?.map { it.nameWithoutExtension }
-                ?: emptyList()
+            repository.recordingsDir().listFiles()?.map { it.nameWithoutExtension } ?: emptyList()
         }.getOrDefault(emptyList())
+        val existing = dbTitles + fileTitles
+        val counter = nextCounter(existing, prefix, pattern)
+        val resolved = resolvePattern(pattern, prefix, createdAtMs, counter)
+        val safe = sanitizeFileName(resolved)
+        return safe.ifBlank { "Recording" }
+    }
 
-        val max = (dbTitles + fileTitles)
-            .mapNotNull { pattern.matchEntire(it)?.groupValues?.get(1)?.toIntOrNull() }
-            .maxOrNull() ?: 0
-        return String.format(Locale.US, "%s_%03d", prefix, max + 1)
+    private fun nextCounter(existing: List<String>, prefix: String, pattern: String): Int {
+        val legacy = Regex("^${Regex.escape(prefix)}_(\\d+)$")
+        val legacyMax = existing.mapNotNull { legacy.matchEntire(it)?.groupValues?.get(1)?.toIntOrNull() }.maxOrNull()
+        if (legacyMax != null) return legacyMax + 1
+
+        val numberRegex = Regex("\\d+")
+        val allNumbers = existing.flatMap { name ->
+            numberRegex.findAll(name).mapNotNull { it.value.toIntOrNull() }
+        }
+        val preferred = allNumbers.filter { it in 0..999_999 }.maxOrNull()
+        val fallback = allNumbers.maxOrNull()
+        return (preferred ?: fallback ?: existing.size) + 1
+    }
+
+    private fun resolvePattern(
+        pattern: String,
+        prefix: String,
+        createdAtMs: Long,
+        counter: Int
+    ): String {
+        val date = Date(createdAtMs)
+        fun fmt(p: String) = SimpleDateFormat(p, Locale.US).format(date)
+        var out = pattern.ifBlank { PreferencesManager.DEFAULT_NAME_PATTERN }
+        val replacements = linkedMapOf(
+            "{prefix}" to prefix,
+            "{custom_name}" to "",
+            "{custom}" to "",
+            "{datetime}" to fmt("yyyy-MM-dd_HH-mm-ss"),
+            "{date}" to fmt("yyyy-MM-dd"),
+            "{time}" to fmt("HH-mm-ss"),
+            "{year}" to fmt("yyyy"),
+            "{month}" to fmt("MM"),
+            "{day}" to fmt("dd"),
+            "{weekday}" to fmt("EEE"),
+            "{timestamp}" to (createdAtMs / 1000L).toString(),
+            "{counter}" to String.format(Locale.US, "%03d", counter)
+        )
+        replacements.forEach { (key, value) ->
+            out = out.replace(key, value, ignoreCase = true)
+        }
+        out = out.replace(Regex("[-_ ]{2,}"), "_")
+            .trim('_', '-', ' ', '.')
+        return out
     }
 
     private fun sanitizeFileName(title: String): String =
@@ -347,7 +403,7 @@ class RecordingController(
     }
 
     /**
-     * Renames the temporary take to RecordMaster's `User_###` style, keeps the
+     * Renames the temporary take to the configured name pattern, keeps the
      * extension, and writes the metadata row. Existing files are never moved or
      * overwritten; collisions get a `(2)` suffix.
      */
@@ -356,17 +412,20 @@ class RecordingController(
         peaks: List<Float>,
         durationMs: Long,
         qualityName: String,
-        onSaved: ((Recording) -> Unit)?
+        preferredTitle: String? = null,
+        onSaved: ((Recording) -> Unit)? = null
     ) {
         val peaksString = peaks.takeLast(120)
             .joinToString(",") { String.format(Locale.US, "%.3f", it) }
 
-        val title = sanitizeFileName(generateTitle())
+        val baseTitle = sanitizeFileName(
+            preferredTitle ?: generateRecordingName(System.currentTimeMillis())
+        )
         var actualFile = tempFile
         try {
             val target = getUniqueFile(
                 tempFile.parentFile ?: repository.recordingsDir(),
-                title,
+                baseTitle,
                 tempFile.extension
             )
             if (target.absolutePath != tempFile.absolutePath) {
@@ -381,8 +440,9 @@ class RecordingController(
         } catch (_: Exception) {
         }
 
+        val finalTitle = actualFile.nameWithoutExtension.ifBlank { baseTitle }
         val recording = Recording(
-            title = title,
+            title = finalTitle,
             filePath = actualFile.absolutePath,
             durationMs = durationMs,
             createdAt = System.currentTimeMillis(),

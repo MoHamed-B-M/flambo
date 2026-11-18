@@ -106,7 +106,8 @@ sealed class SettingTile {
         val onTextSubmitted: (String) -> Unit,
         val placeholder: String,
         val placeholderTextField: String,
-        val initialText: String = ""
+        val initialText: String = "",
+        val dialogSupportingText: String? = null
     ) : SettingTile()
 
     data class DialogSliderTile(
@@ -262,7 +263,8 @@ fun SettingSection(
                     onTextSubmitted = tile.onTextSubmitted,
                     placeholder = tile.placeholder,
                     placeholderTextField = tile.placeholderTextField,
-                    initialText = tile.initialText
+                    initialText = tile.initialText,
+                    dialogSupportingText = tile.dialogSupportingText
 
                 )
 

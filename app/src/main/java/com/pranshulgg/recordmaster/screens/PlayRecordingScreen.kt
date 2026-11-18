@@ -182,8 +182,12 @@ fun PlayRecordingScreen(
                     Symbol(R.drawable.arrow_back_24px, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
-            title = { Text(file.nameWithoutExtension) },
-            subtitle = {Text("$date at $time")},
+            title = {
+                Text(
+                    recording?.displayTitle?.takeIf { it.isNotBlank() } ?: file.nameWithoutExtension
+                )
+            },
+            subtitle = { Text("$date at $time") },
             actions = {
                 DropdownMenu(
                     navController,

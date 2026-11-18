@@ -145,4 +145,5 @@ dependencies {
     implementation(libs.guava.listenablefuture)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.documentfile)
+    implementation(libs.jaudiotagger)
 }

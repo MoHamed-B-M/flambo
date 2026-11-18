@@ -12,6 +12,7 @@ import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.data.RecordingRepository
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
+import com.pranshulgg.recordmaster.core.metadata.MetadataHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -452,8 +453,10 @@ class RecordingController(
             duration = durationMs
         )
         val id = repository.insert(recording)
+        val saved = recording.copy(id = id)
+        runCatching { MetadataHelper.writeTags(saved) }
         withContext(Dispatchers.Main) {
-            onSaved?.invoke(recording.copy(id = id))
+            onSaved?.invoke(saved)
         }
     }
 }

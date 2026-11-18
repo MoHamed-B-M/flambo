@@ -3,6 +3,7 @@ package com.pranshulgg.recordmaster.core.data
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import com.pranshulgg.recordmaster.core.metadata.MetadataHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +36,11 @@ class RecordingRepository(
         if (query.isBlank()) observeRecordings() else dao.search(query)
 
     suspend fun insert(recording: Recording): Long = dao.insert(recording)
-    suspend fun update(recording: Recording) = dao.update(recording)
+
+    suspend fun update(recording: Recording) = withContext(Dispatchers.IO) {
+        dao.update(recording)
+        runCatching { MetadataHelper.writeTags(recording) }
+    }
 
     /**
      * Renames the row and the physical file together, preserving the existing
@@ -84,7 +89,9 @@ class RecordingRepository(
             }
         }
 
-        dao.update(rec.copy(title = safeBase, filePath = finalPath, enhancedPath = enhanced))
+        val updated = rec.copy(title = safeBase, filePath = finalPath, enhancedPath = enhanced)
+        dao.update(updated)
+        runCatching { MetadataHelper.writeTags(updated) }
         true
     }
 
@@ -265,16 +272,16 @@ class RecordingRepository(
         if (originalFile != null && originalFile.absolutePath != target.absolutePath) {
             deleteAudio(originalFile.absolutePath)
         }
-        dao.update(
-            rec.copy(
-                filePath = target.absolutePath,
-                enhancedPath = "",
-                title = base,
-                fileSize = target.length().takeIf { it > 0 } ?: rec.fileSize,
-                durationMs = readDuration(target.absolutePath).takeIf { it > 0 } ?: rec.durationMs,
-                duration = readDuration(target.absolutePath).takeIf { it > 0 } ?: rec.duration
-            )
+        val updated = rec.copy(
+            filePath = target.absolutePath,
+            enhancedPath = "",
+            title = base,
+            fileSize = target.length().takeIf { it > 0 } ?: rec.fileSize,
+            durationMs = readDuration(target.absolutePath).takeIf { it > 0 } ?: rec.durationMs,
+            duration = readDuration(target.absolutePath).takeIf { it > 0 } ?: rec.duration
         )
+        dao.update(updated)
+        runCatching { MetadataHelper.writeTags(updated) }
         true
     }
 

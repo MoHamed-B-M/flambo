@@ -1,0 +1,60 @@
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "main", "2.0" ]
+  pull_request:
+    branches: [ "main", "2.0" ]
+  schedule:
+    - cron: '30 2 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: java-kotlin
+          build-mode: manual # 👈 Critical: Switch from 'autobuild' to 'manual'
+        - language: c-cpp
+          build-mode: manual
+        - language: actions
+          build-mode: none
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      if: matrix.language == 'java-kotlin' || matrix.language == 'c-cpp'
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17' # Use your project's required JDK version
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+
+    # 👇 This explicit build step replaces the failing 'autobuild'
+    - name: Build Android Project for CodeQL
+      if: matrix.language == 'java-kotlin' || matrix.language == 'c-cpp'
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon -x test
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"

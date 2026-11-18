@@ -34,6 +34,8 @@ class PreferencesManager(private val context: Context) {
         val TRASH_AUTO_PURGE = booleanPreferencesKey("trash_auto_purge")
         val TRASH_RETENTION_DAYS = intPreferencesKey("trash_retention_days")
         val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
+        val SORT_ORDER = stringPreferencesKey("sort_order")
+        val LIST_FILTER = stringPreferencesKey("list_filter")
     }
 
     // ---- Recording ----
@@ -125,6 +127,28 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setTrashRetentionDays(days: Int) {
         context.recordMasterDataStore.edit { it[Keys.TRASH_RETENTION_DAYS] = days.coerceIn(1, 365) }
+    }
+
+    // ---- Library sorting / filtering ----
+
+    val sortOrderFlow: Flow<RecordingSort> =
+        context.recordMasterDataStore.data.map { prefs ->
+            runCatching { RecordingSort.valueOf(prefs[Keys.SORT_ORDER] ?: "") }
+                .getOrDefault(RecordingSort.DATE_DESC)
+        }
+
+    suspend fun setSortOrder(order: RecordingSort) {
+        context.recordMasterDataStore.edit { it[Keys.SORT_ORDER] = order.name }
+    }
+
+    val listFilterFlow: Flow<RecordingFilter> =
+        context.recordMasterDataStore.data.map { prefs ->
+            runCatching { RecordingFilter.valueOf(prefs[Keys.LIST_FILTER] ?: "") }
+                .getOrDefault(RecordingFilter.ALL)
+        }
+
+    suspend fun setListFilter(filter: RecordingFilter) {
+        context.recordMasterDataStore.edit { it[Keys.LIST_FILTER] = filter.name }
     }
 
     // ---- Speech-to-text (Whisper, on-device) ----

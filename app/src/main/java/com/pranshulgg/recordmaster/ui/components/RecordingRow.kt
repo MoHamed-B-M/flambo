@@ -427,11 +427,14 @@ fun RecordingRow(
                                                 if (rec == null) {
                                                     onShowMessage("Could not index this recording")
                                                 } else {
-                                                    app.repository.toggleFavorite(rec.id)
+                                                    val isFavorite = app.repository.toggleFavorite(rec.id)
                                                     onMetadataChanged()
+                                                    onMoved()
                                                     onShowMessage(
-                                                        if (rec.isFavorite) "Removed from favorites"
-                                                        else "Added to favorites"
+                                                        if (isFavorite)
+                                                            "Added to Favorites folder"
+                                                        else
+                                                            "Removed from Favorites folder"
                                                     )
                                                 }
                                             }
@@ -516,10 +519,15 @@ fun RecordingRow(
                                                     cleaning = false
                                                     onShowMessage("Audio file is missing")
                                                 } else {
+                                                    val cleanedDir = app.repository.cleanedAudioDir()
                                                     val strength = EnhanceStrength.fromPref(
                                                         app.prefs.enhanceStrengthFlow.first()
                                                     )
-                                                    val result = AudioEnhancer.enhance(input, strength)
+                                                    val result = AudioEnhancer.enhance(
+                                                        input,
+                                                        strength,
+                                                        cleanedDir
+                                                    )
                                                     result.onSuccess { enhanced ->
                                                         val rec = rowRecording()
                                                         if (rec == null) {
@@ -533,18 +541,19 @@ fun RecordingRow(
                                                             )
                                                             val keepOriginal =
                                                                 app.prefs.keepOriginalFlow.first()
-                                                            val replaced = if (!keepOriginal) {
-                                                                app.repository.replaceWithEnhanced(rec.id)
+                                                            if (!keepOriginal) {
+                                                                val replaced = app.repository.replaceWithEnhanced(rec.id)
+                                                                onMetadataChanged()
+                                                                if (replaced) onMoved()
+                                                                onShowMessage(
+                                                                    "Cleaned version of the recording created in Cleaned audio folder"
+                                                                )
                                                             } else {
-                                                                false
+                                                                onMetadataChanged()
+                                                                onShowMessage(
+                                                                    "Cleaned version of the recording created in Cleaned audio folder"
+                                                                )
                                                             }
-                                                            onMetadataChanged()
-                                                            onShowMessage(
-                                                                if (!keepOriginal && replaced)
-                                                                    "Cleaned audio saved"
-                                                                else
-                                                                    "Cleaned copy saved"
-                                                            )
                                                         }
                                                     }.onFailure {
                                                         onShowMessage(it.message ?: "Cleanup failed")
@@ -749,8 +758,9 @@ fun RecordingRow(
                             } else {
                                 app.repository.updateTags(rec.id, tags)
                                 onMetadataChanged()
+                                onMoved()
                                 onShowMessage(
-                                    if (tags.isEmpty()) "Tags cleared" else "Tags updated"
+                                    if (tags.isEmpty()) "Tags cleared" else "Saved to Tags folder"
                                 )
                             }
                         }

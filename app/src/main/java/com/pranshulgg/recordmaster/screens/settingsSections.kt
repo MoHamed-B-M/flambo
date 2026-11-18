@@ -1,5 +1,8 @@
 package com.pranshulgg.recordmaster.screens
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
@@ -11,7 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
-import com.pranshulgg.recordmaster.core.audio.EnhanceStrength
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
@@ -193,26 +195,91 @@ fun StorageSettingsSection(
     val context = LocalContext.current
     val volumes = remember { StorageVolumes.list(context) }
     val currentVolume by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
+    val folderUri by app.prefs.recordingsFolderUriFlow.collectAsState(initial = "")
+
+    val folderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            } catch (_: Exception) {
+            }
+            val uriString = uri.toString()
+            val resolved = StorageVolumes.resolveTreeUriToDir(context, uriString)
+            scope.launch {
+                if (resolved != null) {
+                    app.prefs.setRecordingsFolderUri(uriString)
+                    app.recordingsFolderUri = uriString
+                    app.syncStorage()
+                    showMessage("Save folder: ${resolved.absolutePath}")
+                } else {
+                    showMessage("Couldn't use this folder. Choose a folder in phone storage.")
+                }
+            }
+        }
+    }
+
+    val presetLabel = volumes.firstOrNull { it.id == currentVolume }?.label
+        ?: "Phone storage (Recorder)"
+    val customLabel = if (folderUri.isBlank()) {
+        "Pick a specific folder for recordings"
+    } else {
+        StorageVolumes.folderDisplayName(context, folderUri)
+    }
 
     SettingSection(
-        tiles = listOf(
-            SettingTile.DialogOptionTile(
-                leading = { SettingsTileIcon(R.drawable.storage_24px) },
-                title = "Save location",
-                description = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Phone storage",
-                options = volumes.map { it.label },
-                selectedOption = volumes.firstOrNull { it.id == currentVolume }?.label ?: "Phone storage",
-                onOptionSelected = { label ->
-                    val volume = volumes.firstOrNull { it.label == label } ?: volumes.firstOrNull()
-                    volume?.let {
+        tiles = buildList {
+            add(
+                SettingTile.DialogOptionTile(
+                    leading = { SettingsTileIcon(R.drawable.storage_24px) },
+                    title = "Save location",
+                    description = if (folderUri.isBlank()) presetLabel else "Using selected folder",
+                    options = volumes.map { it.label },
+                    selectedOption = presetLabel,
+                    onOptionSelected = { label ->
+                        val volume = volumes.firstOrNull { it.label == label } ?: return@DialogOptionTile
                         scope.launch {
-                            app.prefs.setRecordingsVolume(it.id)
-                            showMessage("Save location: ${it.label}")
+                            app.prefs.setRecordingsFolderUri("")
+                            app.prefs.setRecordingsVolume(volume.id)
+                            app.recordingsFolderUri = ""
+                            app.storageVolumeId = volume.id
+                            app.syncStorage()
+                            showMessage("Save location: ${volume.label}")
                         }
                     }
-                }
+                )
             )
-        )
+            add(
+                SettingTile.ActionTile(
+                    leading = { SettingsTileIcon(R.drawable.folder_24px) },
+                    title = "Choose exact folder",
+                    description = customLabel,
+                    onClick = { folderLauncher.launch(null) }
+                )
+            )
+            if (folderUri.isNotBlank()) {
+                add(
+                    SettingTile.ActionTile(
+                        leading = { SettingsTileIcon(R.drawable.storage_24px) },
+                        title = "Use default Recorder folder",
+                        description = "Save to phone storage in a Recorder folder",
+                        onClick = {
+                            scope.launch {
+                                app.prefs.setRecordingsFolderUri("")
+                                app.prefs.setRecordingsVolume(StorageVolumes.ID_DEFAULT)
+                                app.recordingsFolderUri = ""
+                                app.storageVolumeId = StorageVolumes.ID_DEFAULT
+                                app.syncStorage()
+                                showMessage("Using default Recorder folder")
+                            }
+                        }
+                    )
+                )
+            }
+        }
     )
 }
 

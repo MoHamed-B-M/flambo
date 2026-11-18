@@ -135,9 +135,9 @@ fun HomeScreen(
         }
     }
 
-    // Follow the storage choice from Settings while keeping RecordMaster's
-    // existing Music/ tree as the default.
-    val musicDir = remember(app.storageVolumeId) {
+    // Follow the storage choice from Settings (volume or an exact picked folder).
+    val storageFolderUri = app.recordingsFolderUri
+    val musicDir = remember(app.storageVolumeId, storageFolderUri) {
         app.recordingsDir()
     }
 

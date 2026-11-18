@@ -30,6 +30,7 @@ class PreferencesManager(private val context: Context) {
         val ENHANCE_STRENGTH = stringPreferencesKey("enhance_strength")
         val KEEP_ORIGINAL = booleanPreferencesKey("keep_original")
         val RECORDINGS_VOLUME = stringPreferencesKey("recordings_volume")
+        val RECORDINGS_FOLDER_URI = stringPreferencesKey("recordings_folder_uri")
         val RECORDING_PREFIX = stringPreferencesKey("recording_prefix")
         val TRASH_AUTO_PURGE = booleanPreferencesKey("trash_auto_purge")
         val TRASH_RETENTION_DAYS = intPreferencesKey("trash_retention_days")
@@ -108,6 +109,17 @@ class PreferencesManager(private val context: Context) {
         context.recordMasterDataStore.edit {
             it[Keys.RECORDINGS_VOLUME] = id.ifBlank { "default" }
         }
+    }
+
+    /** SAF tree URI for a user-picked exact recordings folder. Empty means use a volume/default. */
+    val recordingsFolderUriFlow: Flow<String> =
+        context.recordMasterDataStore.data.map { it[Keys.RECORDINGS_FOLDER_URI] ?: "" }
+
+    suspend fun recordingsFolderUri(): String =
+        context.recordMasterDataStore.data.map { it[Keys.RECORDINGS_FOLDER_URI] ?: "" }.first()
+
+    suspend fun setRecordingsFolderUri(uri: String) {
+        context.recordMasterDataStore.edit { it[Keys.RECORDINGS_FOLDER_URI] = uri }
     }
 
     val trashAutoPurgeFlow: Flow<Boolean> =

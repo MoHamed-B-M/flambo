@@ -569,9 +569,7 @@ fun getAudioInfo(file: File): AudioInfo {
                 ?: 0L
         val sampleRate = runCatching {
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
-        }.getOrNull().orEmpty().ifBlank {
-            runCatching { retriever.extractMetadata("samplerate") }.getOrNull().orEmpty()
-        }
+        }.getOrNull().orEmpty()
 
         retriever.release()
 

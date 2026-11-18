@@ -8,6 +8,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.pranshulgg.recordmaster.RecordMasterApp
+import com.pranshulgg.recordmaster.core.audio.AudioChunkMerger
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.data.RecordingRepository
@@ -54,12 +55,22 @@ class RecordingController(
     val state: StateFlow<RecorderState> = _state.asStateFlow()
 
     private var recorder: MediaRecorder? = null
-    private var startTimeMs: Long = 0L
-    private var pauseAccumMs: Long = 0L
-    private var pauseStartMs: Long = 0L
+    private var currentChunkFile: File? = null
+    private val chunks = mutableListOf<AudioChunkMerger.Chunk>()
+    private var reviewFile: File? = null
+    private var totalRecordedMs: Long = 0L
+    private var chunkStartMs: Long = 0L
+    private var chunkIndex = 0
+    private var activeQuality: RecordingQuality = RecordingQuality.HIGH
+    private var activeNoiseReduction: Boolean = true
     private var amplitudeJob: Job? = null
+    private var reviewJob: Job? = null
     private var pendingTitle: String? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val _pendingBookmarks = MutableStateFlow<List<Long>>(emptyList())
+    /** Marker offsets of the active take, published before the DB row exists. */
+    val pendingBookmarks: StateFlow<List<Long>> = _pendingBookmarks.asStateFlow()
 
     companion object {
         var instance: RecordingController? = null
@@ -89,12 +100,48 @@ class RecordingController(
         if (_state.value.isRecording) return false
         if (!hasRecordAudioPermission()) return false
 
-        val dir = repository.recordingsDir()
-        val file = File(
-            dir,
-            "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}.m4a"
+        activeQuality = quality
+        activeNoiseReduction = noiseReduction
+        chunks.clear()
+        reviewFile = null
+        totalRecordedMs = 0L
+        chunkIndex = 0
+        _pendingBookmarks.value = emptyList()
+
+        if (!startNewChunk()) return false
+
+        _state.value = RecorderState(
+            isRecording = true,
+            isPaused = false,
+            elapsedMs = 0L,
+            amplitude = 0f,
+            peaks = emptyList(),
+            currentFile = currentChunkFile,
+            quality = quality
         )
 
+        if (!startForegroundService()) {
+            stopRecorderSafely()
+            runCatching { currentChunkFile?.delete() }
+            currentChunkFile = null
+            _state.value = RecorderState()
+            return false
+        }
+
+        startSampling()
+        runCatching { onRecordingStarted?.invoke() }
+        return true
+    }
+
+    /**
+     * Opens a fresh MediaRecorder output. Pausing finalizes the previous chunk,
+     * so resuming never has to share a locked file with the review player.
+     */
+    private fun startNewChunk(): Boolean {
+        val file = File(
+            repository.recordingsDir(),
+            "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_c${chunkIndex}.m4a"
+        )
         val mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(appContext)
         } else {
@@ -104,13 +151,13 @@ class RecordingController(
 
         try {
             mediaRecorder.setAudioSource(
-                if (noiseReduction) MediaRecorder.AudioSource.VOICE_RECOGNITION
+                if (activeNoiseReduction) MediaRecorder.AudioSource.VOICE_RECOGNITION
                 else MediaRecorder.AudioSource.MIC
             )
             mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            mediaRecorder.setAudioSamplingRate(quality.sampleRate)
-            mediaRecorder.setAudioEncodingBitRate(quality.bitRate)
+            mediaRecorder.setAudioSamplingRate(activeQuality.sampleRate)
+            mediaRecorder.setAudioEncodingBitRate(activeQuality.bitRate)
             mediaRecorder.setOutputFile(file.absolutePath)
             mediaRecorder.prepare()
             mediaRecorder.start()
@@ -121,30 +168,33 @@ class RecordingController(
         }
 
         recorder = mediaRecorder
-        startTimeMs = System.currentTimeMillis()
-        pauseAccumMs = 0L
-        _state.value = RecorderState(
-            isRecording = true,
-            isPaused = false,
-            elapsedMs = 0L,
-            amplitude = 0f,
-            peaks = emptyList(),
-            currentFile = file,
-            quality = quality
-        )
-
-        if (!startForegroundService()) {
-            runCatching { recorder?.stop() }
-            runCatching { recorder?.release() }
-            recorder = null
-            runCatching { file.delete() }
-            _state.value = RecorderState()
-            return false
-        }
-
-        startSampling()
-        runCatching { onRecordingStarted?.invoke() }
+        currentChunkFile = file
+        chunkStartMs = System.currentTimeMillis()
+        chunkIndex++
         return true
+    }
+
+    private fun stopRecorderSafely() {
+        val active = recorder
+        recorder = null
+        runCatching { active?.stop() }
+        runCatching { active?.release() }
+    }
+
+    /** Closes the live chunk and accounts for its share of the timeline. */
+    private fun finalizeCurrentChunk() {
+        val elapsedInChunk = (System.currentTimeMillis() - chunkStartMs).coerceAtLeast(0L)
+        stopRecorderSafely()
+        val file = currentChunkFile
+        if (file != null) {
+            if (file.exists() && file.length() > 0L) {
+                chunks += AudioChunkMerger.Chunk(file, elapsedInChunk.coerceAtLeast(300L))
+            } else {
+                runCatching { file.delete() }
+            }
+        }
+        currentChunkFile = null
+        totalRecordedMs += elapsedInChunk
     }
 
     suspend fun startHeadless(): Boolean {
@@ -178,94 +228,137 @@ class RecordingController(
         return name
     }
 
+    /** Drops a marker at the current audible position of the active take. */
+    fun addBookmark(): Long? {
+        val current = _state.value
+        if (!current.isRecording) return null
+        val timestamp = current.elapsedMs.coerceAtLeast(0L)
+        _pendingBookmarks.value = _pendingBookmarks.value + timestamp
+        return timestamp
+    }
+
     fun pause() {
         val current = _state.value
         if (!current.isRecording || current.isPaused) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            try {
-                recorder?.pause()
-            } catch (_: Exception) {
-                return
-            }
-            pauseStartMs = System.currentTimeMillis()
-            _state.value = current.copy(isPaused = true)
-            amplitudeJob?.cancel()
-        }
+
+        finalizeCurrentChunk()
+        _state.value = current.copy(
+            isPaused = true,
+            elapsedMs = totalRecordedMs,
+            currentFile = chunks.lastOrNull()?.file
+        )
+        amplitudeJob?.cancel()
+        prepareReview()
     }
 
     fun resume() {
         val current = _state.value
         if (!current.isRecording || !current.isPaused) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            try {
-                recorder?.resume()
-            } catch (_: Exception) {
-                return
+
+        reviewJob?.cancel()
+        (appContext as? RecordMasterApp)?.review?.stop()
+        if (!startNewChunk()) return
+
+        _state.value = current.copy(isPaused = false, currentFile = currentChunkFile)
+        startSampling()
+    }
+
+    /** Merges every finalized chunk into one file the review player can scrub. */
+    private fun prepareReview() {
+        reviewJob?.cancel()
+        val app = appContext as? RecordMasterApp ?: return
+        val target = reviewFile ?: File(
+            repository.recordingsDir(),
+            "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_review.m4a"
+        ).also { reviewFile = it }
+        val snapshot = chunks.toList()
+
+        reviewJob = scope.launch(Dispatchers.IO) {
+            val ok = AudioChunkMerger.merge(snapshot, target)
+            if (!ok || !target.exists() || target.length() == 0L) return@launch
+            withContext(Dispatchers.Main) {
+                // The take may have been resumed or saved while merging.
+                if (_state.value.isRecording && _state.value.isPaused) {
+                    app.review.prepare(target.absolutePath)
+                }
             }
-            pauseAccumMs += System.currentTimeMillis() - pauseStartMs
-            _state.value = current.copy(isPaused = false)
-            startSampling()
         }
     }
 
-    fun stop(onSaved: ((Recording) -> Unit)? = null) {
+    fun stop(
+        onSaved: ((Recording) -> Unit)? = null,
+        onError: ((String) -> Unit)? = null
+    ) {
         val current = _state.value
         if (!current.isRecording) return
 
         amplitudeJob?.cancel()
-        try {
-            recorder?.stop()
-        } catch (_: Exception) {
-        }
-        try {
-            recorder?.release()
-        } catch (_: Exception) {
-        }
-        recorder = null
+        reviewJob?.cancel()
+        if (!current.isPaused) finalizeCurrentChunk()
+        (appContext as? RecordMasterApp)?.review?.stop()
 
-        val elapsed = if (current.isPaused) {
-            current.elapsedMs
-        } else {
-            System.currentTimeMillis() - startTimeMs - pauseAccumMs
-        }.coerceAtLeast(300L)
-
-        val file = current.currentFile
+        val finalized = chunks.toList()
+        val bookmarks = _pendingBookmarks.value
         val peaks = current.peaks
         val qualityName = current.quality.name
         val titleToUse = pendingTitle
+        val duration = totalRecordedMs.coerceAtLeast(300L)
+        val oldReviewFile = reviewFile
+
         _state.value = RecorderState()
+        _pendingBookmarks.value = emptyList()
+        chunks.clear()
+        reviewFile = null
         pendingTitle = null
         stopForegroundService()
 
-        if (file != null && file.exists() && file.length() > 0) {
-            scope.launch(Dispatchers.IO) {
+        if (finalized.isEmpty()) {
+            oldReviewFile?.let { runCatching { it.delete() } }
+            scope.launch {
+                onError?.invoke("Nothing to save — the recording was empty.")
+            }
+            return
+        }
+
+        scope.launch(Dispatchers.IO) {
+            val merged = File(
+                repository.recordingsDir(),
+                "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_merged.m4a"
+            )
+            if (AudioChunkMerger.merge(finalized, merged)) {
                 finalizeRecording(
-                    tempFile = file,
+                    tempFile = merged,
                     peaks = peaks,
-                    durationMs = elapsed,
+                    durationMs = duration,
                     qualityName = qualityName,
                     preferredTitle = titleToUse,
+                    bookmarks = bookmarks,
                     onSaved = onSaved
                 )
+                finalized.forEach { runCatching { it.file.delete() } }
+                oldReviewFile?.let { runCatching { it.delete() } }
+            } else {
+                runCatching { merged.delete() }
+                withContext(Dispatchers.Main) {
+                    onError?.invoke("Couldn't save this recording. Please try again.")
+                }
             }
-        } else {
-            runCatching { file?.delete() }
         }
     }
 
     fun cancel() {
         amplitudeJob?.cancel()
-        try {
-            recorder?.stop()
-        } catch (_: Exception) {
-        }
-        try {
-            recorder?.release()
-        } catch (_: Exception) {
-        }
-        recorder = null
-        _state.value.currentFile?.let { runCatching { it.delete() } }
+        reviewJob?.cancel()
+        stopRecorderSafely()
+        (appContext as? RecordMasterApp)?.review?.stop()
+        chunks.forEach { runCatching { it.file.delete() } }
+        chunks.clear()
+        currentChunkFile?.let { runCatching { it.delete() } }
+        currentChunkFile = null
+        reviewFile?.let { runCatching { it.delete() } }
+        reviewFile = null
         _state.value = RecorderState()
+        _pendingBookmarks.value = emptyList()
         pendingTitle = null
         stopForegroundService()
     }
@@ -296,7 +389,7 @@ class RecordingController(
                 samples += jitter
                 if (samples.size > 180) samples.removeAt(0)
 
-                val elapsed = System.currentTimeMillis() - startTimeMs - pauseAccumMs
+                val elapsed = totalRecordedMs + (System.currentTimeMillis() - chunkStartMs)
                 _state.value = _state.value.copy(
                     amplitude = jitter,
                     peaks = samples.toList(),
@@ -414,6 +507,7 @@ class RecordingController(
         durationMs: Long,
         qualityName: String,
         preferredTitle: String? = null,
+        bookmarks: List<Long> = emptyList(),
         onSaved: ((Recording) -> Unit)? = null
     ) {
         val peaksString = peaks.takeLast(120)
@@ -454,6 +548,11 @@ class RecordingController(
         )
         val id = repository.insert(recording)
         val saved = recording.copy(id = id)
+        // Markers were collected while the take had no DB id; link them now that
+        // the final file and its row exist.
+        bookmarks.forEach { timestamp ->
+            runCatching { repository.addBookmark(id, timestamp) }
+        }
         runCatching { MetadataHelper.writeTags(saved) }
         withContext(Dispatchers.Main) {
             onSaved?.invoke(saved)

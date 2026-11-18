@@ -28,6 +28,29 @@ class RecordingRepository(
     fun observeTrash(): Flow<List<Recording>> = dao.observeTrash()
     fun observeById(id: Long): Flow<Recording?> = dao.observeById(id)
 
+    fun observeWithBookmarks(id: Long): Flow<RecordingWithBookmarks?> = dao.observeWithBookmarks(id)
+    fun observeBookmarks(recordingId: Long): Flow<List<Bookmark>> = dao.observeBookmarks(recordingId)
+
+    suspend fun getBookmarks(recordingId: Long): List<Bookmark> = dao.getBookmarks(recordingId)
+
+    suspend fun addBookmark(
+        recordingId: Long,
+        timestampMs: Long,
+        note: String? = null
+    ): Bookmark {
+        val bookmark = Bookmark(
+            recordingId = recordingId,
+            timestampMs = timestampMs.coerceAtLeast(0L),
+            note = note?.takeIf { it.isNotBlank() }
+        )
+        val id = dao.insertBookmark(bookmark)
+        return bookmark.copy(id = id)
+    }
+
+    suspend fun deleteBookmark(bookmark: Bookmark) = dao.deleteBookmark(bookmark)
+
+    suspend fun deleteBookmarks(recordingId: Long) = dao.deleteBookmarks(recordingId)
+
     suspend fun getById(id: Long): Recording? = dao.getById(id)
     suspend fun getByPath(path: String): Recording? = dao.getByPath(path)
     fun observeByPath(path: String): Flow<Recording?> = dao.observeByPath(path)

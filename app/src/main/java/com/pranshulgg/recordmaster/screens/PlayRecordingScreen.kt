@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -42,6 +44,7 @@ import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
+import com.pranshulgg.recordmaster.core.data.Bookmark
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.ui.components.DropdownMenu
 import com.pranshulgg.recordmaster.ui.components.Symbol
@@ -52,6 +55,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -78,6 +82,12 @@ fun PlayRecordingScreen(
 
     val recording by app.repository.observeByPath(filePath)
         .collectAsState(initial = null)
+
+    val bookmarksFlow = remember(recording?.id) {
+        recording?.id?.let { app.repository.observeBookmarks(it) }
+            ?: flowOf<List<Bookmark>>(emptyList())
+    }
+    val bookmarks by bookmarksFlow.collectAsState(emptyList())
 
     val playbackState by playback.state.collectAsState()
     val playbackError by playback.error.collectAsState()
@@ -315,47 +325,135 @@ fun PlayRecordingScreen(
                 Modifier.padding(end = 5.dp, start = 5.dp)
             ) {
 
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 val fracFromPlayer = if (duration > 0) currentPos / duration.toFloat() else 0f
                 LaunchedEffect(fracFromPlayer, isUserSeeking) {
                     if (!isUserSeeking) uiProgress = fracFromPlayer.coerceIn(0f, 1f)
                 }
 
-                Slider(
-                    value = uiProgress.coerceIn(0f, 1f),
-                    onValueChange = { new ->
-                        isUserSeeking = true
-                        uiProgress = new.coerceIn(0f, 1f)
-                    },
-                    track = { sliderState ->
-                        SliderDefaults.Track(
-                            sliderState = sliderState,
-                            modifier = Modifier.height(5.dp)
-                        )
-                    },
-                    thumb = {
-                        SliderDefaults.Thumb(
-                            interactionSource,
-                            modifier = Modifier.width(5.dp).height(18.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    var sliderWidthPx by remember { mutableIntStateOf(0) }
+                    val density = LocalDensity.current
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .onSizeChanged { sliderWidthPx = it.width },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Slider(
+                            value = uiProgress.coerceIn(0f, 1f),
+                            onValueChange = { new ->
+                                isUserSeeking = true
+                                uiProgress = new.coerceIn(0f, 1f)
+                            },
+                            track = { sliderState ->
+                                SliderDefaults.Track(
+                                    sliderState = sliderState,
+                                    modifier = Modifier.height(5.dp)
+                                )
+                            },
+                            thumb = {
+                                SliderDefaults.Thumb(
+                                    interactionSource,
+                                    modifier = Modifier.width(5.dp).height(18.dp)
+                                )
+                            },
+                            onValueChangeFinished = {
+                                isUserSeeking = false
+                                if (duration > 0) {
+                                    val target = (uiProgress * duration).toInt().coerceIn(0, duration)
+                                    playback.seekTo(target.toLong())
+                                    lastPosition = target
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(26.dp)
+                                .semantics { contentDescription = "Playback position" }
                         )
 
-                    },
-                    onValueChangeFinished = {
-                        isUserSeeking = false
-                        if (duration > 0) {
-                            val target = (uiProgress * duration).toInt().coerceIn(0, duration)
-                            playback.seekTo(target.toLong())
-                            lastPosition = target
+                        // Markers are drawn after the slider so they win taps in
+                        // their own 40dp hit area; the rest of the track still
+                        // behaves as a normal slider.
+                        if (duration > 0 && sliderWidthPx > 0) {
+                            bookmarks.forEach { bookmark ->
+                                val fraction =
+                                    (bookmark.timestampMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                                val markerX = with(density) { (fraction * sliderWidthPx).toDp() }
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = markerX - 20.dp)
+                                        .size(width = 40.dp, height = 48.dp)
+                                        .clickable {
+                                            playback.seekTo(bookmark.timestampMs)
+                                            lastPosition = bookmark.timestampMs.toInt()
+                                            uiProgress = fraction
+                                        }
+                                        .semantics(mergeDescendants = true) {
+                                            contentDescription = buildString {
+                                                append("Bookmark at ${formatMs(bookmark.timestampMs.toInt())}")
+                                                bookmark.note?.let { append(", $it") }
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 4.dp, height = 14.dp)
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .background(MaterialTheme.colorScheme.tertiary)
+                                    )
+                                }
+                            }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(26.dp)
-                )
-            }
+                    }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatMs(currentPos), color = MaterialTheme.colorScheme.onSurface)
-                Text(formatMs(duration), color = MaterialTheme.colorScheme.onSurface)
-            }
+                    IconButton(
+                        onClick = {
+                            val id = recording?.id
+                            when {
+                                id == null -> coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Recording isn't indexed yet — try again in a moment")
+                                }
+                                duration <= 0 -> coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Wait for the recording to load")
+                                }
+                                else -> coroutineScope.launch {
+                                    val position = if (isCurrent) {
+                                        playbackState.positionMs
+                                    } else {
+                                        lastPosition.toLong()
+                                    }
+                                    val saved = runCatching {
+                                        app.repository.addBookmark(id, position)
+                                    }.getOrNull()
+                                    snackbarHostState.showSnackbar(
+                                        if (saved != null) "Bookmark added at ${formatMs(position.toInt())}"
+                                        else "Couldn't save bookmark"
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.size(48.dp),
+                        enabled = recording != null && duration > 0
+                    ) {
+                        Symbol(
+                            R.drawable.bookmark_24px,
+                            desc = "Add bookmark at current position",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(formatMs(currentPos), color = MaterialTheme.colorScheme.onSurface)
+                    Text(formatMs(duration), color = MaterialTheme.colorScheme.onSurface)
+                }
             }
             Spacer(modifier = Modifier.height(18.dp))
 

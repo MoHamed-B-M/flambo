@@ -10,6 +10,7 @@ import com.pranshulgg.recordmaster.core.data.RecordingRepository
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.data.StorageWatcher
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
+import com.pranshulgg.recordmaster.core.playback.ReviewController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.core.record.RecordingController
 import com.pranshulgg.recordmaster.core.stt.SpeechModelStore
@@ -58,6 +59,9 @@ class RecordMasterApp : Application() {
      * recreation so audio keeps playing across rotation/navigation.
      */
     val playback by lazy { PlaybackController(this) }
+
+    /** Player for the paused take's "Scrub & Review" bar; never a media session. */
+    val review by lazy { ReviewController(this) }
 
     internal val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 

@@ -90,10 +90,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private fun File.isLibraryAudio(): Boolean =
+/**
+ * Cleaned takes keep the `_enhanced` suffix so the main library never shows a
+ * duplicate of the original. The dedicated Cleaned audio folder is the one
+ * place where those copies are the content, so it opts them back in.
+ */
+private fun File.isLibraryAudio(includeEnhanced: Boolean = false): Boolean =
     isFile &&
         !name.startsWith(RecordingRepository.TEMP_PREFIX) &&
-        !nameWithoutExtension.endsWith(RecordingRepository.ENHANCED_SUFFIX)
+        (includeEnhanced ||
+            !nameWithoutExtension.endsWith(RecordingRepository.ENHANCED_SUFFIX))
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -468,8 +474,10 @@ fun HomeScreen(
                     mutableStateOf(
                         if (!selectedFolderName.isNullOrEmpty()) {
                             val f = File(musicDir, selectedFolderName!!)
+                            val showEnhanced =
+                                f.name == RecordingRepository.CLEANED_AUDIO_DIR_NAME
                             (f.listFiles() ?: emptyArray())
-                                .filter { it.isLibraryAudio() }
+                                .filter { it.isLibraryAudio(includeEnhanced = showEnhanced) }
                                 .sortedByDescending { it.lastModified() }
                         } else emptyList()
                     )
@@ -489,7 +497,10 @@ fun HomeScreen(
                     val allSubfolderFiles = (musicDir.listFiles() ?: emptyArray())
                         .filter { it.isDirectory && it.name != RecordingRepository.GARBAGE_DIR_NAME }
                         .flatMap { dir ->
-                            (dir.listFiles() ?: emptyArray()).filter { it.isLibraryAudio() }
+                            val showEnhanced =
+                                dir.name == RecordingRepository.CLEANED_AUDIO_DIR_NAME
+                            (dir.listFiles() ?: emptyArray())
+                                .filter { it.isLibraryAudio(includeEnhanced = showEnhanced) }
                         }
                     allCandidates += allSubfolderFiles
                     val query = searchQuery.trim()

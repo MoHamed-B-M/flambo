@@ -567,6 +567,23 @@ fun RecordingRow(
                                 if (!recording?.enhancedPath.isNullOrBlank()) {
                                     add(
                                         SettingTile.ActionTile(
+                                            leading = {SettingsTileIcon(R.drawable.play_arrow_24px)},
+                                            title = "Play cleaned copy",
+                                            description = "Cleaned version in Cleaned audio folder",
+                                            onClick = {
+                                                hideSheet()
+                                                val path = recording?.enhancedPath
+                                                if (!path.isNullOrBlank()) {
+                                                    app.playback.play(
+                                                        path,
+                                                        "${recording?.displayTitle} (cleaned)"
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    )
+                                    add(
+                                        SettingTile.ActionTile(
                                             leading = {SettingsTileIcon(R.drawable.delete_24px)},
                                             title = "Remove cleaned copy",
                                             onClick = {
@@ -574,6 +591,9 @@ fun RecordingRow(
                                                 scope.launch {
                                                     val rec = rowRecording()
                                                     if (rec != null) {
+                                                        app.playback.stopIfCurrent(
+                                                            rec.enhancedPath
+                                                        )
                                                         app.repository.clearEnhanced(rec.id)
                                                         onMetadataChanged()
                                                         onShowMessage("Cleaned copy removed")

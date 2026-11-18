@@ -20,6 +20,22 @@ object AudioChunkMerger {
 
     data class Chunk(val file: File, val durationMs: Long)
 
+    /**
+     * MediaExtractor and MediaCodec use different flag constants. Translate the
+     * extractor's sample flags into BufferInfo flags so lint (and the muxer) see
+     * valid values instead of raw SAMPLE_FLAG_* bits.
+     */
+    private fun bufferFlags(sampleFlags: Int): Int {
+        var flags = 0
+        if (sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) {
+            flags = flags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+        }
+        if (sampleFlags and MediaExtractor.SAMPLE_FLAG_PARTIAL_FRAME != 0) {
+            flags = flags or MediaCodec.BUFFER_FLAG_PARTIAL_FRAME
+        }
+        return flags
+    }
+
     fun merge(chunks: List<Chunk>, output: File): Boolean {
         val valid = chunks.filter { it.file.exists() && it.file.length() > 0L }
         if (valid.isEmpty()) return false
@@ -72,7 +88,7 @@ object AudioChunkMerger {
                                     0,
                                     size,
                                     extractor.sampleTime + timeOffsetUs,
-                                    extractor.sampleFlags
+                                    bufferFlags(extractor.sampleFlags)
                                 )
                             }
                             muxer.writeSampleData(trackIndex, buffer, info)

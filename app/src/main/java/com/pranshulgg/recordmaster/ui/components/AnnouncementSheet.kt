@@ -34,8 +34,8 @@ import com.pranshulgg.recordmaster.ui.expressive.ExpressiveActionButton
 /**
  * The one-time welcome to 2.0. Copy is fixed by the release brief; the only
  * state this component owns is the "Don't show this again" choice, which is
- * passed back with [onStart] so the caller can persist it. Every other route
- * out (outside tap, system Back, swipe down) goes through [onDismiss].
+ * passed back with either exit so the caller can persist it. Every route out
+ * (button, outside tap, system Back, swipe down) reports that choice.
  *
  * Built as a Material 3 expressive sheet rather than a bespoke popup: it keeps
  * the platform's insets, Back gesture and drag affordance, and inherits the
@@ -45,12 +45,12 @@ import com.pranshulgg.recordmaster.ui.expressive.ExpressiveActionButton
 @Composable
 fun AnnouncementSheet(
     onStart: (dontShowAgain: Boolean) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: (dontShowAgain: Boolean) -> Unit,
 ) {
     var dontShowAgain by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { onDismiss(dontShowAgain) },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = {
             Box(modifier = Modifier.padding(top = 22.dp)) {

@@ -50,6 +50,7 @@ import com.pranshulgg.recordmaster.screens.SpeechModelsScreen
 import com.pranshulgg.recordmaster.screens.SpeechSettingsPage
 import com.pranshulgg.recordmaster.screens.StorageSettingsPage
 import com.pranshulgg.recordmaster.screens.TermsPage
+import com.pranshulgg.recordmaster.ui.components.AnnouncementSheet
 import com.pranshulgg.recordmaster.ui.components.CrashRecoveryDialog
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 import com.pranshulgg.recordmaster.ui.theme.RecordMasterTheme
@@ -131,6 +132,17 @@ class MainActivity : ComponentActivity() {
                 val lastRun = runCatching { app.prefs.lastRunVersion() }.getOrDefault("")
                 val seen = runCatching { app.prefs.hasSeen2_0Announcement() }.getOrDefault(false)
                 showAnnouncementDialog = shouldShowAnnouncement(lastRun, currentVersion, seen)
+            }
+
+            // Every exit path stamps the current version; otherwise the welcome
+            // returns on the next launch. A ticked checkbox is honoured on
+            // dismissal too (Back / outside tap / swipe), not just on "Let's Go".
+            fun closeAnnouncement(dontShowAgain: Boolean) {
+                showAnnouncementDialog = false
+                scope.launch {
+                    app.prefs.setLastRunVersion(currentVersion)
+                    if (dontShowAgain) app.prefs.setHasSeen2_0Announcement(true)
+                }
             }
 
             LaunchedEffect(Unit) {
@@ -332,6 +344,15 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onDismiss = { app.crashRecovery.dismiss() }
+                    )
+                }
+
+                // The 2.0 welcome is topmost, but never stacked on the crash
+                // prompt: recovery takes priority, the welcome returns after it.
+                if (showAnnouncementDialog && recoverySession == null) {
+                    AnnouncementSheet(
+                        onStart = { dontShowAgain -> closeAnnouncement(dontShowAgain) },
+                        onDismiss = { dontShowAgain -> closeAnnouncement(dontShowAgain) },
                     )
                 }
             }

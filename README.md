@@ -47,13 +47,7 @@ Our biggest update yet: Flambo is redesigned from the ground up in Material 3 Ex
 
 ## Screenshots
 
-| Home | Recording | Playback |
-|---|---|---|
-| ![Home](screenshots/home.jpg) | ![Recording](screenshots/recording.jpg) | ![Playback](screenshots/playback.jpg) |
-
-| Settings | About | Trash |
-|---|---|---|
-| ![Settings](screenshots/settings.jpg) | ![About](screenshots/about.jpg) | ![Trash](screenshots/trash.jpg) |
+Comming soon
 
 ## Get the app
 

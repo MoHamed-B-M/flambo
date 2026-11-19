@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
+import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -41,6 +42,7 @@ class PreferencesManager(private val context: Context) {
         val LIST_FILTER = stringPreferencesKey("list_filter")
         val REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
         val ANIMATION_SPEED = stringPreferencesKey("animation_speed")
+        val AUTO_SAVE_INTERVAL = stringPreferencesKey("auto_save_interval")
     }
 
     // ---- Recording ----
@@ -125,6 +127,27 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setAnimationSpeed(speed: AnimationSpeed) {
         context.recordMasterDataStore.edit { it[Keys.ANIMATION_SPEED] = speed.name }
+    }
+
+    // ---- Reliability ----
+
+    /** Checkpoint cadence for long recordings; [AutoSaveInterval.Default] until opted in. */
+    val autoSaveIntervalFlow: Flow<AutoSaveInterval> =
+        context.recordMasterDataStore.data.map { prefs ->
+            prefs[Keys.AUTO_SAVE_INTERVAL]
+                ?.let { stored -> runCatching { AutoSaveInterval.valueOf(stored) }.getOrNull() }
+                ?: AutoSaveInterval.Default
+        }
+
+    suspend fun autoSaveInterval(): AutoSaveInterval =
+        context.recordMasterDataStore.data.map { prefs ->
+            prefs[Keys.AUTO_SAVE_INTERVAL]
+                ?.let { stored -> runCatching { AutoSaveInterval.valueOf(stored) }.getOrNull() }
+                ?: AutoSaveInterval.Default
+        }.first()
+
+    suspend fun setAutoSaveInterval(interval: AutoSaveInterval) {
+        context.recordMasterDataStore.edit { it[Keys.AUTO_SAVE_INTERVAL] = interval.name }
     }
 
     val enhanceStrengthFlow: Flow<String> =

@@ -27,6 +27,7 @@ import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
+import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -59,6 +60,9 @@ fun SettingsPage(
     val volumeId by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
     val folderUri by app.prefs.recordingsFolderUriFlow.collectAsState(initial = "")
     val speed by app.prefs.playbackSpeedFlow.collectAsState(initial = 1f)
+    val autoSaveInterval by app.prefs.autoSaveIntervalFlow.collectAsState(
+        initial = AutoSaveInterval.Default
+    )
     val languageTag by app.prefs.sttLanguageFlow.collectAsState(initial = "")
     val reduceAnimations by app.prefs.reduceAnimationsFlow.collectAsState(initial = false)
     val animationSpeed by app.prefs.animationSpeedFlow.collectAsState(initial = AnimationSpeed.Default)
@@ -151,6 +155,19 @@ fun SettingsPage(
                             title = "Storage",
                             description = volumeLabel,
                             onClick = { navController.navigate("SettingsStorage") }
+                        )
+                    )
+                )
+            }
+            item {
+                SettingSection(
+                    title = "Reliability",
+                    tiles = listOf(
+                        SettingTile.NavigationTile(
+                            leading = { SettingsTileIcon(R.drawable.privacy_tip_24px) },
+                            title = "Auto-backup",
+                            description = "Crash recovery \u00B7 ${autoSaveInterval.label}",
+                            onClick = { navController.navigate("SettingsReliability") }
                         )
                     )
                 )

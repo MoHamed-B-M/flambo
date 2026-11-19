@@ -42,6 +42,7 @@ import com.pranshulgg.recordmaster.screens.PlaybackSettingsPage
 import com.pranshulgg.recordmaster.screens.PolicyPage
 import com.pranshulgg.recordmaster.screens.RecordingScreen
 import com.pranshulgg.recordmaster.screens.RecordingSettingsPage
+import com.pranshulgg.recordmaster.screens.ReliabilitySettingsPage
 import com.pranshulgg.recordmaster.screens.SettingsPage
 import com.pranshulgg.recordmaster.screens.SpeechModelsScreen
 import com.pranshulgg.recordmaster.screens.SpeechSettingsPage
@@ -190,6 +191,12 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("SettingsRecording") {
                         RecordingSettingsPage(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState
+                        )
+                    }
+                    composable("SettingsReliability") {
+                        ReliabilitySettingsPage(
                             navController = navController,
                             snackbarHostState = snackbarHostState
                         )

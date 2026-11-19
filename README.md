@@ -1,36 +1,48 @@
 <div align="center">
   <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="140" alt="Flambo app icon" style="border-radius: 28px" />
-  <h1>Flambo</h1>
+  <h1>Flambo 2.0</h1>
   <p><em>A calm yet expressive voice recorder for Android — record, transcribe, and keep everything on your device.</em></p>
+  <p><img src="readme%20photos/flambo%202.0.jpg" width="720" style="max-width: 100%; height: auto;" alt="Flambo 2.0" /></p>
   <p>
     <a href="https://m3.material.io/blog/introducing-m3-expressive"><img src="https://img.shields.io/badge/Material_3-Expressive-6750A4?style=for-the-badge&logo=materialdesign&logoColor=white" alt="Material 3 Expressive" /></a>
-    <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.3.10-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin 2.3.10" /></a>
-    <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/Compose-BOM_2026.08-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose BOM" /></a>
-    <img src="https://img.shields.io/badge/minSdk-26-625B71?style=for-the-badge" alt="minSdk 26" />
-    <img src="https://img.shields.io/badge/targetSdk-37-006A60?style=for-the-badge" alt="targetSdk 37" />
+    <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.2.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin 2.2.21" /></a>
+    <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/Compose-BOM_2025.10.01-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose BOM" /></a>
+    <img src="https://img.shields.io/badge/minSdk-24-625B71?style=for-the-badge" alt="minSdk 24" />
+    <img src="https://img.shields.io/badge/targetSdk-36-006A60?style=for-the-badge" alt="targetSdk 36" />
     <a href="https://github.com/MoHamed-B-M/flambo/releases"><img src="https://img.shields.io/github/downloads/MoHamed-B-M/flambo/total?label=downloads&color=D8572A&style=for-the-badge&logo=github&logoColor=white" alt="Downloads" /></a>
   </p>
   <p>
-    <a href="https://github.com/MoHamed-B-M/flambo/actions/workflows/build.yaml"><img src="https://img.shields.io/github/actions/workflow/status/MoHamed-B-M/flambo/build.yaml?branch=dev&label=dev%20build&style=flat-square&color=2E7D32" alt="dev build" /></a>
-    <img src="https://img.shields.io/github/last-commit/MoHamed-B-M/flambo/dev?style=flat-square&label=last%20commit&color=6750A4" alt="last commit" />
+    <a href="https://github.com/MoHamed-B-M/flambo/actions/workflows/build.yaml"><img src="https://img.shields.io/github/actions/workflow/status/MoHamed-B-M/flambo/build.yaml?branch=2.0&label=dev%20build&style=flat-square&color=2E7D32" alt="dev build" /></a>
+    <img src="https://img.shields.io/github/last-commit/MoHamed-B-M/flambo/2.0?style=flat-square&label=last%20commit&color=6750A4" alt="last commit" />
     <img src="https://img.shields.io/github/commit-activity/m/MoHamed-B-M/flambo?style=flat-square&label=commits%2Fmonth&color=D8572A" alt="commit activity" />
-    <a href="https://github.com/MoHamed-B-M/flambo/blob/dev/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-006A60?style=flat-square" alt="contributions welcome" /></a>
+    <a href="https://github.com/MoHamed-B-M/flambo/blob/2.0/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-006A60?style=flat-square" alt="contributions welcome" /></a>
   </p>
 </div>
 
+## What's new in 2.0
+
+Our biggest update yet: Flambo is redesigned from the ground up in Material 3 Expressive, with a rebuilt recording pipeline, a faster, smoother feel, and the features people asked for most. Your audio still stays on your device.
+
+- **Rebuilt core** — one recording and playback pipeline for a smoother, more reliable app.
+- **Chunked recording + auto-backup** — long takes rotate through staged chunks at a configurable interval, and an interrupted session can be recovered on the next launch.
+- **Call-aware pause** — an incoming call or audio focus loss pauses the active take instead of ruining it.
+- **Bookmarks** — mark a moment while recording or during playback, then jump straight to it on the waveform.
+- **Speech model manager** — choose a Whisper language model or import your own, all offline.
+- **2.0 welcome sheet** — a one-time Material 3 expressive introduction to the redesign, replayable from Settings.
+
 ## Features
 
-- **One-tap recording** with an animated-shape record button, live waveform, and pause/resume on a continuous timeline
+- **One-tap recording** with an animated-shape record button, live waveform, pause/resume on a continuous timeline, and bookmarks
 - **Two sources** — microphone, or system sound (music, videos, app audio) via AudioPlaybackCapture on Android 10+
 - **Live notification** with running timer plus Pause/Resume and Save actions, so recording survives the screen turning off
-- **Offline transcription** — Whisper turns saved recordings into text on-device; downloadable language models, copy/share/edit, transcripts are searchable
+- **Offline transcription** — Whisper turns saved recordings into text on-device; downloadable or imported language models, copy/share/edit, transcripts are searchable
 - **Noise reduction** — live AGC and noise suppression while recording (toggle in Settings)
 - **Clean audio** — one-tap offline enhancement (hush + leveling) with Light/Balanced/Strong strength, keep or replace the original
-- **Playback** with waveform scrubber, 0.5x–2x speed pills, 5 s / 10 s skips, and a floating mini-player
-- **Library** — inline rename, tags, favorites, full-text search, soft delete with Undo, auto-purging Trash
+- **Playback** with waveform scrubber, 0.5x–2x speed pills, 5 s / 10 s skips, bookmarks, and a floating mini-player
+- **Library** — inline rename, tags, favorites, sort/filter, full-text search, soft delete with Undo, auto-purging Trash, custom storage folder and recording name prefix
 - **Onboarding tour** on first launch, replayable anytime from Settings → About
 - **Shortcuts & automation** — long-press the launcher icon for Start / Pause, or fire recording actions from Key Mapper, Tasker, and other automation apps entirely headlessly
-- **Self-updates** — Settings checks the beta rolling preview (by build number) or stable releases (by version), downloads and installs in-app with auto-cleanup; optional launch-time check pings you once per version via notification + snackbar
+- **Self-updates** — Settings checks stable releases and installs them in-app with auto-cleanup
 - **Material 3 Expressive throughout** — dynamic Material You color, tonal surfaces instead of shadows, morphing shapes, bouncy spring motion, edge-to-edge layout
 
 ## Screenshots
@@ -48,36 +60,34 @@
 [![Get it on Orion Store](https://raw.githubusercontent.com/RookieEnough/Orion-Store/refs/heads/main/assets/orion-badge.png)](https://rookieenough.github.io/Orion-Data/redirect.html?id=flambo)
 <a href="https://komistore.app/app/?repo=MoHamed-B-M/flambo"><img src="https://img.shields.io/badge/Komi_Store-E91E63?style=for-the-badge&logo=android&logoColor=white" alt="Komi Store" /></a>
 
-Grab the APK matching your device from the [latest beta pre-release](https://github.com/MoHamed-B-M/flambo/releases/tag/beta-latest) (rolling `1.7.4-dev(#N)` build, old assets are pruned automatically) or a versioned entry on the [releases page](https://github.com/MoHamed-B-M/flambo/releases):
+**Flambo 2.0 previews** are attached to successful runs of the [`2.0` build workflow](https://github.com/MoHamed-B-M/flambo/actions/workflows/build.yaml): open a run, download the `Flambo-2.0-dev<N>` artifact, unzip it, and install the APK. Builds are named `2.0.0-dev(#N)` and kept for 14 days.
 
-| File suffix | Architecture | Most devices |
-|---|---|---|
-| `*-universal.apk` | All ABIs | **Recommended** — works on any Android device |
-| `*-arm64.apk` | arm64-v8a | Most phones from ~2017 on |
-| `*-armv7.apk` | armeabi-v7a | Older 32-bit devices |
+The release APK is universal — it bundles `arm64-v8a`, `armeabi-v7a`, and `x86_64` libraries, so there is one file for every device.
 
 > [!NOTE]
-> Enable *Install unknown apps* for your browser when sideloading. Release builds are signed with the project keystore, so updates install cleanly over previous ones.
+> Enable *Install unknown apps* for your browser when sideloading. 2.0 preview artifacts are signed with the project keystore when CI secrets are configured; otherwise an ephemeral preview keystore is used, so you may need to uninstall an older preview before installing a new one.
 
 ## Build it yourself
 
 ```bash
-git clone https://github.com/MoHamed-B-M/flambo.git
+git clone --recurse-submodules https://github.com/MoHamed-B-M/flambo.git
 cd flambo
-git checkout dev             # active development happens here
+git checkout 2.0              # active development happens here
 ./gradlew :app:assembleRelease
 ```
 
-Debug keystore fallback means `assembleRelease` works locally with no secrets configured. Per-ABI APKs land in `app/build/outputs/apk/release/`.
+The recursive clone is needed for the pinned `whisper.cpp` submodule. A debug-keystore fallback means `assembleRelease` works locally with no secrets configured. The universal APK lands in `app/build/outputs/apk/release/`.
 
-## How releases work
+Requirements: **JDK 21**, **AGP 8.12.3**, **Kotlin 2.2.21**, **Compose BOM 2025.10.01**, Android SDK `minSdk 24 / targetSdk 36`, NDK `27.0.12077973`, and CMake `3.22.1`.
 
-[`build.yaml`](.github/workflows/build.yaml) builds every push to `dev` and `main`:
+## How CI works
 
-- **`dev`** → signed dev build `1.7.4-dev(#N)` (universal + arm64 + armv7) published to the rolling `beta-latest` pre-release. Previous assets are wiped first, so the page always holds exactly one build. Artifacts expire after 7 days.
-- **`main`** → versioned stable release `Flambo-x.y.z-{arm64,armv7}.apk` with changelog, checksums, and full notes. Artifacts kept 30 days.
+[`build.yaml`](.github/workflows/build.yaml) builds every push and pull request to `2.0`:
 
-Pushes touching only `README.md` or `screenshots/` skip CI entirely (no code changed, nothing to build).
+- Produces a signed `2.0.0-dev(#N)` APK with version code `200000 + N` and uploads it as an artifact (14-day retention).
+- Runs unit tests and lint, uploading both reports as artifacts.
+- Uses the project keystore from secrets when available; otherwise generates an ephemeral preview keystore.
+- Does **not** publish GitHub Releases for 2.0 previews — builds come from the workflow run.
 
 ### Required secrets
 
@@ -87,8 +97,6 @@ Pushes touching only `README.md` or `screenshots/` skip CI entirely (no code cha
 | `KEYSTORE_PASSWORD` | Keystore password |
 | `KEY_ALIAS` | Key alias |
 | `KEY_PASSWORD` | Key password |
-
-Without them CI falls back to an ephemeral keystore (fine for previews, not for Play Store continuity).
 
 ## Versioning
 
@@ -104,32 +112,30 @@ This app follows a modified **Semantic Versioning**: `MAJOR.MINOR.PATCH+BUILD`
 Format examples:
 
 - `1.0.0+1` → first stable release, first build
-- `1.1.0+15` → added pause/resume recording (15th build overall)
-- `1.1.1+16` → fixed timer showing wrong value
-- `2.0.0+120` → complete UI redesign + new audio engine
+- `1.7.4+14` → the last release before the redesign
+- `2.0.0+120` → complete UI redesign + rebuilt audio pipeline
 - `2.0.1+121` → rebuilt with updated libraries
 
-Beta builds follow the stable line with a dev tag: `1.7.4-dev(#N)`, where `N` is the CI run number (e.g. `1.7.4-dev(#42)`). When stable moves to `1.7.5`, beta becomes `1.7.5-dev(#N)` automatically — only `BASE_VERSION` in the workflow changes.
-
-Beta version codes sit `100000` above the run number, so installing a beta over a stable release always counts as an update for Android (which requires the code to increase).
+2.0 preview builds follow the release line with a dev tag: `2.0.0-dev(#N)`, where `N` is the CI run number (e.g. `2.0.0-dev(#42)`). Their version code is `200000 + N`, so a preview always installs over an earlier release as an update.
 
 ## Project structure
 
 ```
-app/src/main/java/com/flambo/recorder/
+app/src/main/java/com/pranshulgg/recordmaster/
+├── core/
+│   ├── record/          # RecordingController, foreground service, chunk rotation, shortcuts, receiver
+│   ├── audio/           # Offline enhancer, chunk merger
+│   ├── stt/             # Whisper engine, model manager/store, transcription service
+│   ├── playback/        # PlaybackController, service, review controller
+│   ├── data/            # Room database, repository, DataStore preferences, SAF folder helpers
+│   └── domain/          # Quality, auto-save interval, sort/filter enums
 ├── ui/
-│   ├── home/          # Library, search, recording panel, mini-player
-│   ├── detail/        # Playback, waveform scrubber, transcribe sheet, transcript card
-│   ├── settings/      # Segmented preference groups, speech model manager, updates, about
-│   ├── onboarding/    # First-launch expressive pager tour
-│   ├── components/    # Waveform, cards, segmented list, mini-player
-│   └── theme/         # M3 Expressive color / type / shape / motion tokens
-├── record/            # MediaRecorder + system-audio (AudioRecord) engines, foreground service
-├── audio/             # Offline DSP enhancer (gate, normalize, WAV writer)
-├── stt/               # Whisper offline transcription, model downloads, PCM decoding
-├── playback/          # ExoPlayer controller with persistent mini-player state
-├── update/            # Release checker, in-app APK installer, update notifier
-└── data/              # Room database, repository, DataStore preferences
+│   ├── components/      # Waveform, cards, segmented list, mini-player, 2.0 welcome sheet
+│   ├── expressive/      # Shared expressive buttons and motion
+│   └── theme/           # M3 Expressive color / type / shape / motion tokens
+├── screens/             # Home, recording, playback, settings, about, onboarding
+├── helpers/             # Legacy appearance preferences
+└── RecordMasterApp.kt   # Composition root for the 2.0 logic layer
 ```
 
 MVVM throughout: `ViewModel` + `StateFlow` UI state, repository pattern, thin platform wrappers.
@@ -157,7 +163,7 @@ Recording is reachable without opening the app:
 
 ## Tech stack
 
-Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) · Navigation Compose · Room 2.8.5 (KSP) · DataStore · Media3 ExoPlayer · whisper.cpp 1.9.5 · AGP 9.3.2, JDK 21.
+Kotlin 2.2.21 · Compose (BOM 2025.10.01) · Material3 1.4.0 · Navigation Compose · Room 2.8.5 (KSP) · DataStore · Media3 ExoPlayer · whisper.cpp 1.9.5 · AGP 8.12.3 · JDK 21. minSdk 24, targetSdk 36.
 
 ---
 
@@ -181,9 +187,9 @@ Kotlin 2.3.10 · Compose (BOM 2026.08) · Material3 1.5.0-alpha26 (Expressive) �
 ## ⭐ Star History
 
 <a href="https://www.star-history.com/?repos=mohamed-b-m%2Fflambo&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
- </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mohamed-b-m/flambo&type=date&legend=top-left" />
+  </picture>
 </a>

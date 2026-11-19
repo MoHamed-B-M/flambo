@@ -47,13 +47,9 @@ Our biggest update yet: Flambo is redesigned from the ground up in Material 3 Ex
 
 ## Screenshots
 
-| Home | Recording | Playback |
-|---|---|---|
-| ![Home](screenshots/home.jpg) | ![Recording](screenshots/recording.jpg) | ![Playback](screenshots/playback.jpg) |
-
-| Settings | About | Trash |
-|---|---|---|
-| ![Settings](screenshots/settings.jpg) | ![About](screenshots/about.jpg) | ![Trash](screenshots/trash.jpg) |
+<p align="center">
+  <img src="https://img.shields.io/badge/Screenshots-Comming_soon-6750A4?style=for-the-badge" alt="Screenshots — Comming soon" />
+</p>
 
 ## Get the app
 

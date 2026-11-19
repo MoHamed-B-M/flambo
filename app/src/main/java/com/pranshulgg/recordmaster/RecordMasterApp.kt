@@ -13,6 +13,7 @@ import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.core.playback.ReviewController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.core.record.RecordingController
+import com.pranshulgg.recordmaster.core.recovery.CrashRecoveryManager
 import com.pranshulgg.recordmaster.core.stt.SpeechModelStore
 import com.pranshulgg.recordmaster.core.stt.TranscriptionManager
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -51,6 +52,7 @@ class RecordMasterApp : Application() {
     }
 
     val recorder by lazy { RecordingController(this, repository) }
+    val crashRecovery by lazy { CrashRecoveryManager(repository, appScope) }
     val speechModels by lazy { SpeechModelStore(prefs) }
     val transcription by lazy { TranscriptionManager(this, prefs, speechModels) }
 
@@ -123,6 +125,9 @@ class RecordMasterApp : Application() {
 
         // Remove `.part` files left behind if a previous import was killed.
         runCatching { transcription.modelManager.cleanupStaleParts() }
+
+        // Offer to restore a take that was still staged when the process died.
+        crashRecovery.scanOnLaunch()
 
         appScope.launch {
             storageVolumeId = runCatching { prefs.recordingsVolume() }

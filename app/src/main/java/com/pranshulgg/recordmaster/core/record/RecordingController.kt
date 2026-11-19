@@ -31,6 +31,13 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.log10
 
+/** Why an active take is paused; carried in [RecordingController.RecorderState]. */
+enum class PauseReason {
+    NONE,
+    USER,
+    INTERRUPTION
+}
+
 /**
  * Single recording pipeline for 2.0. The existing RecordingScreen (Phase 4)
  * will observe [state] instead of owning a MediaRecorder, so a take survives
@@ -44,6 +51,7 @@ class RecordingController(
     data class RecorderState(
         val isRecording: Boolean = false,
         val isPaused: Boolean = false,
+        val pauseReason: PauseReason = PauseReason.NONE,
         val elapsedMs: Long = 0L,
         val amplitude: Float = 0f,
         val peaks: List<Float> = emptyList(),
@@ -237,13 +245,15 @@ class RecordingController(
         return timestamp
     }
 
-    fun pause() {
+    /** [reason] lets the UI explain *why* a take is paused (user vs. interruption). */
+    fun pause(reason: PauseReason = PauseReason.USER) {
         val current = _state.value
         if (!current.isRecording || current.isPaused) return
 
         finalizeCurrentChunk()
         _state.value = current.copy(
             isPaused = true,
+            pauseReason = reason,
             elapsedMs = totalRecordedMs,
             currentFile = chunks.lastOrNull()?.file
         )
@@ -259,7 +269,11 @@ class RecordingController(
         (appContext as? RecordMasterApp)?.review?.stop()
         if (!startNewChunk()) return
 
-        _state.value = current.copy(isPaused = false, currentFile = currentChunkFile)
+        _state.value = current.copy(
+            isPaused = false,
+            pauseReason = PauseReason.NONE,
+            currentFile = currentChunkFile
+        )
         startSampling()
     }
 

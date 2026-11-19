@@ -2,6 +2,7 @@
     <string name="app_name">Flambo</string>
     <string name="recording_notification_channel">Recording</string>
     <string name="recording_notification_text">Tap to return to Flambo</string>
+    <string name="recording_paused_interruption">Paused due to interruption</string>
     <string name="playback_channel_name">Playback</string>
 
     <!-- Launcher / automation shortcuts -->

@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +39,7 @@ import androidx.core.content.ContextCompat
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.playback.ReviewController
+import com.pranshulgg.recordmaster.core.record.PauseReason
 import com.pranshulgg.recordmaster.ui.components.ConfirmDialog
 import com.pranshulgg.recordmaster.ui.components.Symbol
 import com.pranshulgg.recordmaster.ui.expressive.LocalReducedMotion
@@ -68,6 +70,8 @@ fun RecordingScreen(onDone: () -> Unit) {
 
     val isRecording = recorderState.isRecording
     val isPaused = recorderState.isPaused
+    val pausedDueToInterruption =
+        isPaused && recorderState.pauseReason == PauseReason.INTERRUPTION
     val elapsedSeconds = recorderState.elapsedMs / 1000L
 
     var screenTitle by remember { mutableStateOf(mainTitle) }
@@ -300,6 +304,7 @@ fun RecordingScreen(onDone: () -> Unit) {
                     ReviewControls(
                         state = reviewState,
                         bookmarkCount = bookmarkCount,
+                        pausedDueToInterruption = pausedDueToInterruption,
                         onTogglePlay = { app.review.toggle() },
                         onSeek = { ms -> app.review.seekTo(ms) },
                         onResume = {
@@ -493,6 +498,7 @@ fun RecordingScreen(onDone: () -> Unit) {
 private fun ReviewControls(
     state: ReviewController.ReviewState,
     bookmarkCount: Int,
+    pausedDueToInterruption: Boolean = false,
     onTogglePlay: () -> Unit,
     onSeek: (Long) -> Unit,
     onResume: () -> Unit,
@@ -506,6 +512,28 @@ private fun ReviewControls(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // A take paused by a call / another app says so in words, not just via
+        // the paused state or colour. The icon is decorative because the label
+        // already carries the meaning for screen readers.
+        if (pausedDueToInterruption) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Symbol(
+                    R.drawable.info_24px,
+                    size = 20.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.recording_paused_interruption),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(
                 onClick = onTogglePlay,

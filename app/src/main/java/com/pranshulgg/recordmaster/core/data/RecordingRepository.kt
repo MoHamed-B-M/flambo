@@ -451,6 +451,14 @@ class RecordingRepository(
 
     fun recordingsDir(): File = dirProvider().apply { mkdirs() }
 
+    /**
+     * Private, internal staging area for in-progress audio chunks. Kept under
+     * [android.content.Context.getFilesDir] rather than [recordingsDir] because
+     * the latter may be an external/SAF folder that the library sync scans.
+     * Orphaned sessions left here after a crash are picked up by recovery.
+     */
+    fun tempChunksDir(): File = File(appContext.filesDir, TEMP_CHUNKS_DIR_NAME).apply { mkdirs() }
+
     fun garbageDir(): File = garbageDirProvider().apply { mkdirs() }
 
     fun cleanedAudioDir(): File = File(recordingsDir(), CLEANED_AUDIO_DIR_NAME).apply { mkdirs() }
@@ -568,6 +576,7 @@ class RecordingRepository(
 
     companion object {
         const val GARBAGE_DIR_NAME = "garbage"
+        const val TEMP_CHUNKS_DIR_NAME = ".tmp_chunks"
         const val TEMP_PREFIX = "REC_"
         const val ENHANCED_SUFFIX = "_enhanced"
         const val CLEANED_AUDIO_DIR_NAME = "Cleaned audio"

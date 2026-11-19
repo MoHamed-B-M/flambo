@@ -12,6 +12,7 @@ import com.pranshulgg.recordmaster.core.audio.AudioChunkMerger
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.data.RecordingRepository
+import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.metadata.MetadataHelper
 import kotlinx.coroutines.CoroutineScope
@@ -23,12 +24,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.coroutines.coroutineContext
 import kotlin.math.log10
 
 /** Why an active take is paused; carried in [RecordingController.RecorderState]. */
@@ -69,6 +72,9 @@ class RecordingController(
     private var totalRecordedMs: Long = 0L
     private var chunkStartMs: Long = 0L
     private var chunkIndex = 0
+    private var chunkRotationJob: Job? = null
+    private var activeChunkIntervalMs: Long = 0L
+    private var chunkSessionDir: File? = null
     private var activeQuality: RecordingQuality = RecordingQuality.HIGH
     private var activeNoiseReduction: Boolean = true
     private var amplitudeJob: Job? = null
@@ -114,7 +120,13 @@ class RecordingController(
         reviewFile = null
         totalRecordedMs = 0L
         chunkIndex = 0
+        activeChunkIntervalMs = 0L
+        chunkRotationJob?.cancel()
         _pendingBookmarks.value = emptyList()
+        // Each take gets its own folder so a crash leaves an orphaned session
+        // that recovery can attribute to one recording.
+        chunkSessionDir = File(repository.tempChunksDir(), "take_${System.currentTimeMillis()}")
+            .apply { mkdirs() }
 
         if (!startNewChunk()) return false
 
@@ -132,11 +144,14 @@ class RecordingController(
             stopRecorderSafely()
             runCatching { currentChunkFile?.delete() }
             currentChunkFile = null
+            runCatching { chunkSessionDir?.deleteRecursively() }
+            chunkSessionDir = null
             _state.value = RecorderState()
             return false
         }
 
         startSampling()
+        startChunkRotation()
         runCatching { onRecordingStarted?.invoke() }
         return true
     }
@@ -146,10 +161,9 @@ class RecordingController(
      * so resuming never has to share a locked file with the review player.
      */
     private fun startNewChunk(): Boolean {
-        val file = File(
-            repository.recordingsDir(),
-            "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_c${chunkIndex}.m4a"
-        )
+        val sessionDir = chunkSessionDir ?: repository.tempChunksDir().also { chunkSessionDir = it }
+        // Zero-padded so files sort chronologically for recovery/merge.
+        val file = File(sessionDir, "c${String.format(Locale.US, "%04d", chunkIndex)}.m4a")
         val mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(appContext)
         } else {
@@ -191,6 +205,11 @@ class RecordingController(
 
     /** Closes the live chunk and accounts for its share of the timeline. */
     private fun finalizeCurrentChunk() {
+        closeCurrentChunk()
+    }
+
+    /** Stops the active recorder and records the finished chunk on the timeline. */
+    private fun closeCurrentChunk(): Long {
         val elapsedInChunk = (System.currentTimeMillis() - chunkStartMs).coerceAtLeast(0L)
         stopRecorderSafely()
         val file = currentChunkFile
@@ -203,6 +222,55 @@ class RecordingController(
         }
         currentChunkFile = null
         totalRecordedMs += elapsedInChunk
+        return elapsedInChunk
+    }
+
+    /**
+     * Time-based auto-save: swap to a fresh chunk without pausing the take.
+     * [AudioChunkMerger] later concatenates the encoded samples by timestamp,
+     * so no silence is inserted at the boundary — the saved file is seamless.
+     */
+    private fun rotateChunk() {
+        closeCurrentChunk()
+        if (!startNewChunk()) {
+            // Never keep "recording" with no output file — that silently drops
+            // audio. Surface it as a paused take the user can stop or resume.
+            pause(PauseReason.INTERRUPTION)
+            return
+        }
+        _state.value = _state.value.copy(currentFile = currentChunkFile)
+    }
+
+    /** Reads the chosen interval and starts the rotation loop for a new take. */
+    private fun startChunkRotation() {
+        chunkRotationJob?.cancel()
+        val app = appContext as? RecordMasterApp ?: return
+        chunkRotationJob = scope.launch {
+            val interval = withContext(Dispatchers.IO) {
+                runCatching { app.prefs.autoSaveInterval() }
+                    .getOrDefault(AutoSaveInterval.Default)
+            }
+            // A stop + restart can supersede this job while the pref loads;
+            // don't let the stale read clobber the newer take's interval.
+            if (!coroutineContext.isActive) return@launch
+            activeChunkIntervalMs = interval.minutes * 60_000L
+            runChunkRotationLoop()
+        }
+    }
+
+    /** Restarts rotation on resume using the interval captured at take start. */
+    private fun resumeChunkRotation() {
+        chunkRotationJob?.cancel()
+        if (activeChunkIntervalMs <= 0L) return
+        chunkRotationJob = scope.launch { runChunkRotationLoop() }
+    }
+
+    private suspend fun runChunkRotationLoop() {
+        while (coroutineContext.isActive) {
+            delay(activeChunkIntervalMs)
+            val current = _state.value
+            if (current.isRecording && !current.isPaused) rotateChunk()
+        }
     }
 
     suspend fun startHeadless(): Boolean {
@@ -250,6 +318,7 @@ class RecordingController(
         val current = _state.value
         if (!current.isRecording || current.isPaused) return
 
+        chunkRotationJob?.cancel()
         finalizeCurrentChunk()
         _state.value = current.copy(
             isPaused = true,
@@ -275,6 +344,7 @@ class RecordingController(
             currentFile = currentChunkFile
         )
         startSampling()
+        resumeChunkRotation()
     }
 
     /** Merges every finalized chunk into one file the review player can scrub. */
@@ -308,6 +378,7 @@ class RecordingController(
 
         amplitudeJob?.cancel()
         reviewJob?.cancel()
+        chunkRotationJob?.cancel()
         if (!current.isPaused) finalizeCurrentChunk()
         (appContext as? RecordMasterApp)?.review?.stop()
 
@@ -318,16 +389,19 @@ class RecordingController(
         val titleToUse = pendingTitle
         val duration = totalRecordedMs.coerceAtLeast(300L)
         val oldReviewFile = reviewFile
+        val sessionDir = chunkSessionDir
 
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()
         chunks.clear()
         reviewFile = null
         pendingTitle = null
+        chunkSessionDir = null
         stopForegroundService()
 
         if (finalized.isEmpty()) {
             oldReviewFile?.let { runCatching { it.delete() } }
+            runCatching { sessionDir?.deleteRecursively() }
             scope.launch {
                 onError?.invoke("Nothing to save — the recording was empty.")
             }
@@ -351,6 +425,9 @@ class RecordingController(
                 )
                 finalized.forEach { runCatching { it.file.delete() } }
                 oldReviewFile?.let { runCatching { it.delete() } }
+                // Take is safely on disk: clear the staging session. On merge
+                // failure the chunks stay for crash recovery to pick up.
+                runCatching { sessionDir?.deleteRecursively() }
             } else {
                 runCatching { merged.delete() }
                 withContext(Dispatchers.Main) {
@@ -363,6 +440,7 @@ class RecordingController(
     fun cancel() {
         amplitudeJob?.cancel()
         reviewJob?.cancel()
+        chunkRotationJob?.cancel()
         stopRecorderSafely()
         (appContext as? RecordMasterApp)?.review?.stop()
         chunks.forEach { runCatching { it.file.delete() } }
@@ -371,6 +449,10 @@ class RecordingController(
         currentChunkFile = null
         reviewFile?.let { runCatching { it.delete() } }
         reviewFile = null
+        // Explicit discard: remove the whole staging session, not just the
+        // chunks we already finalized (the live one may not be in `chunks`).
+        chunkSessionDir?.let { runCatching { it.deleteRecursively() } }
+        chunkSessionDir = null
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()
         pendingTitle = null

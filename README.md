@@ -47,7 +47,9 @@ Our biggest update yet: Flambo is redesigned from the ground up in Material 3 Ex
 
 ## Screenshots
 
-Comming soon
+<p align="center">
+  <img src="https://img.shields.io/badge/Screenshots-Comming_soon-6750A4?style=for-the-badge" alt="Screenshots — Comming soon" />
+</p>
 
 ## Get the app
 

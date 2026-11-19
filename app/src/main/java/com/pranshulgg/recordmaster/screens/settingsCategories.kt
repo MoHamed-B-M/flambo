@@ -435,6 +435,20 @@ fun RecordingSettingsPage(
 }
 
 @Composable
+fun ReliabilitySettingsPage(
+    navController: NavController,
+    snackbarHostState: SnackbarHostState
+) {
+    val app = LocalContext.current.applicationContext as RecordMasterApp
+    val scope = rememberCoroutineScope()
+    val showMessage = snackbarMessenger(snackbarHostState)
+
+    SettingsDetailPage("Reliability", navController, snackbarHostState) {
+        ReliabilitySettingsSection(app = app, scope = scope, showMessage = showMessage)
+    }
+}
+
+@Composable
 fun AutomationSettingsPage(
     navController: NavController,
     snackbarHostState: SnackbarHostState

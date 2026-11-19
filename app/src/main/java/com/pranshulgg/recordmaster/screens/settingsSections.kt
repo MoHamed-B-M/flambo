@@ -17,6 +17,7 @@ import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.audio.EnhanceStrength
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
+import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
@@ -167,6 +168,47 @@ fun RecordingSettingsSection(
                         showMessage("File naming pattern updated")
                     }
                 }
+            )
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ReliabilitySettingsSection(
+    app: RecordMasterApp,
+    scope: CoroutineScope,
+    showMessage: suspend (String) -> Unit
+) {
+    val interval by app.prefs.autoSaveIntervalFlow.collectAsState(
+        initial = AutoSaveInterval.Default
+    )
+
+    SettingSection(
+        title = "Crash protection",
+        tiles = listOf(
+            SettingTile.DialogOptionTile(
+                leading = { SettingsTileIcon(R.drawable.refresh_24px) },
+                title = "Auto-save interval",
+                description = interval.description,
+                options = AutoSaveInterval.entries.map { it.label },
+                selectedOption = interval.label,
+                onOptionSelected = { label ->
+                    val selected = AutoSaveInterval.entries.firstOrNull { it.label == label }
+                        ?: AutoSaveInterval.Default
+                    scope.launch {
+                        app.prefs.setAutoSaveInterval(selected)
+                        showMessage(
+                            if (selected.isEnabled) "Auto-save: ${selected.label}"
+                            else "Auto-save disabled"
+                        )
+                    }
+                }
+            ),
+            SettingTile.TextTile(
+                leading = { SettingsTileIcon(R.drawable.info_24px) },
+                title = "About auto-backup",
+                description = "An active recording is checkpointed to a temporary folder at this interval, so an unexpected close can't lose the whole take. Applies to recordings started after the change."
             )
         )
     )

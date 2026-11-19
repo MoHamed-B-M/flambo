@@ -145,6 +145,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Debug-only replay: restore the pre-2.0 state and show the welcome
+            // immediately. Dismissing it re-stamps the current version as usual.
+            fun rerunAnnouncement() {
+                showAnnouncementDialog = true
+                scope.launch {
+                    app.prefs.setHasSeen2_0Announcement(false)
+                    app.prefs.setLastRunVersion(PreferencesManager.DEBUG_RESET_VERSION)
+                }
+            }
+
             LaunchedEffect(Unit) {
                 SnackbarManager.init(snackbarHostState, scope)
             }
@@ -227,6 +237,7 @@ class MainActivity : ComponentActivity() {
                         context = context,
                         currentTheme = themeMode,
                         snackbarHostState = snackbarHostState,
+                        onRerunAnnouncement = { rerunAnnouncement() },
                     ) }
                     composable("SettingsAppLooks") { AppLooksSettingsPage(
                         navController = navController,

@@ -30,6 +30,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.record.RecordingShortcut
+import com.pranshulgg.recordmaster.core.recovery.RecoveryOutcome
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.helpers.SnackbarManager
 import com.pranshulgg.recordmaster.screens.AboutScreen
@@ -48,6 +49,7 @@ import com.pranshulgg.recordmaster.screens.SpeechModelsScreen
 import com.pranshulgg.recordmaster.screens.SpeechSettingsPage
 import com.pranshulgg.recordmaster.screens.StorageSettingsPage
 import com.pranshulgg.recordmaster.screens.TermsPage
+import com.pranshulgg.recordmaster.ui.components.CrashRecoveryDialog
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 import com.pranshulgg.recordmaster.ui.theme.RecordMasterTheme
 import com.pranshulgg.recordmaster.ui.theme.parseSeedColor
@@ -258,6 +260,31 @@ class MainActivity : ComponentActivity() {
                     ) {
                         PolicyPage(navController = navController)
                     }
+                }
+
+                // Crash recovery is offered once per staged take on launch.
+                // Dismissing keeps the chunks; Recover/Discard clear them.
+                val recoverySession by app.crashRecovery.pending.collectAsState()
+                if (recoverySession != null) {
+                    CrashRecoveryDialog(
+                        onRecover = {
+                            scope.launch {
+                                when (val outcome = app.crashRecovery.recover()) {
+                                    is RecoveryOutcome.Recovered ->
+                                        SnackbarManager.showMessage("Recovered \"${outcome.title}\"")
+                                    is RecoveryOutcome.Failed ->
+                                        SnackbarManager.showMessage(outcome.message)
+                                }
+                            }
+                        },
+                        onDiscard = {
+                            scope.launch {
+                                app.crashRecovery.discard()
+                                SnackbarManager.showMessage("Discarded the unfinished recording")
+                            }
+                        },
+                        onDismiss = { app.crashRecovery.dismiss() }
+                    )
                 }
             }
         }

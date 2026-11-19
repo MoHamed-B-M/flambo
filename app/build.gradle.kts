@@ -47,7 +47,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = System.getenv("FLAMBO_VERSION_CODE")?.toIntOrNull() ?: 2
-        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "1.0.0"
+        versionName = System.getenv("FLAMBO_VERSION_NAME") ?: "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -96,6 +96,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // Needed for BuildConfig.VERSION_NAME in the 2.0 announcement check.
+        buildConfig = true
     }
     externalNativeBuild {
         cmake {

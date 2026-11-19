@@ -28,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.record.RecordingShortcut
 import com.pranshulgg.recordmaster.core.recovery.RecoveryOutcome
@@ -57,6 +58,42 @@ import com.pranshulgg.recordmaster.utils.NavTransitions
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+/**
+ * Numeric dotted-version comparison. Suffixes such as `-beta` are ignored and
+ * missing components count as zero, so "1.7.4" < "2.0.0" and "1.10" > "1.9.9".
+ */
+private fun isVersionBelow(version: String, target: String): Boolean {
+    fun parts(value: String): List<Int> = value
+        .substringBefore('-')
+        .split('.')
+        .mapNotNull { it.trim().toIntOrNull() }
+    val left = parts(version)
+    val right = parts(target)
+    for (index in 0 until maxOf(left.size, right.size)) {
+        val a = left.getOrElse(index) { 0 }
+        val b = right.getOrElse(index) { 0 }
+        if (a != b) return a < b
+    }
+    return false
+}
+
+/**
+ * Decides whether the 2.0 welcome should be shown on this launch. A fresh
+ * install has no recorded version, so it is welcomed as if it came from 1.x.
+ * The installed build itself must have reached 2.0 for the announcement to
+ * make sense.
+ */
+private fun shouldShowAnnouncement(
+    lastRunVersion: String,
+    currentVersion: String,
+    hasSeen: Boolean
+): Boolean {
+    if (hasSeen) return false
+    val previous = lastRunVersion.ifBlank { "0.0.0" }
+    if (!isVersionBelow(previous, PreferencesManager.ANNOUNCEMENT_VERSION)) return false
+    return !isVersionBelow(currentVersion, PreferencesManager.ANNOUNCEMENT_VERSION)
+}
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var app: RecordMasterApp
@@ -84,6 +121,17 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             val navController = rememberNavController()
+
+            // The installed version drives the 2.0 welcome gate. It is also the
+            // value stamped into lastRunVersion once the dialog is closed.
+            val currentVersion = BuildConfig.VERSION_NAME
+            var showAnnouncementDialog by remember { mutableStateOf(false) }
+
+            LaunchedEffect(currentVersion) {
+                val lastRun = runCatching { app.prefs.lastRunVersion() }.getOrDefault("")
+                val seen = runCatching { app.prefs.hasSeen2_0Announcement() }.getOrDefault(false)
+                showAnnouncementDialog = shouldShowAnnouncement(lastRun, currentVersion, seen)
+            }
 
             LaunchedEffect(Unit) {
                 SnackbarManager.init(snackbarHostState, scope)

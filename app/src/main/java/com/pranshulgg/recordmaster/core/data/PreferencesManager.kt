@@ -43,6 +43,34 @@ class PreferencesManager(private val context: Context) {
         val REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
         val ANIMATION_SPEED = stringPreferencesKey("animation_speed")
         val AUTO_SAVE_INTERVAL = stringPreferencesKey("auto_save_interval")
+        val LAST_RUN_VERSION = stringPreferencesKey("last_run_version")
+        val HAS_SEEN_2_0_ANNOUNCEMENT = booleanPreferencesKey("has_seen_2_0_announcement")
+    }
+
+    // ---- Version / announcements ----
+
+    /** Version last stamped when an announcement was dismissed. */
+    val lastRunVersionFlow: Flow<String> =
+        context.recordMasterDataStore.data.map { it[Keys.LAST_RUN_VERSION] ?: "" }
+
+    /** Empty until the version has been stamped after an announcement. */
+    suspend fun lastRunVersion(): String =
+        context.recordMasterDataStore.data.map { it[Keys.LAST_RUN_VERSION] ?: "" }.first()
+
+    suspend fun setLastRunVersion(version: String) {
+        context.recordMasterDataStore.edit { it[Keys.LAST_RUN_VERSION] = version }
+    }
+
+    val hasSeen2_0AnnouncementFlow: Flow<Boolean> =
+        context.recordMasterDataStore.data.map { it[Keys.HAS_SEEN_2_0_ANNOUNCEMENT] ?: false }
+
+    suspend fun hasSeen2_0Announcement(): Boolean =
+        context.recordMasterDataStore.data.map {
+            it[Keys.HAS_SEEN_2_0_ANNOUNCEMENT] ?: false
+        }.first()
+
+    suspend fun setHasSeen2_0Announcement(seen: Boolean) {
+        context.recordMasterDataStore.edit { it[Keys.HAS_SEEN_2_0_ANNOUNCEMENT] = seen }
     }
 
     // ---- Recording ----
@@ -264,5 +292,9 @@ class PreferencesManager(private val context: Context) {
         const val DEFAULT_PREFIX = "User"
         /** Default pattern preserves legacy prefix_counter behavior (e.g. User_001). */
         const val DEFAULT_NAME_PATTERN = "{prefix}_{counter}"
+        /** The release whose welcome announcement is gated by these preferences. */
+        const val ANNOUNCEMENT_VERSION = "2.0.0"
+        /** Version the Debug setting restores so the announcement can be replayed. */
+        const val DEBUG_RESET_VERSION = "1.7.4"
     }
 }

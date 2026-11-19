@@ -49,7 +49,8 @@ fun SettingsPage(
     navController: NavController,
     context: Context,
     currentTheme: AppThemeMode,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    onRerunAnnouncement: () -> Unit
 ) {
     val app = context.applicationContext as RecordMasterApp
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -213,6 +214,19 @@ fun SettingsPage(
                             title = "About app",
                             description = "Terms, Version, License, and More",
                             onClick = { navController.navigate("OpenAboutScreen") }
+                        )
+                    )
+                )
+            }
+            item {
+                SettingSection(
+                    title = "Debug",
+                    tiles = listOf(
+                        SettingTile.ActionTile(
+                            leading = { SettingsTileIcon(R.drawable.bug_report_24px) },
+                            title = "Rerun 2.0 Announcement",
+                            description = "Reset to 1.7.4 and show the welcome now",
+                            onClick = onRerunAnnouncement
                         )
                     )
                 )

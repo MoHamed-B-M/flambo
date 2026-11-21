@@ -14,6 +14,9 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -21,6 +24,8 @@ import androidx.core.view.WindowCompat
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
+import com.pranshulgg.recordmaster.core.data.FontPreferences
+import com.pranshulgg.recordmaster.core.domain.AppFont
 import com.pranshulgg.recordmaster.ui.expressive.ExpressiveMotion
 import com.pranshulgg.recordmaster.ui.expressive.ExpressiveShapes
 import com.pranshulgg.recordmaster.ui.expressive.LocalMotionSpeed
@@ -38,9 +43,19 @@ fun RecordMasterTheme(
     useExpressive: Boolean = true,
     reduceAnimations: Boolean = false,
     motionSpeed: Float = 1f,
-    typography: MaterialTypography = Typography,
+    typography: MaterialTypography? = null,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
+    val appContext = context.applicationContext ?: context
+    val fontPreferences = remember(appContext) { FontPreferences(appContext) }
+    val selectedFont by fontPreferences.selectedFontFlow.collectAsState(
+        initial = AppFont.DEFAULT
+    )
+    val appTypography = remember(selectedFont) {
+        Typography.withFontFamily(fontFamilyFor(selectedFont))
+    }
+
     // The in-app switch and Android's Remove animations both reduce motion;
     // either one wins, and the speed choice only applies when motion is on.
     val systemReducedMotion = rememberSystemReducedMotion()
@@ -59,7 +74,6 @@ fun RecordMasterTheme(
         blackAndWhite -> monochromeColorScheme(dark = darkTheme)
 
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
@@ -93,7 +107,7 @@ fun RecordMasterTheme(
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
-            typography = typography,
+            typography = typography ?: appTypography,
             shapes = ExpressiveShapes,
             motionScheme = ExpressiveMotion.motionScheme(effectiveReducedMotion, effectiveSpeed),
             content = content

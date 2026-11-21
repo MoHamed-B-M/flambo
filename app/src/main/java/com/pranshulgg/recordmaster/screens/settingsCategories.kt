@@ -1,5 +1,7 @@
 package com.pranshulgg.recordmaster.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -51,6 +53,7 @@ import androidx.navigation.NavController
 import com.github.skydoves.colorpicker.compose.ColorPickerController
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
+import com.pranshulgg.recordmaster.core.data.CustomFontStore
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.domain.AppFont
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -136,11 +139,38 @@ fun AppLooksSettingsPage(
     onBlackAndWhiteChanged: (Boolean) -> Unit,
     onAmoledModeChanged: (Boolean) -> Unit,
     currentFont: AppFont,
-    onFontSelected: (AppFont) -> Unit
+    customFontName: String?,
+    onFontSelected: (AppFont) -> Unit,
+    onCustomFontSelected: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val app = context.applicationContext as RecordMasterApp
+    val customFontStore = remember { CustomFontStore(app) }
+    val fontPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                customFontStore.importFont(uri).fold(
+                    onSuccess = { name ->
+                        onCustomFontSelected(name)
+                        snackbarMessenger(snackbarHostState)("Using $name")
+                    },
+                    onFailure = {
+                        snackbarMessenger(snackbarHostState)("Could not import that font file")
+                    }
+                )
+            }
+        }
+    }
     val isSysDark = isSystemInDarkTheme()
     val darkThemeActive = currentTheme.isDark(isSysDark)
+    val activeFontName = if (currentFont == AppFont.CUSTOM) {
+        customFontName ?: AppFont.CUSTOM.displayName
+    } else {
+        currentFont.displayName
+    }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val controller = remember { ColorPickerController() }
 
@@ -213,13 +243,28 @@ fun AppLooksSettingsPage(
                 SettingTile.DialogOptionTile(
                     leading = { SettingsTileIcon(R.drawable.label_24px) },
                     title = "App font",
+                    description = if (currentFont == AppFont.CUSTOM) {
+                        "Using $activeFontName"
+                    } else {
+                        null
+                    },
                     options = AppFont.available.map { it.displayName },
-                    selectedOption = currentFont.displayName,
+                    selectedOption = currentFont.takeUnless { it == AppFont.CUSTOM }?.displayName,
                     onOptionSelected = { name ->
                         AppFont.available.firstOrNull { it.displayName == name }
                             ?.let(onFontSelected)
                     },
                     dialogTitle = "App font"
+                ),
+                SettingTile.ActionTile(
+                    leading = { SettingsTileIcon(R.drawable.drive_file_move_24px) },
+                    title = "Custom font",
+                    description = when {
+                        currentFont == AppFont.CUSTOM -> "$activeFontName · Tap to replace"
+                        customFontName != null -> "$customFontName imported · Tap to use it"
+                        else -> "Import a TTF or OTF file"
+                    },
+                    onClick = { fontPicker.launch(arrayOf("*/*")) }
                 ),
                 SettingTile.SwitchTile(
                     leading = { SettingsTileIcon(R.drawable.contrast_24px) },

@@ -24,6 +24,7 @@ import androidx.core.view.WindowCompat
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
+import com.pranshulgg.recordmaster.core.data.CustomFontStore
 import com.pranshulgg.recordmaster.core.data.FontPreferences
 import com.pranshulgg.recordmaster.core.domain.AppFont
 import com.pranshulgg.recordmaster.ui.expressive.ExpressiveMotion
@@ -49,11 +50,19 @@ fun RecordMasterTheme(
     val context = LocalContext.current
     val appContext = context.applicationContext ?: context
     val fontPreferences = remember(appContext) { FontPreferences(appContext) }
+    val customFontStore = remember(appContext) { CustomFontStore(appContext) }
     val selectedFont by fontPreferences.selectedFontFlow.collectAsState(
         initial = AppFont.DEFAULT
     )
-    val appTypography = remember(selectedFont) {
-        Typography.withFontFamily(fontFamilyFor(selectedFont))
+    val customFontName by fontPreferences.customFontNameFlow.collectAsState(initial = null)
+    val customFontGeneration by fontPreferences.customFontGenerationFlow.collectAsState(initial = 0L)
+    val appTypography = remember(selectedFont, customFontName, customFontGeneration) {
+        val customFontFile = if (selectedFont == AppFont.CUSTOM) {
+            customFontStore.fontFile
+        } else {
+            null
+        }
+        Typography.withFontFamily(fontFamilyFor(selectedFont, customFontFile))
     }
 
     // The in-app switch and Android's Remove animations both reduce motion;

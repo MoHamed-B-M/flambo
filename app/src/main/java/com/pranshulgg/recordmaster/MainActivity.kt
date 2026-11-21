@@ -56,10 +56,7 @@ import com.pranshulgg.recordmaster.ui.components.CrashRecoveryDialog
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 import com.pranshulgg.recordmaster.ui.theme.AppearancePreferences
 import com.pranshulgg.recordmaster.ui.theme.RecordMasterTheme
-import com.pranshulgg.recordmaster.ui.theme.Typography
-import com.pranshulgg.recordmaster.ui.theme.fontFamilyFor
 import com.pranshulgg.recordmaster.ui.theme.parseSeedColor
-import com.pranshulgg.recordmaster.ui.theme.withFontFamily
 import com.pranshulgg.recordmaster.utils.NavTransitions
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -197,9 +194,6 @@ class MainActivity : ComponentActivity() {
             val selectedFont by app.fontPrefs.selectedFontFlow.collectAsState(
                 initial = AppFont.DEFAULT
             )
-            val appTypography = remember(selectedFont) {
-                Typography.withFontFamily(fontFamilyFor(selectedFont))
-            }
 
             val context = LocalContext.current;
 
@@ -212,7 +206,6 @@ class MainActivity : ComponentActivity() {
                 useExpressive = useExpressiveColor,
                 reduceAnimations = reduceAnimations,
                 motionSpeed = animationSpeed.multiplier,
-                typography = appTypography,
             ) {
                 // Read the scheme inside the theme so NavHost transitions follow
                 // the reduced-motion scheme when "Remove animations" is on.

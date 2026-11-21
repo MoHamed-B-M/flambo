@@ -9,10 +9,14 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.audio.AudioChunkMerger
+import com.pranshulgg.recordmaster.core.audio.PcmWavChunkWriter
+import com.pranshulgg.recordmaster.core.audio.WavAudio
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.data.RecordingRepository
 import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
+import com.pranshulgg.recordmaster.core.domain.RecordingConfig
+import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.metadata.MetadataHelper
 import kotlinx.coroutines.CoroutineScope
@@ -42,9 +46,10 @@ enum class PauseReason {
 }
 
 /**
- * Single recording pipeline for 2.0. The existing RecordingScreen (Phase 4)
- * will observe [state] instead of owning a MediaRecorder, so a take survives
- * leaving the screen and the foreground-service notification stays in sync.
+ * Single recording pipeline for 2.0. The RecordingScreen observes [state]
+ * instead of owning a MediaRecorder, so a take survives leaving the screen and
+ * the foreground-service notification stays in sync. One immutable plan is
+ * frozen at take start and drives capture, merging, and file naming.
  */
 class RecordingController(
     private val appContext: Context,
@@ -59,13 +64,22 @@ class RecordingController(
         val amplitude: Float = 0f,
         val peaks: List<Float> = emptyList(),
         val currentFile: File? = null,
-        val quality: RecordingQuality = RecordingQuality.HIGH
+        val quality: RecordingQuality = RecordingQuality.HIGH,
+        val format: RecordingFormat = RecordingFormat.DEFAULT
     )
 
     private val _state = MutableStateFlow(RecorderState())
     val state: StateFlow<RecorderState> = _state.asStateFlow()
 
+    private val _lastStartError = MutableStateFlow<String?>(null)
+    /** Explanation for the most recent refused start, for screens/automation to show. */
+    val lastStartError: StateFlow<String?> = _lastStartError.asStateFlow()
+
+    private val capabilityProber = RecordingCapabilityProber(appContext)
+
     private var recorder: MediaRecorder? = null
+    private var wavWriter: PcmWavChunkWriter? = null
+    private var activePlan: RecordingPipelinePlan? = null
     private var currentChunkFile: File? = null
     private val chunks = mutableListOf<AudioChunkMerger.Chunk>()
     private var reviewFile: File? = null
@@ -107,14 +121,34 @@ class RecordingController(
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
 
-    fun start(
+    /** Compatibility entry point for callers that only know the legacy quality setting. */
+    suspend fun start(
         quality: RecordingQuality = RecordingQuality.HIGH,
         noiseReduction: Boolean = true
-    ): Boolean {
+    ): Boolean = start(RecordingConfig(quality = quality), noiseReduction)
+
+    /**
+     * Starts a take from an immutable preference snapshot. Capabilities are
+     * probed once here; live settings changes cannot alter the active file.
+     */
+    suspend fun start(config: RecordingConfig, noiseReduction: Boolean = true): Boolean {
         if (_state.value.isRecording) return false
         if (!hasRecordAudioPermission()) return false
 
-        activeQuality = quality
+        val plan = RecordingPipelinePlanner.plan(config, capabilityProber.probe())
+        return startWithPlan(plan, noiseReduction)
+    }
+
+    private fun startWithPlan(plan: RecordingPipelinePlan, noiseReduction: Boolean): Boolean {
+        if (!plan.canStart) {
+            _lastStartError.value = plan.primaryError
+                ?: "This recording configuration isn't available on this device."
+            return false
+        }
+
+        _lastStartError.value = null
+        activePlan = plan
+        activeQuality = plan.effectiveConfig.quality
         activeNoiseReduction = noiseReduction
         chunks.clear()
         reviewFile = null
@@ -128,7 +162,10 @@ class RecordingController(
         chunkSessionDir = File(repository.tempChunksDir(), "take_${System.currentTimeMillis()}")
             .apply { mkdirs() }
 
-        if (!startNewChunk()) return false
+        if (!startNewChunk()) {
+            failStart("Couldn't open the audio input for this recording.")
+            return false
+        }
 
         _state.value = RecorderState(
             isRecording = true,
@@ -137,16 +174,12 @@ class RecordingController(
             amplitude = 0f,
             peaks = emptyList(),
             currentFile = currentChunkFile,
-            quality = quality
+            quality = activeQuality,
+            format = plan.effectiveConfig.format
         )
 
         if (!startForegroundService()) {
-            stopRecorderSafely()
-            runCatching { currentChunkFile?.delete() }
-            currentChunkFile = null
-            runCatching { chunkSessionDir?.deleteRecursively() }
-            chunkSessionDir = null
-            _state.value = RecorderState()
+            failStart("Couldn't start the recording foreground service.")
             return false
         }
 
@@ -156,14 +189,34 @@ class RecordingController(
         return true
     }
 
-    /**
-     * Opens a fresh MediaRecorder output. Pausing finalizes the previous chunk,
-     * so resuming never has to share a locked file with the review player.
-     */
+    private fun failStart(message: String) {
+        stopActiveCapture()
+        runCatching { currentChunkFile?.delete() }
+        currentChunkFile = null
+        runCatching { chunkSessionDir?.deleteRecursively() }
+        chunkSessionDir = null
+        activePlan = null
+        _lastStartError.value = message
+        _state.value = RecorderState()
+    }
+
+    /** Opens the next chunk using the capture strategy frozen at take start. */
     private fun startNewChunk(): Boolean {
+        val plan = activePlan ?: return false
         val sessionDir = chunkSessionDir ?: repository.tempChunksDir().also { chunkSessionDir = it }
         // Zero-padded so files sort chronologically for recovery/merge.
-        val file = File(sessionDir, "c${String.format(Locale.US, "%04d", chunkIndex)}.m4a")
+        val file = File(
+            sessionDir,
+            "c${String.format(Locale.US, "%04d", chunkIndex)}.${plan.chunkExtension}"
+        )
+        return when (plan.captureStrategy) {
+            RecordingCaptureStrategy.MEDIA_RECORDER_AAC -> startMediaRecorderChunk(file, plan)
+            RecordingCaptureStrategy.PCM_WAV -> startPcmChunk(file, plan)
+            RecordingCaptureStrategy.UNSUPPORTED -> false
+        }
+    }
+
+    private fun startMediaRecorderChunk(file: File, plan: RecordingPipelinePlan): Boolean {
         val mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(appContext)
         } else {
@@ -178,8 +231,11 @@ class RecordingController(
             )
             mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            mediaRecorder.setAudioSamplingRate(activeQuality.sampleRate)
-            mediaRecorder.setAudioEncodingBitRate(activeQuality.bitRate)
+            mediaRecorder.setAudioSamplingRate(plan.effectiveConfig.quality.sampleRate)
+            mediaRecorder.setAudioEncodingBitRate(plan.effectiveConfig.quality.bitRate)
+            if (plan.effectiveConfig.channels.channelCount > 1) {
+                mediaRecorder.setAudioChannels(plan.effectiveConfig.channels.channelCount)
+            }
             mediaRecorder.setOutputFile(file.absolutePath)
             mediaRecorder.prepare()
             mediaRecorder.start()
@@ -196,6 +252,35 @@ class RecordingController(
         return true
     }
 
+    private fun startPcmChunk(file: File, plan: RecordingPipelinePlan): Boolean {
+        val writer = PcmWavChunkWriter()
+        val source = if (activeNoiseReduction) {
+            MediaRecorder.AudioSource.VOICE_RECOGNITION
+        } else {
+            MediaRecorder.AudioSource.MIC
+        }
+        val started = runCatching {
+            writer.start(
+                file = file,
+                sampleRate = plan.effectiveConfig.quality.sampleRate,
+                channels = plan.effectiveConfig.channels.channelCount,
+                audioSource = source
+            )
+        }.getOrDefault(false)
+
+        if (!started) {
+            runCatching { writer.stop() }
+            runCatching { file.delete() }
+            return false
+        }
+
+        wavWriter = writer
+        currentChunkFile = file
+        chunkStartMs = System.currentTimeMillis()
+        chunkIndex++
+        return true
+    }
+
     private fun stopRecorderSafely() {
         val active = recorder
         recorder = null
@@ -203,26 +288,48 @@ class RecordingController(
         runCatching { active?.release() }
     }
 
+    /** Stops whichever capture backend the active plan selected. */
+    private fun stopActiveCapture() {
+        stopRecorderSafely()
+        wavWriter?.let { runCatching { it.stop() } }
+        wavWriter = null
+    }
+
     /** Closes the live chunk and accounts for its share of the timeline. */
     private fun finalizeCurrentChunk() {
         closeCurrentChunk()
     }
 
-    /** Stops the active recorder and records the finished chunk on the timeline. */
+    /** Stops the active capture and records the finished chunk on the timeline. */
     private fun closeCurrentChunk(): Long {
         val elapsedInChunk = (System.currentTimeMillis() - chunkStartMs).coerceAtLeast(0L)
-        stopRecorderSafely()
+        val pcmStrategy = activePlan?.captureStrategy == RecordingCaptureStrategy.PCM_WAV
+        val pcmDuration = if (pcmStrategy) {
+            val duration = wavWriter?.let { runCatching { it.stop() }.getOrDefault(0L) } ?: 0L
+            wavWriter = null
+            duration
+        } else {
+            stopActiveCapture()
+            0L
+        }
+        val duration = if (pcmStrategy && pcmDuration > 0L) pcmDuration else elapsedInChunk
         val file = currentChunkFile
         if (file != null) {
-            if (file.exists() && file.length() > 0L) {
-                chunks += AudioChunkMerger.Chunk(file, elapsedInChunk.coerceAtLeast(300L))
+            val usable = if (pcmStrategy) {
+                runCatching { (WavAudio.inspect(file)?.dataBytes ?: 0L) > 0L }
+                    .getOrDefault(false)
+            } else {
+                file.exists() && file.length() > 0L
+            }
+            if (usable) {
+                chunks += AudioChunkMerger.Chunk(file, duration.coerceAtLeast(300L))
             } else {
                 runCatching { file.delete() }
             }
         }
         currentChunkFile = null
-        totalRecordedMs += elapsedInChunk
-        return elapsedInChunk
+        totalRecordedMs += duration
+        return duration
     }
 
     /**
@@ -273,14 +380,17 @@ class RecordingController(
         }
     }
 
-    suspend fun startHeadless(): Boolean {
+    suspend fun startHeadless(): Boolean = startFromPreferences()
+
+    /** Reads one immutable preference snapshot, then hands it to the planner. */
+    suspend fun startFromPreferences(): Boolean {
         if (_state.value.isRecording) return false
         if (!hasRecordAudioPermission()) return false
         val app = appContext as? RecordMasterApp ?: return false
-        val quality = app.prefs.qualityFlow.first()
+        val config = app.prefs.recordingConfig()
         val noiseReduction = app.prefs.noiseReductionFlow.first()
         pendingTitle = generateRecordingName(System.currentTimeMillis())
-        return start(quality, noiseReduction)
+        return start(config, noiseReduction)
     }
 
     /** Automation entry point: start a take, or finish the current one. */
@@ -347,18 +457,31 @@ class RecordingController(
         resumeChunkRotation()
     }
 
+    /** Merges every finalized chunk with the strategy frozen at take start. */
+    private fun mergeChunks(
+        chunks: List<AudioChunkMerger.Chunk>,
+        target: File,
+        strategy: RecordingMergeStrategy
+    ): Boolean = when (strategy) {
+        RecordingMergeStrategy.WAV_PCM_CONCAT -> WavAudio.merge(chunks.map { it.file }, target)
+        RecordingMergeStrategy.MPEG4_STREAM_COPY -> AudioChunkMerger.merge(chunks, target)
+        RecordingMergeStrategy.UNSUPPORTED -> false
+    }
+
     /** Merges every finalized chunk into one file the review player can scrub. */
     private fun prepareReview() {
         reviewJob?.cancel()
         val app = appContext as? RecordMasterApp ?: return
+        val extension = activePlan?.finalExtension ?: RecordingFormat.DEFAULT.extension
         val target = reviewFile ?: File(
             repository.recordingsDir(),
-            "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_review.m4a"
+            "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_review.$extension"
         ).also { reviewFile = it }
         val snapshot = chunks.toList()
+        val strategy = activePlan?.mergeStrategy ?: RecordingMergeStrategy.MPEG4_STREAM_COPY
 
         reviewJob = scope.launch(Dispatchers.IO) {
-            val ok = AudioChunkMerger.merge(snapshot, target)
+            val ok = mergeChunks(snapshot, target, strategy)
             if (!ok || !target.exists() || target.length() == 0L) return@launch
             withContext(Dispatchers.Main) {
                 // The take may have been resumed or saved while merging.
@@ -390,6 +513,8 @@ class RecordingController(
         val duration = totalRecordedMs.coerceAtLeast(300L)
         val oldReviewFile = reviewFile
         val sessionDir = chunkSessionDir
+        val mergeStrategy = activePlan?.mergeStrategy ?: RecordingMergeStrategy.MPEG4_STREAM_COPY
+        val finalExtension = activePlan?.finalExtension ?: RecordingFormat.DEFAULT.extension
 
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()
@@ -411,9 +536,9 @@ class RecordingController(
         scope.launch(Dispatchers.IO) {
             val merged = File(
                 repository.recordingsDir(),
-                "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_merged.m4a"
+                "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_merged.$finalExtension"
             )
-            if (AudioChunkMerger.merge(finalized, merged)) {
+            if (mergeChunks(finalized, merged, mergeStrategy)) {
                 finalizeRecording(
                     tempFile = merged,
                     peaks = peaks,
@@ -441,7 +566,7 @@ class RecordingController(
         amplitudeJob?.cancel()
         reviewJob?.cancel()
         chunkRotationJob?.cancel()
-        stopRecorderSafely()
+        stopActiveCapture()
         (appContext as? RecordMasterApp)?.review?.stop()
         chunks.forEach { runCatching { it.file.delete() } }
         chunks.clear()
@@ -453,6 +578,8 @@ class RecordingController(
         // chunks we already finalized (the live one may not be in `chunks`).
         chunkSessionDir?.let { runCatching { it.deleteRecursively() } }
         chunkSessionDir = null
+        activePlan = null
+        _lastStartError.value = null
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()
         pendingTitle = null
@@ -464,10 +591,14 @@ class RecordingController(
         amplitudeJob = scope.launch {
             val samples = mutableListOf<Float>()
             while (_state.value.isRecording && !_state.value.isPaused) {
-                val raw = try {
-                    recorder?.maxAmplitude ?: 0
-                } catch (_: Exception) {
-                    0
+                val raw = if (activePlan?.captureStrategy == RecordingCaptureStrategy.PCM_WAV) {
+                    wavWriter?.peekAmplitude() ?: 0
+                } else {
+                    try {
+                        recorder?.maxAmplitude ?: 0
+                    } catch (_: Exception) {
+                        0
+                    }
                 }
 
                 val normalized = if (raw <= 0) {

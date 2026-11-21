@@ -23,7 +23,7 @@ class RecordingOptionsTest {
         sdkInt: Int = 36,
         platformEncoders: Set<String> = setOf("audio/mp4a-latm", "audio/opus"),
         pcmCaptureAvailable: Boolean = true,
-        ffmpegEncoders: Set<String> = setOf("flac", "libvorbis"),
+        bundledEncoders: Set<String> = setOf("flac", "vorbis"),
         inputs: List<MicrophoneInput> = emptyList(),
         defaultMaxInputChannels: Int = 2,
         inputEnumerationAvailable: Boolean = true,
@@ -34,7 +34,7 @@ class RecordingOptionsTest {
         sdkInt = sdkInt,
         platformAudioEncoderMimes = platformEncoders,
         pcmCaptureAvailable = pcmCaptureAvailable,
-        ffmpegAudioEncoders = ffmpegEncoders,
+        bundledAudioEncoders = bundledEncoders,
         microphoneInputs = inputs,
         defaultMaxInputChannels = defaultMaxInputChannels,
         inputEnumerationAvailable = inputEnumerationAvailable,
@@ -57,9 +57,9 @@ class RecordingOptionsTest {
         assertEquals(29, RecordingFormat.OGG_OPUS.minSdk)
         assertEquals("audio/opus", RecordingFormat.OGG_OPUS.platformEncoderMime)
 
-        assertEquals("flac", RecordingFormat.FLAC.ffmpegEncoderName)
+        assertEquals("flac", RecordingFormat.FLAC.bundledEncoderName)
         assertTrue(RecordingFormat.FLAC.isLossless)
-        assertEquals("libvorbis", RecordingFormat.OGG_VORBIS.ffmpegEncoderName)
+        assertEquals("vorbis", RecordingFormat.OGG_VORBIS.bundledEncoderName)
         assertEquals("ogg", RecordingFormat.OGG_VORBIS.extension)
     }
 
@@ -99,31 +99,21 @@ class RecordingOptionsTest {
 
     @Test
     fun flacAndVorbisRequireTheBundledEncoders() {
-        val noExternalCodec = snapshot(ffmpegEncoders = emptySet())
-        assertFalse(RecordingCapabilities.supportFor(RecordingFormat.FLAC, noExternalCodec).isSupported)
-        assertFalse(RecordingCapabilities.supportFor(RecordingFormat.OGG_VORBIS, noExternalCodec).isSupported)
+        val noBundledCodec = snapshot(bundledEncoders = emptySet())
+        assertFalse(RecordingCapabilities.supportFor(RecordingFormat.FLAC, noBundledCodec).isSupported)
+        assertFalse(RecordingCapabilities.supportFor(RecordingFormat.OGG_VORBIS, noBundledCodec).isSupported)
 
-        val onlyFlac = snapshot(ffmpegEncoders = setOf("flac"))
+        val onlyFlac = snapshot(bundledEncoders = setOf("flac"))
         assertTrue(RecordingCapabilities.supportFor(RecordingFormat.FLAC, onlyFlac).isSupported)
         assertFalse(RecordingCapabilities.supportFor(RecordingFormat.OGG_VORBIS, onlyFlac).isSupported)
     }
 
     @Test
-    fun encodingListParserReadsOnlyAudioEncoderNames() {
-        val output = """
-            Encoders:
-             V....D h264                  H.264 / AVC
-             A..... aac                   AAC (Advanced Audio Coding)
-             A..... flac                  FLAC (Free Lossless Audio Codec)
-             A..... libvorbis             Vorbis
-             A..... pcm_s16le             PCM signed 16-bit little-endian
-             S..... text                  SRT subtitles
-        """.trimIndent()
-
-        val parsed = RecordingCapabilities.parseFfmpegEncoderOutput(output)
-        assertTrue(parsed.containsAll(setOf("aac", "flac", "libvorbis", "pcm_s16le")))
-        assertFalse(parsed.contains("h264"))
-        assertFalse(parsed.contains("text"))
+    fun bundledEncoderNamesAreStable() {
+        assertEquals("flac", RecordingFormat.FLAC.bundledEncoderName)
+        assertEquals("vorbis", RecordingFormat.OGG_VORBIS.bundledEncoderName)
+        assertTrue(RecordingFormat.FLAC.usesExternalCodec)
+        assertTrue(RecordingFormat.OGG_VORBIS.usesExternalCodec)
     }
 
     @Test
@@ -158,7 +148,7 @@ class RecordingOptionsTest {
     fun unsupportedFormatIsAnErrorAndIsNeverSilentlyReplaced() {
         val result = RecordingCapabilities.validate(
             RecordingConfig(format = RecordingFormat.FLAC),
-            snapshot(ffmpegEncoders = emptySet())
+            snapshot(bundledEncoders = emptySet())
         )
 
         assertFalse(result.canStart)

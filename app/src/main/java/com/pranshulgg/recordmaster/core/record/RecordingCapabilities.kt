@@ -12,7 +12,7 @@ data class RecordingCapabilitySnapshot(
     val sdkInt: Int,
     val platformAudioEncoderMimes: Set<String>,
     val pcmCaptureAvailable: Boolean,
-    val ffmpegAudioEncoders: Set<String>,
+    val bundledAudioEncoders: Set<String>,
     val microphoneInputs: List<MicrophoneInput>,
     val defaultMaxInputChannels: Int,
     val inputEnumerationAvailable: Boolean,
@@ -52,18 +52,6 @@ data class RecordingConfigValidation(
 /** Pure format/channel/location validation shared by settings and the recorder. */
 object RecordingCapabilities {
 
-    private val ENCODER_LINE = Regex("""^A\S{5}\s+(\S+)""")
-
-    /** Parses `ffmpeg -encoders` output; only audio encoder names are returned. */
-    fun parseFfmpegEncoderOutput(output: String): Set<String> =
-        output.lineSequence()
-            .map { it.trim() }
-            .mapNotNull { line -> ENCODER_LINE.find(line)?.groupValues?.get(1) }
-            .flatMap { it.split(Regex("[,/ ]+")).asSequence() }
-            .map { it.trim().lowercase(Locale.US) }
-            .filter { it.isNotBlank() }
-            .toSet()
-
     fun supportFor(format: RecordingFormat, snapshot: RecordingCapabilitySnapshot): FormatSupport {
         if (snapshot.sdkInt < format.minSdk) {
             return unsupported(format, "${format.label} requires ${format.minSdkLabel} or later.")
@@ -79,7 +67,7 @@ object RecordingCapabilities {
                 }
             }
             AudioCodec.OPUS -> platformEncoderSupport(format, snapshot, "Opus")
-            AudioCodec.FLAC, AudioCodec.VORBIS -> externalEncoderSupport(format, snapshot)
+            AudioCodec.FLAC, AudioCodec.VORBIS -> bundledEncoderSupport(format, snapshot)
         }
     }
 
@@ -143,13 +131,13 @@ object RecordingCapabilities {
         return FormatSupport(format, true)
     }
 
-    private fun externalEncoderSupport(
+    private fun bundledEncoderSupport(
         format: RecordingFormat,
         snapshot: RecordingCapabilitySnapshot
     ): FormatSupport {
-        val encoder = format.ffmpegEncoderName?.lowercase(Locale.US)
-        if (encoder == null || snapshot.ffmpegAudioEncoders.none { it.equals(encoder, ignoreCase = true) }) {
-            return unsupported(format, "${format.label} encoder is not available in the bundled audio codec.")
+        val encoder = format.bundledEncoderName?.lowercase(Locale.US)
+        if (encoder == null || snapshot.bundledAudioEncoders.none { it.equals(encoder, ignoreCase = true) }) {
+            return unsupported(format, "${format.label} encoder is not available in the bundled codec libraries.")
         }
         return FormatSupport(format, true)
     }

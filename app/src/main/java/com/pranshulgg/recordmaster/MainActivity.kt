@@ -484,10 +484,8 @@ class MainActivity : ComponentActivity() {
             SnackbarManager.showMessage("Microphone permission is required")
             return
         }
-        val quality = app.prefs.qualityFlow.first()
-        val noiseReduction = app.prefs.noiseReductionFlow.first()
-        recorder.start(quality, noiseReduction)
-        RecordingShortcut.refresh(this, true, false)
+        val started = recorder.startFromPreferences()
+        RecordingShortcut.refresh(this, started, false)
     }
 
     private suspend fun pauseFromExternal() {

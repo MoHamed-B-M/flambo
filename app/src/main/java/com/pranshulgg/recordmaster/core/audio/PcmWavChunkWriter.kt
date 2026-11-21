@@ -1,5 +1,6 @@
 package com.pranshulgg.recordmaster.core.audio
 
+import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import java.io.File
@@ -27,6 +28,9 @@ class PcmWavChunkWriter {
 
     val isActive: Boolean get() = running
 
+    // RecordingController checks RECORD_AUDIO before it opens any capture backend.
+    // This writer is internal to that pipeline and never starts a take on its own.
+    @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION")
     fun start(file: File, sampleRate: Int, channels: Int, audioSource: Int): Boolean {
         if (running || readerThread?.isAlive == true) return false

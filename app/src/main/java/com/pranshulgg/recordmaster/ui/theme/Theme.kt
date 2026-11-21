@@ -8,6 +8,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.Typography as MaterialTypography
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -37,6 +38,7 @@ fun RecordMasterTheme(
     useExpressive: Boolean = true,
     reduceAnimations: Boolean = false,
     motionSpeed: Float = 1f,
+    typography: MaterialTypography = Typography,
     content: @Composable () -> Unit,
 ) {
     // The in-app switch and Android's Remove animations both reduce motion;
@@ -91,7 +93,7 @@ fun RecordMasterTheme(
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = typography,
             shapes = ExpressiveShapes,
             motionScheme = ExpressiveMotion.motionScheme(effectiveReducedMotion, effectiveSpeed),
             content = content

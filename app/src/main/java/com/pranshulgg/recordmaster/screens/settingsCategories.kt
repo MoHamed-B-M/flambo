@@ -52,6 +52,7 @@ import com.github.skydoves.colorpicker.compose.ColorPickerController
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
+import com.pranshulgg.recordmaster.core.domain.AppFont
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.ui.components.ColorPickerSheetTheme
 import com.pranshulgg.recordmaster.ui.components.SettingSection
@@ -133,7 +134,9 @@ fun AppLooksSettingsPage(
     onDynamicColorChanged: (Boolean) -> Unit,
     onExpressiveColorChanged: (Boolean) -> Unit,
     onBlackAndWhiteChanged: (Boolean) -> Unit,
-    onAmoledModeChanged: (Boolean) -> Unit
+    onAmoledModeChanged: (Boolean) -> Unit,
+    currentFont: AppFont,
+    onFontSelected: (AppFont) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val isSysDark = isSystemInDarkTheme()
@@ -206,6 +209,17 @@ fun AppLooksSettingsPage(
                         AppThemeMode.persist(mode, isSysDark)
                         onThemeChanged(mode)
                     }
+                ),
+                SettingTile.DialogOptionTile(
+                    leading = { SettingsTileIcon(R.drawable.label_24px) },
+                    title = "App font",
+                    options = AppFont.available.map { it.displayName },
+                    selectedOption = currentFont.displayName,
+                    onOptionSelected = { name ->
+                        AppFont.available.firstOrNull { it.displayName == name }
+                            ?.let(onFontSelected)
+                    },
+                    dialogTitle = "App font"
                 ),
                 SettingTile.SwitchTile(
                     leading = { SettingsTileIcon(R.drawable.contrast_24px) },

@@ -30,6 +30,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
+import com.pranshulgg.recordmaster.core.domain.AppFont
 import com.pranshulgg.recordmaster.core.record.RecordingShortcut
 import com.pranshulgg.recordmaster.core.recovery.RecoveryOutcome
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -55,7 +56,10 @@ import com.pranshulgg.recordmaster.ui.components.CrashRecoveryDialog
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 import com.pranshulgg.recordmaster.ui.theme.AppearancePreferences
 import com.pranshulgg.recordmaster.ui.theme.RecordMasterTheme
+import com.pranshulgg.recordmaster.ui.theme.Typography
+import com.pranshulgg.recordmaster.ui.theme.fontFamilyFor
 import com.pranshulgg.recordmaster.ui.theme.parseSeedColor
+import com.pranshulgg.recordmaster.ui.theme.withFontFamily
 import com.pranshulgg.recordmaster.utils.NavTransitions
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -190,6 +194,12 @@ class MainActivity : ComponentActivity() {
             val animationSpeed by app.prefs.animationSpeedFlow.collectAsState(
                 initial = AnimationSpeed.Default
             )
+            val selectedFont by app.fontPrefs.selectedFontFlow.collectAsState(
+                initial = AppFont.DEFAULT
+            )
+            val appTypography = remember(selectedFont) {
+                Typography.withFontFamily(fontFamilyFor(selectedFont))
+            }
 
             val context = LocalContext.current;
 
@@ -202,6 +212,7 @@ class MainActivity : ComponentActivity() {
                 useExpressive = useExpressiveColor,
                 reduceAnimations = reduceAnimations,
                 motionSpeed = animationSpeed.multiplier,
+                typography = appTypography,
             ) {
                 // Read the scheme inside the theme so NavHost transitions follow
                 // the reduced-motion scheme when "Remove animations" is on.
@@ -269,6 +280,10 @@ class MainActivity : ComponentActivity() {
                         },
                         onAmoledModeChanged = { enabled ->
                             useAmoledMode = enabled
+                        },
+                        currentFont = selectedFont,
+                        onFontSelected = { font ->
+                            scope.launch { app.fontPrefs.setSelectedFont(font) }
                         },
                     ) }
                     composable("SettingsAccessibility") {

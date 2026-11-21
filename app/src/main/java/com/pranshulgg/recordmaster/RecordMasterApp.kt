@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.pranshulgg.recordmaster.core.data.AppDatabase
+import com.pranshulgg.recordmaster.core.data.FontPreferences
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.RecordingRepository
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
@@ -41,6 +42,7 @@ class RecordMasterApp : Application() {
     @Volatile var recordingPrefix: String = PreferencesManager.DEFAULT_PREFIX
 
     val prefs by lazy { PreferencesManager(this) }
+    val fontPrefs by lazy { FontPreferences(this) }
 
     val repository by lazy {
         RecordingRepository(

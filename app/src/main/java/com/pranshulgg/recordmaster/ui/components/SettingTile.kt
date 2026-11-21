@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +72,7 @@ sealed class SettingTile {
         val selectedOption: String?,
         val onOptionSelected: (String) -> Unit,
         val optionLabel: (String) -> String = { it },
+        val optionStyle: (String) -> TextStyle = { TextStyle.Default },
         val dialogTitle: String? = null,
         val enabled: Boolean = true
     ) : SettingTile()
@@ -208,6 +210,7 @@ fun SettingSection(
                     selectedOption = tile.selectedOption,
                     onOptionSelected = tile.onOptionSelected,
                     optionLabel = tile.optionLabel,
+                    optionStyle = tile.optionStyle,
                     dialogTitle = tile.dialogTitle,
                     enabled = tile.enabled
                 )

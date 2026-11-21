@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -65,6 +66,7 @@ import com.pranshulgg.recordmaster.ui.components.Symbol
 import com.pranshulgg.recordmaster.ui.expressive.rememberSystemReducedMotion
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
 import com.pranshulgg.recordmaster.ui.theme.AppearancePreferences
+import com.pranshulgg.recordmaster.ui.theme.fontFamilyFor
 import com.pranshulgg.recordmaster.ui.theme.parseSeedColor
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -171,6 +173,19 @@ fun AppLooksSettingsPage(
     } else {
         currentFont.displayName
     }
+
+    // Every option is rendered in its own face, so the rounded style can be
+    // judged in the picker before it is applied. Families are built once here.
+    val fontPreviewFamilies = remember {
+        AppFont.available.associate { it.displayName to fontFamilyFor(it) }
+    }
+    val fontPreviewBaseStyle = MaterialTheme.typography.bodyLarge
+    val fontOptionStyle = { name: String ->
+        fontPreviewBaseStyle.copy(
+            fontFamily = fontPreviewFamilies[name] ?: FontFamily.Default
+        )
+    }
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val controller = remember { ColorPickerController() }
 
@@ -254,6 +269,7 @@ fun AppLooksSettingsPage(
                         AppFont.available.firstOrNull { it.displayName == name }
                             ?.let(onFontSelected)
                     },
+                    optionStyle = fontOptionStyle,
                     dialogTitle = "App font"
                 ),
                 SettingTile.ActionTile(

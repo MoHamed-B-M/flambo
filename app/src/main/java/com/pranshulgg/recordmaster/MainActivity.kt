@@ -30,7 +30,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
-import com.pranshulgg.recordmaster.core.domain.AppFont
 import com.pranshulgg.recordmaster.core.record.RecordingShortcut
 import com.pranshulgg.recordmaster.core.recovery.RecoveryOutcome
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -191,8 +190,9 @@ class MainActivity : ComponentActivity() {
             val animationSpeed by app.prefs.animationSpeedFlow.collectAsState(
                 initial = AnimationSpeed.Default
             )
+            val initialFont = remember { app.fontPrefs.selectedFontImmediate }
             val selectedFont by app.fontPrefs.selectedFontFlow.collectAsState(
-                initial = AppFont.DEFAULT
+                initial = initialFont
             )
             val customFontName by app.fontPrefs.customFontNameFlow.collectAsState(
                 initial = null

@@ -11,9 +11,6 @@ import android.media.AudioRecord
 import android.media.MediaCodecList
 import android.os.Build
 import androidx.core.content.ContextCompat
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFmpegKitConfig
-import com.arthenica.ffmpegkit.ReturnCode
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInputKind
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +38,7 @@ class RecordingCapabilityProber(private val context: Context) {
             sdkInt = Build.VERSION.SDK_INT,
             platformAudioEncoderMimes = platformAudioEncoderMimes(),
             pcmCaptureAvailable = pcmCaptureAvailable(),
-            ffmpegAudioEncoders = FfmpegEncoderCatalog.read(),
+            bundledAudioEncoders = bundledEncoders(),
             microphoneInputs = inputs.inputs,
             defaultMaxInputChannels = inputs.inputs.maxOfOrNull { it.maxChannels } ?: 1,
             inputEnumerationAvailable = inputs.enumerationAvailable,
@@ -152,32 +149,14 @@ class RecordingCapabilityProber(private val context: Context) {
         manager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true ||
             manager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true
     }.getOrDefault(false)
-}
 
-/** Caches the bundled codec's encoder list; the native library never changes at runtime. */
-private object FfmpegEncoderCatalog {
-
-    @Volatile
-    private var cached: Set<String>? = null
-
-    suspend fun read(): Set<String> = withContext(Dispatchers.IO) {
-        cached?.let { return@withContext it }
-
-        val result = runCatching {
-            if (FFmpegKitConfig.getFFmpegVersion().isNullOrBlank()) {
-                emptySet()
-            } else {
-                val session = FFmpegKit.execute("-hide_banner -encoders")
-                val returnCode = session.returnCode
-                if (returnCode == null || !ReturnCode.isSuccess(returnCode)) {
-                    emptySet()
-                } else {
-                    RecordingCapabilities.parseFfmpegEncoderOutput(session.output.orEmpty())
-                }
-            }
-        }.getOrDefault(emptySet())
-
-        cached = result
-        result
+    /** The encoder libraries are compile-time dependencies; check their classes load. */
+    private fun bundledEncoders(): Set<String> = buildSet {
+        if (isClassAvailable("net.sourceforge.javaflacencoder.FLAC_FileEncoder")) add("flac")
+        if (isClassAvailable("com.github.axet.vorbisjni.Vorbis")) add("vorbis")
     }
+
+    private fun isClassAvailable(name: String): Boolean = runCatching {
+        Class.forName(name, false, RecordingCapabilityProber::class.java.classLoader)
+    }.isSuccess
 }

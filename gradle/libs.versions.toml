@@ -24,9 +24,10 @@ listenFuture = "1.0"
 coroutines = "1.9.0"
 documentfile = "1.0.1"
 jaudiotagger = "3.0.1"
-# LGPL 3.0 audio package: adds the FLAC and libvorbis encoders/muxers the
-# platform does not expose through MediaRecorder. Pinned to final stable LTS.
-ffmpegKit = "6.0.LTS"
+# LGPL-compatible bundled encoders the platform does not expose through
+# MediaRecorder: pure-Java FLAC and the Android libvorbis wrapper.
+javaFlacEncoder = "0.3.8"
+androidVorbis = "1.0.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -61,7 +62,8 @@ guava-listenablefuture = { group = "com.google.guava", name = "listenablefuture"
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
-ffmpeg-kit-audio = { group = "com.arthenica", name = "ffmpeg-kit-audio", version.ref = "ffmpegKit" }
+java-flac-encoder = { group = "com.github.axet", name = "java-flac-encoder", version.ref = "javaFlacEncoder" }
+android-vorbis = { group = "com.github.axet", name = "vorbis", version.ref = "androidVorbis" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

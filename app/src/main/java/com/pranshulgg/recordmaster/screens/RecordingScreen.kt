@@ -33,6 +33,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -584,19 +586,26 @@ private fun ReviewControls(
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilledTonalButton(onClick = onResume, modifier = Modifier.weight(1f)) {
-                Symbol(R.drawable.fiber_manual_record_24px, size = 20.dp)
-                Spacer(Modifier.width(6.dp))
-                Text("Resume recording", fontWeight = FontWeight.Bold)
-            }
-            Button(onClick = onSave, modifier = Modifier.weight(1f)) {
-                Symbol(R.drawable.check, size = 20.dp)
-                Spacer(Modifier.width(6.dp))
-                Text("Save & exit", fontWeight = FontWeight.Bold)
+        // Both actions share the available width on normal phones and tablets.
+        // On a very narrow window they stack instead, so a label is never
+        // squeezed until its glyphs clip or wrap into the icon.
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            if (maxWidth < 320.dp) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ResumeActionButton(Modifier.fillMaxWidth(), onResume)
+                    SaveActionButton(Modifier.fillMaxWidth(), onSave)
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ResumeActionButton(Modifier.weight(1f), onResume)
+                    SaveActionButton(Modifier.weight(1f), onSave)
+                }
             }
         }
 
@@ -607,6 +616,57 @@ private fun ReviewControls(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun ResumeActionButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 56.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        ReviewActionButtonContent(R.drawable.fiber_manual_record_24px, "Resume recording")
+    }
+}
+
+@Composable
+private fun SaveActionButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 56.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        ReviewActionButtonContent(R.drawable.check, "Save & exit")
+    }
+}
+
+/**
+ * Shared icon + label content for the paused-take actions. The icon keeps its
+ * size, the label owns the remaining width and may wrap to two lines, and the
+ * whole group stays vertically centred even when the button grows taller.
+ */
+@Composable
+private fun ReviewActionButtonContent(icon: Int, label: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+            Symbol(icon, size = 20.dp)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            softWrap = true,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

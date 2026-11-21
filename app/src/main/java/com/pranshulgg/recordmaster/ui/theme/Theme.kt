@@ -1,6 +1,8 @@
 package com.pranshulgg.recordmaster.ui.theme
 
 import android.app.Activity
+import android.graphics.Color as AndroidColor
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +32,8 @@ fun RecordMasterTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     seedColor: Color = Color.Yellow,
+    blackAndWhite: Boolean = false,
+    amoledMode: Boolean = false,
     useExpressive: Boolean = true,
     reduceAnimations: Boolean = false,
     motionSpeed: Float = 1f,
@@ -45,7 +49,13 @@ fun RecordMasterTheme(
         ExpressiveMotion.speed(motionSpeed)
     }
 
-    val colorScheme = when {
+    // AMOLED is a dark-mode-only treatment: in light mode the toggle is kept
+    // but has no effect, so switching themes never needs a second decision.
+    val amoledActive = amoledMode && darkTheme
+
+    val baseColorScheme = when {
+        blackAndWhite -> monochromeColorScheme(dark = darkTheme)
+
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -60,12 +70,18 @@ fun RecordMasterTheme(
             )
         }
     }
+    val colorScheme = if (amoledActive) baseColorScheme.withAmoledSurfaces() else baseColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            // Edge-to-edge lets the window background show through the bars;
+            // matching it to the canvas avoids a light rim around AMOLED dark.
+            window.setBackgroundDrawable(
+                ColorDrawable(if (amoledActive) AndroidColor.BLACK else AndroidColor.TRANSPARENT)
+            )
         }
     }
 

@@ -37,6 +37,7 @@ import com.pranshulgg.recordmaster.ui.components.SettingsTileIcon
 import com.pranshulgg.recordmaster.ui.components.Symbol
 import com.pranshulgg.recordmaster.ui.expressive.rememberSystemReducedMotion
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
+import com.pranshulgg.recordmaster.ui.theme.AppearancePreferences
 
 /**
  * Settings is an index, not a form: every group of controls is one row that
@@ -74,8 +75,11 @@ fun SettingsPage(
     val automationOn = PreferencesHelper.getBool(AutomationTriggers.PREF_KEY) ?: false
     val wallpaperColor = PreferencesHelper.getBool("useDynamicColors") ?: false
     val customColor = PreferencesHelper.getBool("useCustomColor") ?: false
+    val blackAndWhite = AppearancePreferences.blackAndWhite
+    val amoledMode = AppearancePreferences.amoledMode
 
     val colorSource = when {
+        blackAndWhite -> if (amoledMode) "Black and white \u00B7 AMOLED" else "Black and white"
         wallpaperColor -> "Wallpaper colors"
         customColor -> "Custom color"
         else -> "Default color"

@@ -60,6 +60,7 @@ import com.pranshulgg.recordmaster.ui.components.SettingsTileIcon
 import com.pranshulgg.recordmaster.ui.components.Symbol
 import com.pranshulgg.recordmaster.ui.expressive.rememberSystemReducedMotion
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
+import com.pranshulgg.recordmaster.ui.theme.AppearancePreferences
 import com.pranshulgg.recordmaster.ui.theme.parseSeedColor
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -130,10 +131,13 @@ fun AppLooksSettingsPage(
     onThemeChanged: (AppThemeMode) -> Unit,
     onSeedChanged: (String) -> Unit,
     onDynamicColorChanged: (Boolean) -> Unit,
-    onExpressiveColorChanged: (Boolean) -> Unit
+    onExpressiveColorChanged: (Boolean) -> Unit,
+    onBlackAndWhiteChanged: (Boolean) -> Unit,
+    onAmoledModeChanged: (Boolean) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val isSysDark = isSystemInDarkTheme()
+    val darkThemeActive = currentTheme.isDark(isSysDark)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val controller = remember { ColorPickerController() }
 
@@ -151,6 +155,12 @@ fun AppLooksSettingsPage(
     }
     var useExpressiveColor by remember {
         mutableStateOf(PreferencesHelper.getBool("useExpressiveColor") ?: true)
+    }
+    var useBlackAndWhite by remember {
+        mutableStateOf(AppearancePreferences.blackAndWhite)
+    }
+    var useAmoledMode by remember {
+        mutableStateOf(AppearancePreferences.amoledMode)
     }
 
     fun hideColorSheet() {
@@ -174,7 +184,7 @@ fun AppLooksSettingsPage(
                     .width(24.dp)
                     .height(36.dp)
                     .background(seedToColor(seedColor))
-                    .clickable {
+                    .clickable(enabled = !useBlackAndWhite) {
                         showColorSheet = true
                     }
             )
@@ -198,15 +208,55 @@ fun AppLooksSettingsPage(
                     }
                 ),
                 SettingTile.SwitchTile(
+                    leading = { SettingsTileIcon(R.drawable.contrast_24px) },
+                    title = "Black and white",
+                    description = if (useBlackAndWhite) {
+                        "On \u00B7 Matches the app icon"
+                    } else {
+                        "Pure black and white palette"
+                    },
+                    checked = useBlackAndWhite,
+                    onCheckedChange = { checked ->
+                        AppearancePreferences.blackAndWhite = checked
+                        useBlackAndWhite = checked
+                        onBlackAndWhiteChanged(checked)
+                    }
+                ),
+                SettingTile.SwitchTile(
+                    leading = { SettingsTileIcon(R.drawable.dark_mode_24px) },
+                    title = "AMOLED mode",
+                    description = if (darkThemeActive) {
+                        "Pure black surfaces in dark theme"
+                    } else {
+                        "Applies when dark theme is active"
+                    },
+                    checked = useAmoledMode,
+                    onCheckedChange = { checked ->
+                        AppearancePreferences.amoledMode = checked
+                        useAmoledMode = checked
+                        onAmoledModeChanged(checked)
+                    }
+                )
+            )
+        )
+        Spacer(Modifier.height(10.dp))
+        SettingSection(
+            title = "Color palette",
+            tiles = listOf(
+                SettingTile.SwitchTile(
                     leading = {
                         if (useCustomColor) SeedSwatch() else SettingsTileIcon(
                             R.drawable.colorize_24px
                         )
                     },
                     title = "Use custom color",
-                    description = "Select a seed color to generate the theme",
+                    description = if (useBlackAndWhite) {
+                        "Unavailable in black and white"
+                    } else {
+                        "Select a seed color to generate the theme"
+                    },
                     checked = useCustomColor,
-                    enabled = !useDynamicColor,
+                    enabled = !useDynamicColor && !useBlackAndWhite,
                     onCheckedChange = { checked ->
                         PreferencesHelper.setBool("useCustomColor", checked)
                         useCustomColor = checked
@@ -220,9 +270,13 @@ fun AppLooksSettingsPage(
                 SettingTile.SwitchTile(
                     leading = { SettingsTileIcon(R.drawable.image_24px) },
                     title = "Dynamic colors",
-                    description = "Use wallpaper colors",
+                    description = if (useBlackAndWhite) {
+                        "Unavailable in black and white"
+                    } else {
+                        "Use wallpaper colors"
+                    },
                     checked = useDynamicColor,
-                    enabled = !useCustomColor,
+                    enabled = !useCustomColor && !useBlackAndWhite,
                     onCheckedChange = { checked ->
                         PreferencesHelper.setBool("useDynamicColors", checked)
                         PreferencesHelper.setBool("useCustomColor", !checked)

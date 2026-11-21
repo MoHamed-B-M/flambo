@@ -23,9 +23,23 @@ private val CatalogWeights = listOf(
     FontWeight.Bold,
 )
 
+/**
+ * Google Sans Flex with its ROND axis pinned to 100, bundled as four static
+ * weights. Keeping the weights as real outlines means bold titles stay genuinely
+ * rounded instead of being synthesized from the regular face, and the font works
+ * offline without a Play Services font download.
+ */
+val GoogleSansRounded = FontFamily(
+    ComposeFont(R.font.google_sans_rounded, FontWeight.Normal),
+    ComposeFont(R.font.google_sans_rounded_medium, FontWeight.Medium),
+    ComposeFont(R.font.google_sans_rounded_semibold, FontWeight.SemiBold),
+    ComposeFont(R.font.google_sans_rounded_bold, FontWeight.Bold),
+)
+
 /** Resolves a persisted font choice to the family used by Compose. */
 fun fontFamilyFor(font: AppFont, customFontFile: File? = null): FontFamily {
     if (font == AppFont.DEFAULT) return FontFamily.Default
+    if (font == AppFont.MATERIAL_3_EXPRESSIVE_ROUNDED) return GoogleSansRounded
 
     if (font == AppFont.CUSTOM) {
         val file = customFontFile?.takeIf { it.exists() } ?: return FontFamily.Default

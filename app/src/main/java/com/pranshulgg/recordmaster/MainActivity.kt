@@ -53,6 +53,7 @@ import com.pranshulgg.recordmaster.screens.TermsPage
 import com.pranshulgg.recordmaster.ui.components.AnnouncementSheet
 import com.pranshulgg.recordmaster.ui.components.CrashRecoveryDialog
 import com.pranshulgg.recordmaster.ui.theme.AppThemeMode
+import com.pranshulgg.recordmaster.ui.theme.AppearancePreferences
 import com.pranshulgg.recordmaster.ui.theme.RecordMasterTheme
 import com.pranshulgg.recordmaster.ui.theme.parseSeedColor
 import com.pranshulgg.recordmaster.utils.NavTransitions
@@ -179,6 +180,12 @@ class MainActivity : ComponentActivity() {
                     PreferencesHelper.getBool("useExpressiveColor") ?: true
                 )
             }
+            var useBlackAndWhite by remember {
+                mutableStateOf(AppearancePreferences.blackAndWhite)
+            }
+            var useAmoledMode by remember {
+                mutableStateOf(AppearancePreferences.amoledMode)
+            }
             val reduceAnimations by app.prefs.reduceAnimationsFlow.collectAsState(initial = false)
             val animationSpeed by app.prefs.animationSpeedFlow.collectAsState(
                 initial = AnimationSpeed.Default
@@ -190,6 +197,8 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 seedColor = parseSeedColor(colorSeed),
                 dynamicColor = useDynamicColor,
+                blackAndWhite = useBlackAndWhite,
+                amoledMode = useAmoledMode,
                 useExpressive = useExpressiveColor,
                 reduceAnimations = reduceAnimations,
                 motionSpeed = animationSpeed.multiplier,
@@ -254,6 +263,12 @@ class MainActivity : ComponentActivity() {
                         },
                         onExpressiveColorChanged = { useExpressiveColors ->
                             useExpressiveColor = useExpressiveColors
+                        },
+                        onBlackAndWhiteChanged = { enabled ->
+                            useBlackAndWhite = enabled
+                        },
+                        onAmoledModeChanged = { enabled ->
+                            useAmoledMode = enabled
                         },
                     ) }
                     composable("SettingsAccessibility") {

@@ -51,8 +51,9 @@ fun RecordMasterTheme(
     val appContext = context.applicationContext ?: context
     val fontPreferences = remember(appContext) { FontPreferences(appContext) }
     val customFontStore = remember(appContext) { CustomFontStore(appContext) }
+    val initialFont = remember(appContext) { fontPreferences.selectedFontImmediate }
     val selectedFont by fontPreferences.selectedFontFlow.collectAsState(
-        initial = AppFont.DEFAULT
+        initial = initialFont
     )
     val customFontName by fontPreferences.customFontNameFlow.collectAsState(initial = null)
     val customFontGeneration by fontPreferences.customFontGenerationFlow.collectAsState(initial = 0L)

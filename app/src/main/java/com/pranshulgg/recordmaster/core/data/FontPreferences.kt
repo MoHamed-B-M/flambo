@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pranshulgg.recordmaster.core.domain.AppFont
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 
 private val Context.fontPreferencesDataStore by preferencesDataStore(name = "recordmaster_font_prefs")
 
@@ -39,6 +41,14 @@ class FontPreferences(private val context: Context) {
         }
 
     suspend fun selectedFont(): AppFont = selectedFontFlow.first()
+
+    /**
+     * Synchronous first read for theme composition. Starting from DEFAULT here
+     * would flash system Roboto on every cold start before DataStore emits the
+     * saved choice, including Google Sans Rounded.
+     */
+    val selectedFontImmediate: AppFont
+        get() = runBlocking(Dispatchers.IO) { selectedFont() }
 
     suspend fun setSelectedFont(font: AppFont) {
         context.fontPreferencesDataStore.edit { prefs ->

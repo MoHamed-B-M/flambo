@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +52,7 @@ fun <T> DialogOptionTile(
     selectedOption: T?,
     onOptionSelected: (T) -> Unit,
     optionLabel: (T) -> String = { it.toString() },
+    optionStyle: (T) -> TextStyle = { TextStyle.Default },
     leading: @Composable (() -> Unit)? = null,
     shapes: RoundedCornerShape,
     dialogTitle: String? = null,
@@ -82,6 +84,7 @@ fun <T> DialogOptionTile(
                     selectedOption?.let {
                         Text(
                             optionLabel(it),
+                            style = optionStyle(it),
                             color = if (enabled) MaterialTheme.colorScheme.tertiary
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -137,6 +140,7 @@ fun <T> DialogOptionTile(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     optionLabel(option),
+                                    style = optionStyle(option),
                                     fontSize = 15.sp
                                 )
                             }

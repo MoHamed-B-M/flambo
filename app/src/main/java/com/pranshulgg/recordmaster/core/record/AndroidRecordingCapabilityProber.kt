@@ -1,6 +1,7 @@
 package com.pranshulgg.recordmaster.core.record
 
 import android.Manifest
+import android.annotation.RequiresApi
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
@@ -97,7 +98,11 @@ class RecordingCapabilityProber(private val context: Context) {
         if (kind == MicrophoneInputKind.BLUETOOTH && !bluetoothAvailable) return null
 
         val productName = device.productName?.toString()?.trim().orEmpty()
-        val address = runCatching { device.address }.getOrDefault("").trim()
+        val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            deviceAddress(device)
+        } else {
+            ""
+        }
         val discriminator = address.ifBlank { productName.ifBlank { device.type.toString() } }
         val prefix = when (kind) {
             MicrophoneInputKind.BUILT_IN -> "builtin"
@@ -129,6 +134,10 @@ class RecordingCapabilityProber(private val context: Context) {
             maxChannels = maxChannels
         )
     }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun deviceAddress(device: AudioDeviceInfo): String =
+        runCatching { device.address }.getOrDefault("").trim()
 
     /** A2DP and other sinks are deliberately excluded; only source devices are microphones. */
     private fun microphoneKind(type: Int): MicrophoneInputKind? = when (type) {

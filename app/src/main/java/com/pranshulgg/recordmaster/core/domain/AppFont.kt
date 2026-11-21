@@ -19,12 +19,12 @@ enum class AppFont(
     // "Sans Flex" is surfaced with a shorter label; Roboto Flex is the
     // downloadable family that provides the variable sans experience.
     SANS_FLEX("sans_flex", "Sans Flex", "Roboto Flex"),
-    // Material 3 Expressive's rounded, variable sans is represented by
-    // Google Sans Flex, the closest family available through Google Fonts.
+    // Material 3 Expressive's rounded sans is bundled as Google Sans Flex with
+    // ROND=100. The id stays stable so existing selections keep resolving to
+    // the rounded family after the switch away from the downloadable font.
     MATERIAL_3_EXPRESSIVE_ROUNDED(
         "material_3_expressive_rounded",
-        "Material 3 Expressive Rounded",
-        "Google Sans Flex",
+        "Google Sans Rounded",
     ),
     CUSTOM("custom", "Custom font");
 

@@ -194,6 +194,9 @@ class MainActivity : ComponentActivity() {
             val selectedFont by app.fontPrefs.selectedFontFlow.collectAsState(
                 initial = AppFont.DEFAULT
             )
+            val customFontName by app.fontPrefs.customFontNameFlow.collectAsState(
+                initial = null
+            )
 
             val context = LocalContext.current;
 
@@ -275,8 +278,12 @@ class MainActivity : ComponentActivity() {
                             useAmoledMode = enabled
                         },
                         currentFont = selectedFont,
+                        customFontName = customFontName,
                         onFontSelected = { font ->
                             scope.launch { app.fontPrefs.setSelectedFont(font) }
+                        },
+                        onCustomFontSelected = { name ->
+                            scope.launch { app.fontPrefs.setCustomFont(name) }
                         },
                     ) }
                     composable("SettingsAccessibility") {

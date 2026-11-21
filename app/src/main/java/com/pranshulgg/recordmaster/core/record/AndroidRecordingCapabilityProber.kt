@@ -1,7 +1,7 @@
 package com.pranshulgg.recordmaster.core.record
 
 import android.Manifest
-import android.annotation.RequiresApi
+import androidx.annotation.RequiresApi
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager

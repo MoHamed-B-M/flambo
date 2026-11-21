@@ -9,6 +9,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
+import com.pranshulgg.recordmaster.core.domain.RecordingConfig
+import com.pranshulgg.recordmaster.core.domain.RecordingFormat
+import com.pranshulgg.recordmaster.core.domain.RecordingChannels
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -25,6 +29,10 @@ class PreferencesManager(private val context: Context) {
 
     private object Keys {
         val QUALITY = stringPreferencesKey("quality")
+        val RECORDING_FORMAT = stringPreferencesKey("recording_format")
+        val STEREO_RECORDING = booleanPreferencesKey("stereo_recording")
+        val MICROPHONE_INPUT_ID = stringPreferencesKey("microphone_input_id")
+        val LOCATION_TAGGING = booleanPreferencesKey("location_tagging")
         val STT_LANGUAGE = stringPreferencesKey("stt_language")
         val STT_MODEL_ID = stringPreferencesKey("stt_model_id")
         val STT_IMPORTED_MODELS = stringPreferencesKey("stt_imported_models_json")
@@ -86,12 +94,80 @@ class PreferencesManager(private val context: Context) {
         context.recordMasterDataStore.edit { it[Keys.QUALITY] = quality.name }
     }
 
+    private suspend fun quality(): RecordingQuality =
+        context.recordMasterDataStore.data.map { prefs ->
+            prefs[Keys.QUALITY]?.let { value ->
+                runCatching { RecordingQuality.valueOf(value) }.getOrNull()
+            } ?: RecordingQuality.HIGH
+        }.first()
+
     val noiseReductionFlow: Flow<Boolean> =
         context.recordMasterDataStore.data.map { it[Keys.NOISE_REDUCTION] ?: true }
 
     suspend fun setNoiseReduction(enabled: Boolean) {
         context.recordMasterDataStore.edit { it[Keys.NOISE_REDUCTION] = enabled }
     }
+
+    val recordingFormatFlow: Flow<RecordingFormat> =
+        context.recordMasterDataStore.data.map { prefs ->
+            prefs[Keys.RECORDING_FORMAT]
+                ?.let { RecordingFormat.fromStoredValue(it) }
+                ?: RecordingFormat.DEFAULT
+        }
+
+    suspend fun recordingFormat(): RecordingFormat =
+        context.recordMasterDataStore.data.map { prefs ->
+            prefs[Keys.RECORDING_FORMAT]
+                ?.let { RecordingFormat.fromStoredValue(it) }
+                ?: RecordingFormat.DEFAULT
+        }.first()
+
+    suspend fun setRecordingFormat(format: RecordingFormat) {
+        context.recordMasterDataStore.edit { it[Keys.RECORDING_FORMAT] = format.name }
+    }
+
+    val stereoRecordingFlow: Flow<Boolean> =
+        context.recordMasterDataStore.data.map { it[Keys.STEREO_RECORDING] ?: false }
+
+    suspend fun stereoRecording(): Boolean =
+        context.recordMasterDataStore.data.map { it[Keys.STEREO_RECORDING] ?: false }.first()
+
+    suspend fun setStereoRecording(enabled: Boolean) {
+        context.recordMasterDataStore.edit { it[Keys.STEREO_RECORDING] = enabled }
+    }
+
+    val microphoneInputIdFlow: Flow<String> =
+        context.recordMasterDataStore.data.map { it[Keys.MICROPHONE_INPUT_ID] ?: MicrophoneInput.DEFAULT_ID }
+
+    suspend fun microphoneInputId(): String =
+        context.recordMasterDataStore.data.map {
+            it[Keys.MICROPHONE_INPUT_ID] ?: MicrophoneInput.DEFAULT_ID
+        }.first()
+
+    suspend fun setMicrophoneInputId(id: String) {
+        context.recordMasterDataStore.edit {
+            it[Keys.MICROPHONE_INPUT_ID] = id.trim().ifBlank { MicrophoneInput.DEFAULT_ID }
+        }
+    }
+
+    val locationTaggingFlow: Flow<Boolean> =
+        context.recordMasterDataStore.data.map { it[Keys.LOCATION_TAGGING] ?: false }
+
+    suspend fun locationTaggingEnabled(): Boolean =
+        context.recordMasterDataStore.data.map { it[Keys.LOCATION_TAGGING] ?: false }.first()
+
+    suspend fun setLocationTaggingEnabled(enabled: Boolean) {
+        context.recordMasterDataStore.edit { it[Keys.LOCATION_TAGGING] = enabled }
+    }
+
+    /** Snapshot used by the recorder so live setting changes cannot alter an active take. */
+    suspend fun recordingConfig(): RecordingConfig = RecordingConfig(
+        format = recordingFormat(),
+        quality = quality(),
+        channels = if (stereoRecording()) RecordingChannels.STEREO else RecordingChannels.MONO,
+        input = MicrophoneInput.fromStoredId(microphoneInputId()),
+        locationTaggingEnabled = locationTaggingEnabled()
+    )
 
     val recordingPrefixFlow: Flow<String> =
         context.recordMasterDataStore.data.map { it[Keys.RECORDING_PREFIX] ?: DEFAULT_PREFIX }

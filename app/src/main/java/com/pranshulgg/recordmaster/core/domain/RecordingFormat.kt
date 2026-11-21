@@ -26,7 +26,7 @@ enum class RecordingFormat(
     val minSdk: Int,
     val minSdkLabel: String,
     val platformEncoderMime: String? = null,
-    val ffmpegEncoderName: String? = null,
+    val bundledEncoderName: String? = null,
     val isLossless: Boolean = false
 ) {
     M4A_AAC(
@@ -65,29 +65,29 @@ enum class RecordingFormat(
     FLAC(
         label = "FLAC",
         shortLabel = "FLAC",
-        description = "True lossless compression using the bundled audio codec.",
+        description = "True lossless compression using the bundled FLAC encoder.",
         extension = "flac",
         mimeType = "audio/flac",
         codec = AudioCodec.FLAC,
         minSdk = 24,
         minSdkLabel = "Android 7.0",
-        ffmpegEncoderName = "flac",
+        bundledEncoderName = "flac",
         isLossless = true
     ),
     OGG_VORBIS(
         label = "OGG (Vorbis)",
         shortLabel = "OGG Vorbis",
-        description = "Open compressed audio using the bundled audio codec.",
+        description = "Open compressed audio using the bundled Vorbis encoder.",
         extension = "ogg",
         mimeType = "audio/ogg",
         codec = AudioCodec.VORBIS,
         minSdk = 24,
         minSdkLabel = "Android 7.0",
-        ffmpegEncoderName = "libvorbis"
+        bundledEncoderName = "vorbis"
     );
 
-    /** True when the format needs the bundled FFmpeg audio package. */
-    val usesExternalCodec: Boolean get() = ffmpegEncoderName != null
+    /** True when the format needs one of the bundled encoder libraries. */
+    val usesExternalCodec: Boolean get() = bundledEncoderName != null
 
     companion object {
         val DEFAULT: RecordingFormat = M4A_AAC

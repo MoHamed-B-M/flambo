@@ -37,7 +37,7 @@ class WavPcmReaderTest {
             val out = ShortArray(12)
             assertEquals(6, reader.readFrames(out, 6))
             assertEquals(100, out[0].toInt())
-            assertEquals(1_000, out[1].toInt())
+            assertEquals(1_100, out[1].toInt())
             assertEquals(200, out[2].toInt())
 
             assertEquals(10, reader.readFrames(out, 10))

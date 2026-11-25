@@ -19,6 +19,7 @@ import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInputKind
 import com.pranshulgg.recordmaster.core.domain.RecordingConfig
+import com.pranshulgg.recordmaster.core.domain.RecordingLocation
 import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.metadata.MetadataHelper
@@ -80,12 +81,14 @@ class RecordingController(
     val lastStartError: StateFlow<String?> = _lastStartError.asStateFlow()
 
     private val capabilityProber = RecordingCapabilityProber(appContext)
+    private val locationResolver = OneShotLocationResolver(appContext)
 
     private var recorder: MediaRecorder? = null
     private var wavWriter: PcmWavChunkWriter? = null
     private var activePlan: RecordingPipelinePlan? = null
     private var activeInput: MicrophoneInput = MicrophoneInput.DEFAULT
     private var activeInputDevice: AudioDeviceInfo? = null
+    private var activeLocation: RecordingLocation? = null
     private var currentChunkFile: File? = null
     private val chunks = mutableListOf<AudioChunkMerger.Chunk>()
     private var reviewFile: File? = null
@@ -208,14 +211,22 @@ class RecordingController(
                 }
             }
         }
-        return startWithPlan(plan, noiseReduction, input, device)
+        // Location is best-effort and captured before the audio input opens; a
+        // denied permission or missing fix never prevents the take.
+        val location = if (plan.effectiveConfig.locationTaggingEnabled) {
+            locationResolver.current()
+        } else {
+            null
+        }
+        return startWithPlan(plan, noiseReduction, input, device, location)
     }
 
     private fun startWithPlan(
         plan: RecordingPipelinePlan,
         noiseReduction: Boolean,
         input: MicrophoneInput,
-        device: AudioDeviceInfo?
+        device: AudioDeviceInfo?,
+        location: RecordingLocation?
     ): Boolean {
         if (!plan.canStart) {
             _lastStartError.value = plan.primaryError
@@ -227,6 +238,7 @@ class RecordingController(
         activePlan = plan
         activeInput = input
         activeInputDevice = device
+        activeLocation = location
         activeQuality = plan.effectiveConfig.quality
         activeNoiseReduction = noiseReduction
         chunks.clear()
@@ -278,6 +290,7 @@ class RecordingController(
         activePlan = null
         activeInput = MicrophoneInput.DEFAULT
         activeInputDevice = null
+        activeLocation = null
         _lastStartError.value = message
         _state.value = RecorderState()
     }
@@ -599,6 +612,7 @@ class RecordingController(
         val bookmarks = _pendingBookmarks.value
         val peaks = current.peaks
         val qualityName = current.quality.name
+        val location = activeLocation
         val titleToUse = pendingTitle
         val duration = totalRecordedMs.coerceAtLeast(300L)
         val oldReviewFile = reviewFile
@@ -614,6 +628,7 @@ class RecordingController(
         chunkSessionDir = null
         activeInput = MicrophoneInput.DEFAULT
         activeInputDevice = null
+        activeLocation = null
         stopForegroundService()
 
         if (finalized.isEmpty()) {
@@ -638,6 +653,7 @@ class RecordingController(
                     qualityName = qualityName,
                     preferredTitle = titleToUse,
                     bookmarks = bookmarks,
+                    location = location,
                     onSaved = onSaved
                 )
                 finalized.forEach { runCatching { it.file.delete() } }
@@ -673,6 +689,7 @@ class RecordingController(
         activePlan = null
         activeInput = MicrophoneInput.DEFAULT
         activeInputDevice = null
+        activeLocation = null
         _lastStartError.value = null
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()
@@ -829,6 +846,7 @@ class RecordingController(
         qualityName: String,
         preferredTitle: String? = null,
         bookmarks: List<Long> = emptyList(),
+        location: RecordingLocation? = null,
         onSaved: ((Recording) -> Unit)? = null
     ) {
         val peaksString = peaks.takeLast(120)
@@ -865,7 +883,10 @@ class RecordingController(
             amplitudePeaks = peaksString,
             quality = qualityName,
             fileSize = actualFile.length().takeIf { it > 0 } ?: 0L,
-            duration = durationMs
+            duration = durationMs,
+            latitude = location?.latitude,
+            longitude = location?.longitude,
+            locatedAt = location?.capturedAtMs
         )
         val id = repository.insert(recording)
         val saved = recording.copy(id = id)

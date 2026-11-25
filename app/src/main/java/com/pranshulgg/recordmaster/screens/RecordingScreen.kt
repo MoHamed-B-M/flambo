@@ -70,6 +70,7 @@ fun RecordingScreen(onDone: () -> Unit) {
     val reviewState by app.review.state.collectAsState()
     val pendingBookmarks by controller.pendingBookmarks.collectAsState()
     val bookmarkCount = pendingBookmarks.size
+    val locationTagging by app.prefs.locationTaggingFlow.collectAsState(initial = false)
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -136,11 +137,39 @@ fun RecordingScreen(onDone: () -> Unit) {
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
             if (granted) {
                 startAfterNotificationPermission()
+            } else {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(
+                        "Location permission denied. Turn off Location tagging in Settings to record."
+                    )
+                }
+            }
+        }
+    )
+
+    fun startAfterLocationPermission() {
+        val needsLocation = locationTagging &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        if (needsLocation) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        } else {
+            startAfterNotificationPermission()
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            if (granted) {
+                startAfterLocationPermission()
             } else {
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar("Mic permission is required to record")
@@ -433,7 +462,7 @@ fun RecordingScreen(onDone: () -> Unit) {
                                                     Manifest.permission.RECORD_AUDIO
                                                 )
                                                 if (permState == PackageManager.PERMISSION_GRANTED) {
-                                                    startAfterNotificationPermission()
+                                                    startAfterLocationPermission()
                                                 } else {
                                                     permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                                 }

@@ -46,10 +46,10 @@ data class RecordingPipelinePlan(
 /**
  * Turns validated preferences into the first pipeline-supported plan.
  *
- * M4A/AAC and WAV/PCM are wired. Explicit microphone selection is supported when
- * the selected input is available and the capture backend can honor it.
- * FLAC, OGG/Opus, OGG/Vorbis, and location tagging are visible in the model but
- * are rejected here until their own pipeline slices land.
+ * M4A/AAC and WAV/PCM are wired. Explicit microphone selection and one-shot
+ * location tagging are supported when capabilities allow them. FLAC, OGG/Opus,
+ * and OGG/Vorbis are visible in the model but rejected until their pipelines
+ * land.
  */
 object RecordingPipelinePlanner {
 
@@ -80,10 +80,6 @@ object RecordingPipelinePlanner {
                 "Selecting a specific microphone with M4A/AAC requires Android 9 or later. " +
                     "Use WAV (PCM) on this device."
             )
-        }
-
-        if (effective.locationTaggingEnabled) {
-            issues += error("Location tagging is not available in the recorder pipeline yet.")
         }
 
         return RecordingPipelinePlan(

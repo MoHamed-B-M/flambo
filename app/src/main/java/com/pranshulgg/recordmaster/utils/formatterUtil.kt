@@ -23,3 +23,8 @@ fun formatBytes(bytes: Long): String {
     }
     return String.format(Locale.getDefault(), "%.1f %s", value, units[unit])
 }
+
+/** Compact, locale-stable coordinate display, e.g. "37.77490, -122.41942". */
+fun formatCoordinates(latitude: Double, longitude: Double): String =
+    String.format(Locale.US, "%.5f, %.5f", latitude, longitude)
+

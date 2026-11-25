@@ -123,14 +123,26 @@ class RecordingPipelinePlannerTest {
     }
 
     @Test
-    fun locationTaggingIsStillDeferred() {
-        val locationPlan = RecordingPipelinePlanner.plan(
+    fun locationTaggingIsSupportedWhenPermissionIsGranted() {
+        val plan = RecordingPipelinePlanner.plan(
             RecordingConfig(locationTaggingEnabled = true),
             snapshot()
         )
 
-        assertFalse(locationPlan.canStart)
-        assertTrue(locationPlan.primaryError.orEmpty().contains("Location", ignoreCase = true))
+        assertTrue(plan.canStart)
+        assertNull(plan.primaryError)
+        assertTrue(plan.effectiveConfig.locationTaggingEnabled)
+    }
+
+    @Test
+    fun locationTaggingStillRequiresPermission() {
+        val plan = RecordingPipelinePlanner.plan(
+            RecordingConfig(locationTaggingEnabled = true),
+            snapshot().copy(locationPermissionGranted = false)
+        )
+
+        assertFalse(plan.canStart)
+        assertTrue(plan.primaryError.orEmpty().contains("permission", ignoreCase = true))
     }
 
     @Test

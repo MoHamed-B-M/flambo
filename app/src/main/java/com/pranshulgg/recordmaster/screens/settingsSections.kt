@@ -103,6 +103,15 @@ fun RecordingSettingsSection(
         )
     }
     var pendingInputId by remember { mutableStateOf<String?>(null) }
+    var fineLocationGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var pendingLocationEnable by remember { mutableStateOf(false) }
 
     LaunchedEffect(capabilityProber, bluetoothGranted) {
         discoveredInputs = runCatching { capabilityProber.availableInputs() }
@@ -129,6 +138,25 @@ fun RecordingSettingsSection(
             } else {
                 scope.launch {
                     showMessage("Bluetooth permission is required to use that microphone")
+                }
+            }
+        }
+    )
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            fineLocationGranted = granted
+            if (granted && pendingLocationEnable) {
+                pendingLocationEnable = false
+                scope.launch {
+                    app.prefs.setLocationTaggingEnabled(true)
+                    showMessage("Location tagging on")
+                }
+            } else if (!granted) {
+                pendingLocationEnable = false
+                scope.launch {
+                    showMessage("Location permission is required for location tagging")
                 }
             }
         }
@@ -291,10 +319,25 @@ fun RecordingSettingsSection(
             SettingTile.SwitchTile(
                 leading = { SettingsTileIcon(R.drawable.privacy_tip_24px) },
                 title = "Location tagging",
-                description = "Coordinates aren't attached to recordings yet",
+                description = if (locationTagging) {
+                    "Attach a one-shot coordinate to new recordings"
+                } else {
+                    "Off \u00B7 Coordinates are never attached to recordings"
+                },
                 checked = locationTagging,
-                onCheckedChange = {},
-                enabled = false
+                onCheckedChange = { enabled ->
+                    if (enabled && !fineLocationGranted) {
+                        pendingLocationEnable = true
+                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    } else {
+                        scope.launch {
+                            app.prefs.setLocationTaggingEnabled(enabled)
+                            showMessage(
+                                if (enabled) "Location tagging on" else "Location tagging off"
+                            )
+                        }
+                    }
+                }
             )
         )
     )

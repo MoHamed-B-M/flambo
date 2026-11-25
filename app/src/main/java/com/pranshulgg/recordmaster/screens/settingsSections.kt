@@ -29,6 +29,7 @@ import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
+import com.pranshulgg.recordmaster.core.record.RecordingCapabilities
 import com.pranshulgg.recordmaster.core.record.RecordingCapabilityProber
 import com.pranshulgg.recordmaster.core.stt.SpeechModelCatalog
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -87,7 +88,9 @@ fun RecordingSettingsSection(
     val locationTagging by app.prefs.locationTaggingFlow.collectAsState(initial = false)
     val context = LocalContext.current
 
-    val wiredFormats = listOf(RecordingFormat.M4A_AAC, RecordingFormat.WAV_PCM)
+    var supportedFormats by remember {
+        mutableStateOf(listOf(RecordingFormat.M4A_AAC, RecordingFormat.WAV_PCM))
+    }
 
     val capabilityProber = remember(context) {
         RecordingCapabilityProber(context.applicationContext)
@@ -116,6 +119,11 @@ fun RecordingSettingsSection(
     LaunchedEffect(capabilityProber, bluetoothGranted) {
         discoveredInputs = runCatching { capabilityProber.availableInputs() }
             .getOrDefault(listOf(MicrophoneInput.DEFAULT))
+        val snapshot = runCatching { capabilityProber.probe() }.getOrNull()
+        val available = snapshot?.let(RecordingCapabilities::supportedFormats).orEmpty()
+        // Keep a saved but unavailable format visible so the picker never
+        // pretends the take will use a different format.
+        supportedFormats = RecordingFormat.entries.filter { it == format || it in available }
     }
 
     fun saveInput(input: MicrophoneInput) {
@@ -276,10 +284,10 @@ fun RecordingSettingsSection(
                 leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                 title = "Recording format",
                 description = format.description,
-                options = wiredFormats.map { it.label },
-                selectedOption = wiredFormats.firstOrNull { it == format }?.label,
+                options = supportedFormats.map { it.label },
+                selectedOption = supportedFormats.firstOrNull { it == format }?.label,
                 onOptionSelected = { label ->
-                    val selected = wiredFormats.firstOrNull { it.label == label }
+                    val selected = supportedFormats.firstOrNull { it.label == label }
                         ?: RecordingFormat.DEFAULT
                     scope.launch {
                         app.prefs.setRecordingFormat(selected)
@@ -303,10 +311,13 @@ fun RecordingSettingsSection(
                 leading = { SettingsTileIcon(R.drawable.fiber_manual_record_24px) },
                 title = "Microphone",
                 description = "Used for new recordings \u00B7 ${selectedInput.displayName}",
-                options = inputOptions.map { it.displayName },
-                selectedOption = selectedInput.displayName,
-                onOptionSelected = { label ->
-                    val selected = inputOptions.firstOrNull { it.displayName == label }
+                options = inputOptions.map { it.id },
+                selectedOption = selectedInput.id,
+                optionLabel = { id ->
+                    inputOptions.firstOrNull { it.id == id }?.displayName ?: id
+                },
+                onOptionSelected = { id ->
+                    val selected = inputOptions.firstOrNull { it.id == id }
                         ?: MicrophoneInput.DEFAULT
                     if (selected.kind == MicrophoneInputKind.BLUETOOTH && !bluetoothGranted) {
                         pendingInputId = selected.id

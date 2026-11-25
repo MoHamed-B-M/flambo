@@ -13,7 +13,7 @@ enum class RecordingCaptureStrategy {
     UNSUPPORTED
 }
 
-/** How finalized chunks become the review file and the saved file. */
+/** How finalized chunks become the intermediate WAV or review file. */
 enum class RecordingMergeStrategy {
     MPEG4_STREAM_COPY,
     WAV_PCM_CONCAT,
@@ -32,6 +32,7 @@ data class RecordingPipelinePlan(
     val effectiveConfig: RecordingConfig,
     val captureStrategy: RecordingCaptureStrategy,
     val mergeStrategy: RecordingMergeStrategy,
+    val finalEncoding: FinalAudioEncoding,
     val chunkExtension: String,
     val finalExtension: String,
     val issues: List<RecordingConfigIssue>
@@ -44,12 +45,13 @@ data class RecordingPipelinePlan(
 }
 
 /**
- * Turns validated preferences into the first pipeline-supported plan.
+ * Turns validated preferences into a pipeline-supported plan.
  *
- * M4A/AAC and WAV/PCM are wired. Explicit microphone selection and one-shot
- * location tagging are supported when capabilities allow them. FLAC, OGG/Opus,
- * and OGG/Vorbis are visible in the model but rejected until their pipelines
- * land.
+ * M4A/AAC uses MediaRecorder chunks stream-copied into the final file. Every
+ * other format captures canonical PCM WAV chunks; WAV is stream-copied directly,
+ * while FLAC, OGG/Vorbis and OGG/Opus are encoded only once, after the take
+ * ends. Explicit microphone selection and one-shot location tagging are
+ * supported when capabilities allow them.
  */
 object RecordingPipelinePlanner {
 
@@ -61,15 +63,42 @@ object RecordingPipelinePlanner {
         val effective = validation.effectiveConfig
         val issues = validation.issues.toMutableList()
 
-        val (capture, merge) = when (effective.format) {
-            RecordingFormat.M4A_AAC ->
-                RecordingCaptureStrategy.MEDIA_RECORDER_AAC to RecordingMergeStrategy.MPEG4_STREAM_COPY
-            RecordingFormat.WAV_PCM ->
-                RecordingCaptureStrategy.PCM_WAV to RecordingMergeStrategy.WAV_PCM_CONCAT
-            else -> {
-                issues += error("${effective.format.label} is not wired into the recorder pipeline yet.")
-                RecordingCaptureStrategy.UNSUPPORTED to RecordingMergeStrategy.UNSUPPORTED
-            }
+        val (capture, merge, finalEncoding) = when (effective.format) {
+            RecordingFormat.M4A_AAC -> Triple(
+                RecordingCaptureStrategy.MEDIA_RECORDER_AAC,
+                RecordingMergeStrategy.MPEG4_STREAM_COPY,
+                FinalAudioEncoding.NONE
+            )
+
+            RecordingFormat.WAV_PCM -> Triple(
+                RecordingCaptureStrategy.PCM_WAV,
+                RecordingMergeStrategy.WAV_PCM_CONCAT,
+                FinalAudioEncoding.NONE
+            )
+
+            RecordingFormat.FLAC -> Triple(
+                RecordingCaptureStrategy.PCM_WAV,
+                RecordingMergeStrategy.WAV_PCM_CONCAT,
+                FinalAudioEncoding.FLAC
+            )
+
+            RecordingFormat.OGG_VORBIS -> Triple(
+                RecordingCaptureStrategy.PCM_WAV,
+                RecordingMergeStrategy.WAV_PCM_CONCAT,
+                FinalAudioEncoding.VORBIS
+            )
+
+            RecordingFormat.OGG_OPUS -> Triple(
+                RecordingCaptureStrategy.PCM_WAV,
+                RecordingMergeStrategy.WAV_PCM_CONCAT,
+                FinalAudioEncoding.OPUS
+            )
+        }
+
+        if (capture == RecordingCaptureStrategy.PCM_WAV && !snapshot.pcmCaptureAvailable) {
+            issues += error(
+                "${effective.format.label} needs PCM microphone capture, which is not available on this device."
+            )
         }
 
         if (!effective.input.isDefault &&
@@ -78,7 +107,7 @@ object RecordingPipelinePlanner {
         ) {
             issues += error(
                 "Selecting a specific microphone with M4A/AAC requires Android 9 or later. " +
-                    "Use WAV (PCM) on this device."
+                    "Use a PCM-based format on this device."
             )
         }
 
@@ -86,7 +115,12 @@ object RecordingPipelinePlanner {
             effectiveConfig = effective,
             captureStrategy = capture,
             mergeStrategy = merge,
-            chunkExtension = effective.format.extension,
+            finalEncoding = finalEncoding,
+            chunkExtension = if (capture == RecordingCaptureStrategy.PCM_WAV) {
+                "wav"
+            } else {
+                effective.format.extension
+            },
             finalExtension = effective.format.extension,
             issues = issues
         )

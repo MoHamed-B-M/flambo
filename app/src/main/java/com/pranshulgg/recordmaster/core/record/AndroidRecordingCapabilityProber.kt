@@ -181,7 +181,7 @@ class RecordingCapabilityProber(private val context: Context) {
 
     /** The encoder libraries are compile-time dependencies; check their classes load. */
     private fun bundledEncoders(): Set<String> = buildSet {
-        if (isClassAvailable("net.sourceforge.javaflacencoder.FLAC_FileEncoder")) add("flac")
+        if (isClassAvailable("net.sourceforge.javaflacencoder.FLACEncoder")) add("flac")
         if (isClassAvailable("com.github.axet.vorbisjni.Vorbis")) add("vorbis")
     }
 

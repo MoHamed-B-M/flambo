@@ -5,6 +5,7 @@ import com.pranshulgg.recordmaster.core.domain.RecordingChannels
 import com.pranshulgg.recordmaster.core.domain.RecordingConfig
 import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
+import com.pranshulgg.recordmaster.core.record.FinalAudioEncoding
 import com.pranshulgg.recordmaster.core.record.RecordingCapabilitySnapshot
 import com.pranshulgg.recordmaster.core.record.RecordingCaptureStrategy
 import com.pranshulgg.recordmaster.core.record.RecordingConfigIssueSeverity
@@ -17,7 +18,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Pure JVM checks for the Phase 3 recorder/merge plan. */
+/** Pure JVM checks for the recorder/merge/final-encode plan. */
 class RecordingPipelinePlannerTest {
 
     private fun snapshot(
@@ -48,12 +49,13 @@ class RecordingPipelinePlannerTest {
         assertEquals(RecordingQuality.HIGH, plan.effectiveConfig.quality)
         assertEquals(RecordingCaptureStrategy.MEDIA_RECORDER_AAC, plan.captureStrategy)
         assertEquals(RecordingMergeStrategy.MPEG4_STREAM_COPY, plan.mergeStrategy)
+        assertEquals(FinalAudioEncoding.NONE, plan.finalEncoding)
         assertEquals("m4a", plan.chunkExtension)
         assertEquals("m4a", plan.finalExtension)
     }
 
     @Test
-    fun wavPlanSelectsPcmCaptureAndWavMerge() {
+    fun wavPlanSelectsPcmCaptureAndWavMergeWithoutFinalEncode() {
         val plan = RecordingPipelinePlanner.plan(
             RecordingConfig(format = RecordingFormat.WAV_PCM),
             snapshot()
@@ -63,8 +65,64 @@ class RecordingPipelinePlannerTest {
         assertSame(RecordingFormat.WAV_PCM, plan.effectiveConfig.format)
         assertEquals(RecordingCaptureStrategy.PCM_WAV, plan.captureStrategy)
         assertEquals(RecordingMergeStrategy.WAV_PCM_CONCAT, plan.mergeStrategy)
+        assertEquals(FinalAudioEncoding.NONE, plan.finalEncoding)
         assertEquals("wav", plan.chunkExtension)
         assertEquals("wav", plan.finalExtension)
+    }
+
+    @Test
+    fun compressedAndLosslessFormatsCaptureWavThenFinalEncode() {
+        listOf(
+            RecordingFormat.FLAC to FinalAudioEncoding.FLAC,
+            RecordingFormat.OGG_VORBIS to FinalAudioEncoding.VORBIS,
+            RecordingFormat.OGG_OPUS to FinalAudioEncoding.OPUS
+        ).forEach { (format, encoding) ->
+            val plan = RecordingPipelinePlanner.plan(
+                RecordingConfig(format = format),
+                snapshot()
+            )
+
+            assertTrue("${format.label} should be supported", plan.canStart)
+            assertSame(format, plan.effectiveConfig.format)
+            assertEquals(RecordingCaptureStrategy.PCM_WAV, plan.captureStrategy)
+            assertEquals(RecordingMergeStrategy.WAV_PCM_CONCAT, plan.mergeStrategy)
+            assertEquals(encoding, plan.finalEncoding)
+            assertEquals("wav", plan.chunkExtension)
+            assertEquals(format.extension, plan.finalExtension)
+        }
+    }
+
+    @Test
+    fun finalEncodeFormatsHardFailWhenPcmCaptureIsMissing() {
+        listOf(RecordingFormat.FLAC, RecordingFormat.OGG_VORBIS, RecordingFormat.OGG_OPUS)
+            .forEach { format ->
+                val plan = RecordingPipelinePlanner.plan(
+                    RecordingConfig(format = format),
+                    snapshot(pcmCaptureAvailable = false)
+                )
+
+                assertFalse(plan.canStart)
+                assertSame(format, plan.effectiveConfig.format)
+                assertTrue(plan.primaryError.orEmpty().contains("PCM", ignoreCase = true))
+            }
+    }
+
+    @Test
+    fun unsupportedCapabilitiesStillHardFailWithoutChangingTheFormat() {
+        val noFlac = RecordingPipelinePlanner.plan(
+            RecordingConfig(format = RecordingFormat.FLAC),
+            snapshot().copy(bundledAudioEncoders = emptySet())
+        )
+        assertFalse(noFlac.canStart)
+        assertSame(RecordingFormat.FLAC, noFlac.effectiveConfig.format)
+
+        val oldOpus = RecordingPipelinePlanner.plan(
+            RecordingConfig(format = RecordingFormat.OGG_OPUS),
+            snapshot(sdkInt = 28)
+        )
+        assertFalse(oldOpus.canStart)
+        assertSame(RecordingFormat.OGG_OPUS, oldOpus.effectiveConfig.format)
+        assertTrue(oldOpus.primaryError.orEmpty().contains("Android 10", ignoreCase = true))
     }
 
     @Test
@@ -77,23 +135,6 @@ class RecordingPipelinePlannerTest {
         assertTrue(plan.canStart)
         assertEquals(RecordingChannels.MONO, plan.effectiveConfig.channels)
         assertTrue(plan.issues.any { it.severity == RecordingConfigIssueSeverity.WARNING })
-    }
-
-    @Test
-    fun formatsWithoutAWiredPipelineAreHardErrors() {
-        listOf(RecordingFormat.OGG_OPUS, RecordingFormat.FLAC, RecordingFormat.OGG_VORBIS)
-            .forEach { format ->
-                val plan = RecordingPipelinePlanner.plan(
-                    RecordingConfig(format = format),
-                    snapshot()
-                )
-
-                assertFalse(plan.canStart)
-                assertSame(format, plan.effectiveConfig.format)
-                assertEquals(RecordingCaptureStrategy.UNSUPPORTED, plan.captureStrategy)
-                assertEquals(RecordingMergeStrategy.UNSUPPORTED, plan.mergeStrategy)
-                assertTrue(plan.primaryError.orEmpty().contains("not wired", ignoreCase = true))
-            }
     }
 
     @Test

@@ -34,7 +34,7 @@ class WavPcmReaderTest {
     fun directReadReturnsInterleavedFramesUntilExhausted() {
         val file = wavFile(rate = 44_100, channels = 2, frames = 16)
         WavPcmReader(file).use { reader ->
-            val out = ShortArray(12)
+            val out = ShortArray(32)
             assertEquals(6, reader.readFrames(out, 6))
             assertEquals(100, out[0].toInt())
             assertEquals(1_100, out[1].toInt())

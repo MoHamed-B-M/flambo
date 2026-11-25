@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.audio.AudioChunkMerger
+import com.pranshulgg.recordmaster.core.audio.FinalAudioEncoder
 import com.pranshulgg.recordmaster.core.audio.PcmWavChunkWriter
 import com.pranshulgg.recordmaster.core.audio.WavAudio
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
@@ -603,7 +604,8 @@ class RecordingController(
     private fun prepareReview() {
         reviewJob?.cancel()
         val app = appContext as? RecordMasterApp ?: return
-        val extension = activePlan?.finalExtension ?: RecordingFormat.DEFAULT.extension
+        // Final-encoded formats still review from the canonical WAV chunk merge.
+        val extension = activePlan?.chunkExtension ?: RecordingFormat.DEFAULT.extension
         val target = reviewFile ?: File(
             repository.recordingsDir(),
             "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_review.$extension"
@@ -646,7 +648,11 @@ class RecordingController(
         val oldReviewFile = reviewFile
         val sessionDir = chunkSessionDir
         val mergeStrategy = activePlan?.mergeStrategy ?: RecordingMergeStrategy.MPEG4_STREAM_COPY
+        val finalEncoding = activePlan?.finalEncoding ?: FinalAudioEncoding.NONE
+        val mergeExtension = activePlan?.chunkExtension ?: RecordingFormat.DEFAULT.extension
         val finalExtension = activePlan?.finalExtension ?: RecordingFormat.DEFAULT.extension
+        val encodingBitRate = activePlan?.effectiveConfig?.quality?.bitRate
+            ?: RecordingQuality.HIGH.bitRate
 
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()
@@ -672,30 +678,57 @@ class RecordingController(
         scope.launch(Dispatchers.IO) {
             val merged = File(
                 repository.recordingsDir(),
-                "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_merged.$finalExtension"
+                "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_merged.$mergeExtension"
             )
-            if (mergeChunks(finalized, merged, mergeStrategy)) {
-                finalizeRecording(
-                    tempFile = merged,
-                    peaks = peaks,
-                    durationMs = duration,
-                    qualityName = qualityName,
-                    preferredTitle = titleToUse,
-                    bookmarks = bookmarks,
-                    location = location,
-                    onSaved = onSaved
-                )
-                finalized.forEach { runCatching { it.file.delete() } }
-                oldReviewFile?.let { runCatching { it.delete() } }
-                // Take is safely on disk: clear the staging session. On merge
-                // failure the chunks stay for crash recovery to pick up.
-                runCatching { sessionDir?.deleteRecursively() }
-            } else {
+            if (!mergeChunks(finalized, merged, mergeStrategy)) {
                 runCatching { merged.delete() }
                 withContext(Dispatchers.Main) {
                     onError?.invoke("Couldn't save this recording. Please try again.")
                 }
+                return@launch
             }
+
+            // FLAC/Vorbis/Opus encode once, after the WAV chunks are merged.
+            // M4A and WAV keep the previous zero-copy/stream-copy behavior.
+            val output = if (finalEncoding == FinalAudioEncoding.NONE) {
+                merged
+            } else {
+                val encoded = File(
+                    repository.recordingsDir(),
+                    "${RecordingRepository.TEMP_PREFIX}${System.currentTimeMillis()}_final.$finalExtension"
+                )
+                val encodedOk = FinalAudioEncoder.encode(
+                    merged,
+                    encoded,
+                    finalEncoding,
+                    encodingBitRate
+                )
+                runCatching { merged.delete() }
+                if (!encodedOk || !encoded.exists() || encoded.length() == 0L) {
+                    runCatching { encoded.delete() }
+                    withContext(Dispatchers.Main) {
+                        onError?.invoke("Couldn't encode this recording. Please try again.")
+                    }
+                    return@launch
+                }
+                encoded
+            }
+
+            finalizeRecording(
+                tempFile = output,
+                peaks = peaks,
+                durationMs = duration,
+                qualityName = qualityName,
+                preferredTitle = titleToUse,
+                bookmarks = bookmarks,
+                location = location,
+                onSaved = onSaved
+            )
+            finalized.forEach { runCatching { it.file.delete() } }
+            oldReviewFile?.let { runCatching { it.delete() } }
+            // Take is safely on disk: clear the staging session. On merge or
+            // encode failure the chunks stay for crash recovery to pick up.
+            runCatching { sessionDir?.deleteRecursively() }
         }
     }
 

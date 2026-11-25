@@ -5,7 +5,7 @@ import android.media.MediaFormat
 import android.media.MediaMuxer
 import androidx.annotation.RequiresApi
 import java.io.File
-import java.nio.ShortBuffer
+import java.nio.ByteOrder
 
 /**
  * Final-only Opus encode through the platform encoder and its Ogg muxer.
@@ -70,7 +70,10 @@ object OpusFinalEncoder {
                             inputDone = true
                         } else {
                             val values = frames * channels
-                            input.put(ShortBuffer.wrap(shorts, 0, values))
+                            // MediaCodec takes raw bytes; write little-endian
+                            // PCM into the byte buffer through a short view.
+                            input.order(ByteOrder.LITTLE_ENDIAN)
+                            input.asShortBuffer().put(shorts, 0, values)
                             codec.queueInputBuffer(
                                 inputIndex, 0, values * 2, presentationUs, 0
                             )

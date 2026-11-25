@@ -31,7 +31,11 @@ data class Recording(
     val authorName: String = "",
     val customName: String = "",
     val fileSize: Long = 0L,
-    val duration: Long = 0L
+    val duration: Long = 0L,
+    /** One-shot coordinates captured at take start; null when tagging was off. */
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val locatedAt: Long? = null
 ) {
     val tagList: List<String>
         get() = if (tags.isBlank()) emptyList()

@@ -8,6 +8,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Needed to list and connect to Bluetooth microphone inputs. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- One-shot coordinates are attached only when location tagging is enabled. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <!-- Used only to download offline speech models and check for updates. -->
     <uses-permission android:name="android.permission.INTERNET" />
 

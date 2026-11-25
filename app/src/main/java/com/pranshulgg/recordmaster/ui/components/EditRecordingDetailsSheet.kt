@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.core.data.Recording
+import com.pranshulgg.recordmaster.utils.formatCoordinates
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -151,6 +152,19 @@ fun EditRecordingDetailsSheet(
                         title = "Sample rate",
                         description = info.sampleRate
                     )
+                ) + listOfNotNull(
+                    if (recording.latitude != null && recording.longitude != null) {
+                        SettingTile.TextTile(
+                            leading = { SettingsTileIcon(R.drawable.privacy_tip_24px) },
+                            title = "Location",
+                            description = formatCoordinates(
+                                recording.latitude,
+                                recording.longitude
+                            )
+                        )
+                    } else {
+                        null
+                    }
                 )
             )
 

@@ -3,6 +3,9 @@ package com.pranshulgg.recordmaster.core.record
 import com.pranshulgg.recordmaster.core.domain.RecordingConfig
 import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 
+/** `MediaRecorder.setPreferredDevice` is only available from Android 9. */
+private const val MEDIA_RECORDER_INPUT_SELECTION_MIN_SDK = 28
+
 /** How chunks are captured for one take. Frozen when the take starts. */
 enum class RecordingCaptureStrategy {
     MEDIA_RECORDER_AAC,
@@ -43,9 +46,10 @@ data class RecordingPipelinePlan(
 /**
  * Turns validated preferences into the first pipeline-supported plan.
  *
- * Phase 3 wires M4A/AAC and WAV/PCM. FLAC, OGG/Opus, OGG/Vorbis, explicit
- * microphone selection, and location tagging are visible in the model but are
- * rejected here until their own pipeline phases land.
+ * M4A/AAC and WAV/PCM are wired. Explicit microphone selection is supported when
+ * the selected input is available and the capture backend can honor it.
+ * FLAC, OGG/Opus, OGG/Vorbis, and location tagging are visible in the model but
+ * are rejected here until their own pipeline slices land.
  */
 object RecordingPipelinePlanner {
 
@@ -68,8 +72,14 @@ object RecordingPipelinePlanner {
             }
         }
 
-        if (!effective.input.isDefault) {
-            issues += error("Selecting a specific microphone is not available in the recorder pipeline yet.")
+        if (!effective.input.isDefault &&
+            capture == RecordingCaptureStrategy.MEDIA_RECORDER_AAC &&
+            snapshot.sdkInt < MEDIA_RECORDER_INPUT_SELECTION_MIN_SDK
+        ) {
+            issues += error(
+                "Selecting a specific microphone with M4A/AAC requires Android 9 or later. " +
+                    "Use WAV (PCM) on this device."
+            )
         }
 
         if (effective.locationTaggingEnabled) {

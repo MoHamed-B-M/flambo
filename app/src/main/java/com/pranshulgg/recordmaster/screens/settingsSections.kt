@@ -1,17 +1,22 @@
 package com.pranshulgg.recordmaster.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.audio.EnhanceStrength
@@ -19,10 +24,12 @@ import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInputKind
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
+import com.pranshulgg.recordmaster.core.record.RecordingCapabilityProber
 import com.pranshulgg.recordmaster.core.stt.SpeechModelCatalog
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
 import com.pranshulgg.recordmaster.ui.components.SettingSection
@@ -81,6 +88,58 @@ fun RecordingSettingsSection(
     val context = LocalContext.current
 
     val wiredFormats = listOf(RecordingFormat.M4A_AAC, RecordingFormat.WAV_PCM)
+
+    val capabilityProber = remember(context) {
+        RecordingCapabilityProber(context.applicationContext)
+    }
+    var discoveredInputs by remember { mutableStateOf(listOf(MicrophoneInput.DEFAULT)) }
+    var bluetoothGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var pendingInputId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(capabilityProber, bluetoothGranted) {
+        discoveredInputs = runCatching { capabilityProber.availableInputs() }
+            .getOrDefault(listOf(MicrophoneInput.DEFAULT))
+    }
+
+    fun saveInput(input: MicrophoneInput) {
+        scope.launch {
+            app.prefs.setMicrophoneInputId(input.id)
+            showMessage("Microphone: ${input.displayName}")
+        }
+    }
+
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            bluetoothGranted = granted
+            val pending = pendingInputId
+            pendingInputId = null
+            if (granted) {
+                if (pending != null) {
+                    saveInput(MicrophoneInput.fromStoredId(pending))
+                }
+            } else {
+                scope.launch {
+                    showMessage("Bluetooth permission is required to use that microphone")
+                }
+            }
+        }
+    )
+
+    val savedInput = MicrophoneInput.fromStoredId(microphoneInputId)
+    val inputOptions = (listOf(MicrophoneInput.DEFAULT, savedInput) + discoveredInputs)
+        .distinctBy { it.id }
+    val selectedInput = inputOptions
+        .firstOrNull { it.id.equals(microphoneInputId, ignoreCase = true) }
+        ?: MicrophoneInput.DEFAULT
 
     SettingSection(
         tiles = listOf(
@@ -215,15 +274,19 @@ fun RecordingSettingsSection(
             SettingTile.DialogOptionTile(
                 leading = { SettingsTileIcon(R.drawable.fiber_manual_record_24px) },
                 title = "Microphone",
-                description = if (microphoneInputId == MicrophoneInput.DEFAULT_ID) {
-                    "Default input \u00B7 Specific microphones aren't available yet"
-                } else {
-                    "Saved input \u00B7 Specific microphones aren't available yet"
-                },
-                options = listOf(MicrophoneInput.DEFAULT.displayName),
-                selectedOption = MicrophoneInput.DEFAULT.displayName,
-                onOptionSelected = {},
-                enabled = false
+                description = "Used for new recordings \u00B7 ${selectedInput.displayName}",
+                options = inputOptions.map { it.displayName },
+                selectedOption = selectedInput.displayName,
+                onOptionSelected = { label ->
+                    val selected = inputOptions.firstOrNull { it.displayName == label }
+                        ?: MicrophoneInput.DEFAULT
+                    if (selected.kind == MicrophoneInputKind.BLUETOOTH && !bluetoothGranted) {
+                        pendingInputId = selected.id
+                        bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                    } else {
+                        saveInput(selected)
+                    }
+                }
             ),
             SettingTile.SwitchTile(
                 leading = { SettingsTileIcon(R.drawable.privacy_tip_24px) },

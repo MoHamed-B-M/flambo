@@ -66,9 +66,41 @@ class RecordingCapabilityProber(private val context: Context) {
         ) > 0
     }.getOrDefault(false)
 
+    /** Fresh input list for pickers; a saved id may no longer be present. */
+    suspend fun availableInputs(): List<MicrophoneInput> = withContext(Dispatchers.IO) {
+        enumerateInputs().inputs
+    }
+
+    /** Resolves a persisted [MicrophoneInput.id] back to a live audio source. */
+    suspend fun resolveInput(id: String): AudioDeviceInfo? = withContext(Dispatchers.IO) {
+        val normalized = id.trim()
+        if (normalized.isBlank() ||
+            normalized.equals(MicrophoneInput.DEFAULT_ID, ignoreCase = true)
+        ) {
+            return@withContext null
+        }
+        if (normalized.startsWith("bt:", ignoreCase = true) &&
+            !bluetoothInputEnumerationAvailable()
+        ) {
+            return@withContext null
+        }
+
+        runCatching {
+            context.getSystemService(AudioManager::class.java)
+                ?.getDevices(AudioManager.GET_DEVICES_INPUTS)
+                .orEmpty()
+        }.getOrElse { emptyArray() }
+            .firstOrNull { device ->
+                toMicrophoneInput(device, bluetoothInputEnumerationAvailable())
+                    ?.id?.equals(normalized, ignoreCase = true) == true
+            }
+    }
+
+    private fun bluetoothInputEnumerationAvailable(): Boolean =
+        Build.VERSION.SDK_INT < 31 || hasPermission(Manifest.permission.BLUETOOTH_CONNECT)
+
     private fun enumerateInputs(): InputEnumeration {
-        val bluetoothAvailable = Build.VERSION.SDK_INT < 31 ||
-            hasPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        val bluetoothAvailable = bluetoothInputEnumerationAvailable()
 
         val result = runCatching {
             context.getSystemService(AudioManager::class.java)

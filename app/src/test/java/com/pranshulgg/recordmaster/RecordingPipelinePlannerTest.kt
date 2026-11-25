@@ -23,9 +23,10 @@ class RecordingPipelinePlannerTest {
     private fun snapshot(
         platformEncoders: Set<String> = setOf("audio/mp4a-latm", "audio/opus"),
         pcmCaptureAvailable: Boolean = true,
-        defaultMaxInputChannels: Int = 2
+        defaultMaxInputChannels: Int = 2,
+        sdkInt: Int = 36
     ) = RecordingCapabilitySnapshot(
-        sdkInt = 36,
+        sdkInt = sdkInt,
         platformAudioEncoderMimes = platformEncoders,
         pcmCaptureAvailable = pcmCaptureAvailable,
         bundledAudioEncoders = setOf("flac", "vorbis"),
@@ -96,19 +97,38 @@ class RecordingPipelinePlannerTest {
     }
 
     @Test
-    fun explicitMicrophoneAndLocationTaggingAreDeferred() {
+    fun availableExplicitMicrophoneIsSupportedForM4a() {
         val explicitInput = MicrophoneInput.fromStoredId("bt:00:11:22")
-        val micPlan = RecordingPipelinePlanner.plan(
+        val plan = RecordingPipelinePlanner.plan(
             RecordingConfig(input = explicitInput),
             snapshot().copy(microphoneInputs = listOf(explicitInput))
         )
-        assertFalse(micPlan.canStart)
-        assertTrue(micPlan.primaryError.orEmpty().contains("microphone", ignoreCase = true))
 
+        assertTrue(plan.canStart)
+        assertNull(plan.primaryError)
+        assertEquals(explicitInput, plan.effectiveConfig.input)
+        assertEquals(RecordingCaptureStrategy.MEDIA_RECORDER_AAC, plan.captureStrategy)
+    }
+
+    @Test
+    fun explicitMicrophoneWithM4aIsRejectedBelowApi28() {
+        val explicitInput = MicrophoneInput.fromStoredId("bt:00:11:22")
+        val plan = RecordingPipelinePlanner.plan(
+            RecordingConfig(input = explicitInput),
+            snapshot(sdkInt = 27).copy(microphoneInputs = listOf(explicitInput))
+        )
+
+        assertFalse(plan.canStart)
+        assertTrue(plan.primaryError.orEmpty().contains("Android 9", ignoreCase = true))
+    }
+
+    @Test
+    fun locationTaggingIsStillDeferred() {
         val locationPlan = RecordingPipelinePlanner.plan(
             RecordingConfig(locationTaggingEnabled = true),
             snapshot()
         )
+
         assertFalse(locationPlan.canStart)
         assertTrue(locationPlan.primaryError.orEmpty().contains("Location", ignoreCase = true))
     }

@@ -18,6 +18,7 @@ import com.pranshulgg.recordmaster.core.data.RecordingRepository
 import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInputKind
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInputMapper
 import com.pranshulgg.recordmaster.core.domain.RecordingConfig
 import com.pranshulgg.recordmaster.core.domain.RecordingLocation
 import com.pranshulgg.recordmaster.core.domain.RecordingFormat
@@ -82,6 +83,7 @@ class RecordingController(
 
     private val capabilityProber = RecordingCapabilityProber(appContext)
     private val locationResolver = OneShotLocationResolver(appContext)
+    private val bluetoothRoute = BluetoothAudioRoute(appContext)
 
     private var recorder: MediaRecorder? = null
     private var wavWriter: PcmWavChunkWriter? = null
@@ -137,12 +139,25 @@ class RecordingController(
                 Manifest.permission.BLUETOOTH_CONNECT
             ) == PackageManager.PERMISSION_GRANTED
 
+    /**
+     * Applies the active input's system route before any capture backend opens.
+     * Non-Bluetooth inputs explicitly release a route left by a previous input.
+     */
+    private fun applyInputRoute(input: MicrophoneInput, device: AudioDeviceInfo?): Boolean {
+        bluetoothRoute.release()
+        return if (input.kind == MicrophoneInputKind.BLUETOOTH) {
+            device?.let { bluetoothRoute.activate(it) } ?: false
+        } else {
+            true
+        }
+    }
+
     /** Fresh input list for pickers, with the active input included even if unplugged. */
     suspend fun availableMicrophones(): List<MicrophoneInput> {
         val current = if (_state.value.isRecording) _state.value.input else activeInput
         return (listOf(MicrophoneInput.DEFAULT, current) + capabilityProber.availableInputs())
             .distinctBy { it.id }
-            .sortedWith(compareBy({ it.kind.ordinal }, { it.displayName }))
+            .sortedWith(compareBy({ MicrophoneInputMapper.categoryOrder(it.kind) }, { it.displayName }))
     }
 
     /**
@@ -168,6 +183,13 @@ class RecordingController(
                 ?: return "${input.displayName} is no longer available."
         }
 
+        val previousInput = activeInput
+        val previousDevice = activeInputDevice
+        if (!applyInputRoute(input, device)) {
+            activeInput = previousInput
+            activeInputDevice = previousDevice
+            return "Couldn't route audio to ${input.displayName}."
+        }
         activeInput = input
         activeInputDevice = device
         _state.value = current.copy(input = input)
@@ -253,6 +275,11 @@ class RecordingController(
         chunkSessionDir = File(repository.tempChunksDir(), "take_${System.currentTimeMillis()}")
             .apply { mkdirs() }
 
+        if (!applyInputRoute(input, device)) {
+            failStart("Couldn't route audio to ${input.displayName}.")
+            return false
+        }
+
         if (!startNewChunk()) {
             failStart("Couldn't open the audio input for this recording.")
             return false
@@ -283,6 +310,7 @@ class RecordingController(
 
     private fun failStart(message: String) {
         stopActiveCapture()
+        bluetoothRoute.release()
         runCatching { currentChunkFile?.delete() }
         currentChunkFile = null
         runCatching { chunkSessionDir?.deleteRecursively() }
@@ -629,6 +657,7 @@ class RecordingController(
         activeInput = MicrophoneInput.DEFAULT
         activeInputDevice = null
         activeLocation = null
+        bluetoothRoute.release()
         stopForegroundService()
 
         if (finalized.isEmpty()) {
@@ -690,6 +719,7 @@ class RecordingController(
         activeInput = MicrophoneInput.DEFAULT
         activeInputDevice = null
         activeLocation = null
+        bluetoothRoute.release()
         _lastStartError.value = null
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()

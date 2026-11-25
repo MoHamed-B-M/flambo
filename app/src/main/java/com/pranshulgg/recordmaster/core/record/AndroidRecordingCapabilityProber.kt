@@ -123,10 +123,9 @@ class RecordingCapabilityProber(private val context: Context) {
     }
 
     private fun inputDevices(): Array<AudioDeviceInfo> = runCatching {
-        context.getSystemService(AudioManager::class.java)
+        val devices = context.getSystemService(AudioManager::class.java)
             ?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-            .orEmpty()
-            .copyOf()
+        devices?.toList()?.toTypedArray() ?: emptyArray()
     }.getOrElse { emptyArray() }
 
     private fun toCandidate(device: AudioDeviceInfo): MicrophoneDeviceCandidate? {

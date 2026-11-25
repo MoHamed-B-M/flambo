@@ -16,7 +16,7 @@ class WavPcmReaderTest {
         val data = ByteArray(frames * channels * 2)
         for (frame in 0 until frames) {
             for (channel in 0 until channels) {
-                val value = (frame * 100 + channel * 1_000) and 0x7FFF
+                val value = ((frame + 1) * 100 + channel * 1_000) and 0x7FFF
                 val offset = (frame * channels + channel) * 2
                 data[offset] = (value and 0xFF).toByte()
                 data[offset + 1] = ((value shr 8) and 0xFF).toByte()

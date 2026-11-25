@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Needed to list and connect to Bluetooth microphone inputs. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Needed to open Bluetooth SCO when routing a take to a headset mic. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- One-shot coordinates are attached only when location tagging is enabled. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

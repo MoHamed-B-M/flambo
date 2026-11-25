@@ -12,8 +12,10 @@ import android.media.AudioRecord
 import android.media.MediaCodecList
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.pranshulgg.recordmaster.core.domain.MicrophoneDeviceCandidate
+import com.pranshulgg.recordmaster.core.domain.MicrophoneDeviceCategory
 import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
-import com.pranshulgg.recordmaster.core.domain.MicrophoneInputKind
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInputMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -79,91 +81,69 @@ class RecordingCapabilityProber(private val context: Context) {
         ) {
             return@withContext null
         }
-        if (normalized.startsWith("bt:", ignoreCase = true) &&
-            !bluetoothInputEnumerationAvailable()
-        ) {
+        val bluetoothAvailable = bluetoothInputEnumerationAvailable()
+        if (normalized.startsWith("bt:", ignoreCase = true) && !bluetoothAvailable) {
             return@withContext null
         }
 
-        runCatching {
-            context.getSystemService(AudioManager::class.java)
-                ?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                .orEmpty()
-        }.getOrElse { emptyArray() }
-            .firstOrNull { device ->
-                toMicrophoneInput(device, bluetoothInputEnumerationAvailable())
-                    ?.id?.equals(normalized, ignoreCase = true) == true
-            }
+        val devices = inputDevices()
+        val candidates = devices.mapNotNull(::toCandidate)
+            .filter { bluetoothAvailable || it.category != MicrophoneDeviceCategory.BLUETOOTH }
+        val canonicalId = MicrophoneInputMapper.map(candidates)
+            .firstOrNull { it.id.equals(normalized, ignoreCase = true) }
+            ?.id ?: return@withContext null
+
+        devices.firstOrNull { device ->
+            toCandidate(device)?.let { candidate ->
+                MicrophoneInputMapper.map(listOf(candidate))
+                    .any { it.id.equals(canonicalId, ignoreCase = true) }
+            } == true
+        }
     }
 
     private fun bluetoothInputEnumerationAvailable(): Boolean =
-        Build.VERSION.SDK_INT < 31 || hasPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                hasPermission(Manifest.permission.BLUETOOTH_CONNECT))
 
     private fun enumerateInputs(): InputEnumeration {
         val bluetoothAvailable = bluetoothInputEnumerationAvailable()
-
-        val result = runCatching {
-            context.getSystemService(AudioManager::class.java)
-                ?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                .orEmpty()
-        }
-        val inputs = result.getOrElse { emptyArray() }
+        val result = runCatching { inputDevices() }
+        val candidates = result.getOrElse { emptyArray() }
             .asSequence()
-            .mapNotNull { device -> toMicrophoneInput(device, bluetoothAvailable) }
-            .distinctBy { it.id }
+            .mapNotNull(::toCandidate)
+            .filter { bluetoothAvailable || it.category != MicrophoneDeviceCategory.BLUETOOTH }
             .toList()
 
         return InputEnumeration(
-            inputs = inputs,
+            inputs = MicrophoneInputMapper.map(candidates),
             enumerationAvailable = result.isSuccess,
             bluetoothEnumerationAvailable = bluetoothAvailable
         )
     }
 
-    private fun toMicrophoneInput(
-        device: AudioDeviceInfo,
-        bluetoothAvailable: Boolean
-    ): MicrophoneInput? {
+    private fun inputDevices(): Array<AudioDeviceInfo> = runCatching {
+        context.getSystemService(AudioManager::class.java)
+            ?.getDevices(AudioManager.GET_DEVICES_INPUTS)
+            .orEmpty()
+    }.getOrElse { emptyArray() }
+
+    private fun toCandidate(device: AudioDeviceInfo): MicrophoneDeviceCandidate? {
         if (!device.isSource) return null
+        val category = microphoneCategory(device.type) ?: return null
 
-        val kind = microphoneKind(device.type) ?: return null
-        if (kind == MicrophoneInputKind.BLUETOOTH && !bluetoothAvailable) return null
-
-        val productName = device.productName?.toString()?.trim().orEmpty()
-        val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            deviceAddress(device)
-        } else {
-            ""
-        }
-        val discriminator = address.ifBlank { productName.ifBlank { device.type.toString() } }
-        val prefix = when (kind) {
-            MicrophoneInputKind.BUILT_IN -> "builtin"
-            MicrophoneInputKind.WIRED -> "wired"
-            MicrophoneInputKind.BLUETOOTH -> "bt"
-            MicrophoneInputKind.USB -> "usb"
-            else -> "input"
-        }
-        val baseLabel = when (kind) {
-            MicrophoneInputKind.BUILT_IN -> "Built-in microphone"
-            MicrophoneInputKind.WIRED -> "Wired headset microphone"
-            MicrophoneInputKind.BLUETOOTH -> "Bluetooth microphone"
-            MicrophoneInputKind.USB -> "USB microphone"
-            else -> "Microphone"
-        }
-        val displayName = if (productName.isBlank() || productName.equals(baseLabel, ignoreCase = true)) {
-            baseLabel
-        } else {
-            "$baseLabel ($productName)"
-        }
-        val maxChannels = runCatching {
-            device.channelCounts?.maxOrNull() ?: 1
-        }.getOrDefault(1).coerceAtLeast(1)
-
-        return MicrophoneInput(
-            id = "$prefix:$discriminator",
-            displayName = displayName,
-            kind = kind,
-            maxChannels = maxChannels
+        return MicrophoneDeviceCandidate(
+            category = category,
+            type = device.type,
+            address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                deviceAddress(device)
+            } else {
+                ""
+            },
+            productName = runCatching { device.productName?.toString()?.trim() }
+                .getOrDefault(null).orEmpty(),
+            maxChannels = runCatching { device.channelCounts?.maxOrNull() ?: 1 }
+                .getOrDefault(1)
         )
     }
 
@@ -171,15 +151,23 @@ class RecordingCapabilityProber(private val context: Context) {
     private fun deviceAddress(device: AudioDeviceInfo): String =
         runCatching { device.address }.getOrDefault("").trim()
 
-    /** A2DP and other sinks are deliberately excluded; only source devices are microphones. */
-    private fun microphoneKind(type: Int): MicrophoneInputKind? = when (type) {
-        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> null
-        AudioDeviceInfo.TYPE_BUILTIN_MIC -> MicrophoneInputKind.BUILT_IN
-        AudioDeviceInfo.TYPE_WIRED_HEADSET -> MicrophoneInputKind.WIRED
-        AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> MicrophoneInputKind.BLUETOOTH
+    /**
+     * Returns null for outputs and unsupported sources. BLE headsets are only
+     * present from API 31; SCO and BLE entries are merged later by address.
+     */
+    private fun microphoneCategory(type: Int): MicrophoneDeviceCategory? = when (type) {
+        AudioDeviceInfo.TYPE_BUILTIN_MIC -> MicrophoneDeviceCategory.BUILT_IN
+        AudioDeviceInfo.TYPE_WIRED_HEADSET -> MicrophoneDeviceCategory.WIRED
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> MicrophoneDeviceCategory.BLUETOOTH
         AudioDeviceInfo.TYPE_USB_DEVICE,
-        AudioDeviceInfo.TYPE_USB_HEADSET -> MicrophoneInputKind.USB
-        else -> MicrophoneInputKind.UNKNOWN
+        AudioDeviceInfo.TYPE_USB_HEADSET -> MicrophoneDeviceCategory.USB
+        else -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            type == AudioDeviceInfo.TYPE_BLE_HEADSET
+        ) {
+            MicrophoneDeviceCategory.BLUETOOTH
+        } else {
+            null
+        }
     }
 
     private fun hasPermission(permission: String): Boolean =

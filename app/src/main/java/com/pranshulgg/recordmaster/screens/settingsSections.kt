@@ -18,7 +18,9 @@ import com.pranshulgg.recordmaster.core.audio.EnhanceStrength
 import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
+import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.playback.PlaybackController
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.core.stt.SpeechModelCatalog
@@ -70,7 +72,15 @@ fun RecordingSettingsSection(
     val strengthValue by app.prefs.enhanceStrengthFlow.collectAsState(initial = "balanced")
     val prefix by app.prefs.recordingPrefixFlow.collectAsState(initial = PreferencesManager.DEFAULT_PREFIX)
     val namePattern by app.prefs.recordingNamePatternFlow.collectAsState(initial = PreferencesManager.DEFAULT_NAME_PATTERN)
+    val format by app.prefs.recordingFormatFlow.collectAsState(initial = RecordingFormat.DEFAULT)
+    val stereoRecording by app.prefs.stereoRecordingFlow.collectAsState(initial = false)
+    val microphoneInputId by app.prefs.microphoneInputIdFlow.collectAsState(
+        initial = MicrophoneInput.DEFAULT_ID
+    )
+    val locationTagging by app.prefs.locationTaggingFlow.collectAsState(initial = false)
     val context = LocalContext.current
+
+    val wiredFormats = listOf(RecordingFormat.M4A_AAC, RecordingFormat.WAV_PCM)
 
     SettingSection(
         tiles = listOf(
@@ -168,6 +178,60 @@ fun RecordingSettingsSection(
                         showMessage("File naming pattern updated")
                     }
                 }
+            )
+        )
+    )
+
+    SettingSection(
+        title = "Capture",
+        tiles = listOf(
+            SettingTile.DialogOptionTile(
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
+                title = "Recording format",
+                description = format.description,
+                options = wiredFormats.map { it.label },
+                selectedOption = wiredFormats.firstOrNull { it == format }?.label,
+                onOptionSelected = { label ->
+                    val selected = wiredFormats.firstOrNull { it.label == label }
+                        ?: RecordingFormat.DEFAULT
+                    scope.launch {
+                        app.prefs.setRecordingFormat(selected)
+                        showMessage("Recording format: ${selected.label}")
+                    }
+                }
+            ),
+            SettingTile.SwitchTile(
+                leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
+                title = "Stereo recording",
+                description = "Record two channels when the microphone supports them",
+                checked = stereoRecording,
+                onCheckedChange = { enabled ->
+                    scope.launch {
+                        app.prefs.setStereoRecording(enabled)
+                        showMessage(if (enabled) "Stereo requested" else "Mono recording")
+                    }
+                }
+            ),
+            SettingTile.DialogOptionTile(
+                leading = { SettingsTileIcon(R.drawable.fiber_manual_record_24px) },
+                title = "Microphone",
+                description = if (microphoneInputId == MicrophoneInput.DEFAULT_ID) {
+                    "Default input \u00B7 Specific microphones aren't available yet"
+                } else {
+                    "Saved input \u00B7 Specific microphones aren't available yet"
+                },
+                options = listOf(MicrophoneInput.DEFAULT.displayName),
+                selectedOption = MicrophoneInput.DEFAULT.displayName,
+                onOptionSelected = {},
+                enabled = false
+            ),
+            SettingTile.SwitchTile(
+                leading = { SettingsTileIcon(R.drawable.privacy_tip_24px) },
+                title = "Location tagging",
+                description = "Coordinates aren't attached to recordings yet",
+                checked = locationTagging,
+                onCheckedChange = {},
+                enabled = false
             )
         )
     )

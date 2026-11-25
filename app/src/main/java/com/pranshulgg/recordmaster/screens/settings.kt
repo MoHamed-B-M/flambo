@@ -28,6 +28,7 @@ import com.pranshulgg.recordmaster.RecordMasterApp
 import com.pranshulgg.recordmaster.core.data.StorageVolumes
 import com.pranshulgg.recordmaster.core.domain.AnimationSpeed
 import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
+import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
 import com.pranshulgg.recordmaster.core.record.AutomationTriggers
 import com.pranshulgg.recordmaster.helpers.PreferencesHelper
@@ -59,6 +60,8 @@ fun SettingsPage(
 
     val quality by app.prefs.qualityFlow.collectAsState(initial = RecordingQuality.HIGH)
     val noiseReduction by app.prefs.noiseReductionFlow.collectAsState(initial = true)
+    val format by app.prefs.recordingFormatFlow.collectAsState(initial = RecordingFormat.DEFAULT)
+    val stereoRecording by app.prefs.stereoRecordingFlow.collectAsState(initial = false)
     val volumeId by app.prefs.recordingsVolumeFlow.collectAsState(initial = StorageVolumes.ID_DEFAULT)
     val folderUri by app.prefs.recordingsFolderUriFlow.collectAsState(initial = "")
     val speed by app.prefs.playbackSpeedFlow.collectAsState(initial = 1f)
@@ -146,7 +149,7 @@ fun SettingsPage(
                         SettingTile.NavigationTile(
                             leading = { SettingsTileIcon(R.drawable.graphic_eq_24px) },
                             title = "Recording",
-                            description = "${quality.label} \u00B7 Noise reduction ${if (noiseReduction) "on" else "off"}",
+                            description = "${format.shortLabel} \u00B7 ${if (stereoRecording) "Stereo" else "Mono"} \u00B7 Noise reduction ${if (noiseReduction) "on" else "off"}",
                             onClick = { navController.navigate("SettingsRecording") }
                         ),
                         SettingTile.NavigationTile(

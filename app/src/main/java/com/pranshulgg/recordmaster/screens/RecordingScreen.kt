@@ -16,8 +16,11 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.pranshulgg.recordmaster.R
 import com.pranshulgg.recordmaster.RecordMasterApp
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
 import com.pranshulgg.recordmaster.core.playback.ReviewController
 import com.pranshulgg.recordmaster.core.record.PauseReason
 import com.pranshulgg.recordmaster.ui.components.ConfirmDialog
@@ -79,6 +83,9 @@ fun RecordingScreen(onDone: () -> Unit) {
     var screenTitle by remember { mutableStateOf(mainTitle) }
     var isStarting by remember { mutableStateOf(false) }
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
+    var showMicrophonePicker by remember { mutableStateOf(false) }
+    var microphoneOptions by remember { mutableStateOf(listOf(MicrophoneInput.DEFAULT)) }
+    var selectedMicrophoneId by remember { mutableStateOf(MicrophoneInput.DEFAULT_ID) }
 
     val maxSamples = 40
     val amplitudes = remember(recorderState.peaks, recorderState.isRecording) {
@@ -142,6 +149,39 @@ fun RecordingScreen(onDone: () -> Unit) {
         }
     )
 
+    val refreshMicrophoneOptions: suspend () -> Unit = {
+        microphoneOptions = runCatching { controller.availableMicrophones() }
+            .getOrDefault(listOf(MicrophoneInput.DEFAULT))
+        selectedMicrophoneId = controller.state.value.input.id
+        showMicrophonePicker = true
+    }
+
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            if (granted) {
+                coroutineScope.launch { refreshMicrophoneOptions() }
+            } else {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Bluetooth permission is required to list Bluetooth microphones")
+                }
+            }
+        }
+    )
+
+    fun openMicrophonePicker() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+        } else {
+            coroutineScope.launch { refreshMicrophoneOptions() }
+        }
+    }
+
     // Re-entering the screen while a background recording is active keeps the
     // same title and live state the user left behind.
     LaunchedEffect(recorderState.isRecording) {
@@ -170,6 +210,16 @@ fun RecordingScreen(onDone: () -> Unit) {
                 },
                 actions = {
                     if (isRecording) {
+                        IconButton(
+                            shapes = IconButtonDefaults.shapes(),
+                            onClick = { openMicrophonePicker() }
+                        ) {
+                            Symbol(
+                                R.drawable.graphic_eq_24px,
+                                desc = "Switch microphone"
+                            )
+                        }
+
                         IconButton(
                             shapes = IconButtonDefaults.shapes(),
                             onClick = {
@@ -298,6 +348,15 @@ fun RecordingScreen(onDone: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = formatElapsed(elapsedSeconds), fontSize = 40.sp, color = MaterialTheme.colorScheme.secondary)
+                }
+                if (isRecording) {
+                    Text(
+                        text = "Input: ${recorderState.input.displayName}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -487,6 +546,64 @@ fun RecordingScreen(onDone: () -> Unit) {
 
             }
                     Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (showMicrophonePicker) {
+                    AlertDialog(
+                        onDismissRequest = { showMicrophonePicker = false },
+                        title = { Text("Switch microphone") },
+                        text = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 320.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                microphoneOptions.forEach { input ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { selectedMicrophoneId = input.id }
+                                            .padding(vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = selectedMicrophoneId == input.id,
+                                            onClick = { selectedMicrophoneId = input.id }
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = input.displayName,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    val selected = microphoneOptions
+                                        .firstOrNull { it.id == selectedMicrophoneId }
+                                        ?: MicrophoneInput.DEFAULT
+                                    coroutineScope.launch {
+                                        val error = controller.switchMicrophone(selected)
+                                        showMicrophonePicker = false
+                                        snackbarHostState.showSnackbar(
+                                            error ?: "Microphone: ${selected.displayName}"
+                                        )
+                                    }
+                                }
+                            ) {
+                                Text("Switch")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showMicrophonePicker = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
                 }
 }
 }

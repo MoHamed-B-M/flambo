@@ -1,6 +1,7 @@
 package com.pranshulgg.recordmaster.core.audio
 
 import android.annotation.SuppressLint
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
 import java.io.File
@@ -32,7 +33,13 @@ class PcmWavChunkWriter {
     // This writer is internal to that pipeline and never starts a take on its own.
     @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION")
-    fun start(file: File, sampleRate: Int, channels: Int, audioSource: Int): Boolean {
+    fun start(
+        file: File,
+        sampleRate: Int,
+        channels: Int,
+        audioSource: Int,
+        preferredDevice: AudioDeviceInfo? = null
+    ): Boolean {
         if (running || readerThread?.isAlive == true) return false
         if (sampleRate <= 0 || (channels != 1 && channels != 2)) return false
 
@@ -76,6 +83,9 @@ class PcmWavChunkWriter {
             )
             if (record.state != AudioRecord.STATE_INITIALIZED) {
                 throw IllegalStateException("AudioRecord failed to initialize")
+            }
+            if (preferredDevice != null && !record.setPreferredDevice(preferredDevice)) {
+                throw IllegalStateException("AudioRecord rejected the selected microphone")
             }
             record.startRecording()
             if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {

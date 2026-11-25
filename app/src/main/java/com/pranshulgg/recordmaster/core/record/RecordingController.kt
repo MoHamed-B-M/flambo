@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioDeviceInfo
 import android.media.MediaRecorder
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -15,6 +16,8 @@ import com.pranshulgg.recordmaster.core.data.PreferencesManager
 import com.pranshulgg.recordmaster.core.data.Recording
 import com.pranshulgg.recordmaster.core.data.RecordingRepository
 import com.pranshulgg.recordmaster.core.domain.AutoSaveInterval
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInput
+import com.pranshulgg.recordmaster.core.domain.MicrophoneInputKind
 import com.pranshulgg.recordmaster.core.domain.RecordingConfig
 import com.pranshulgg.recordmaster.core.domain.RecordingFormat
 import com.pranshulgg.recordmaster.core.domain.RecordingQuality
@@ -65,7 +68,8 @@ class RecordingController(
         val peaks: List<Float> = emptyList(),
         val currentFile: File? = null,
         val quality: RecordingQuality = RecordingQuality.HIGH,
-        val format: RecordingFormat = RecordingFormat.DEFAULT
+        val format: RecordingFormat = RecordingFormat.DEFAULT,
+        val input: MicrophoneInput = MicrophoneInput.DEFAULT
     )
 
     private val _state = MutableStateFlow(RecorderState())
@@ -80,6 +84,8 @@ class RecordingController(
     private var recorder: MediaRecorder? = null
     private var wavWriter: PcmWavChunkWriter? = null
     private var activePlan: RecordingPipelinePlan? = null
+    private var activeInput: MicrophoneInput = MicrophoneInput.DEFAULT
+    private var activeInputDevice: AudioDeviceInfo? = null
     private var currentChunkFile: File? = null
     private val chunks = mutableListOf<AudioChunkMerger.Chunk>()
     private var reviewFile: File? = null
@@ -121,6 +127,57 @@ class RecordingController(
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
 
+    private fun hasBluetoothConnectPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+
+    /** Fresh input list for pickers, with the active input included even if unplugged. */
+    suspend fun availableMicrophones(): List<MicrophoneInput> {
+        val current = if (_state.value.isRecording) _state.value.input else activeInput
+        return (listOf(MicrophoneInput.DEFAULT, current) + capabilityProber.availableInputs())
+            .distinctBy { it.id }
+            .sortedWith(compareBy({ it.kind.ordinal }, { it.displayName }))
+    }
+
+    /**
+     * Switches the input for future chunks of the active take. The frozen plan
+     * still owns format, quality, channels, and location. Returns null on
+     * success, or a message suitable for a snackbar.
+     */
+    suspend fun switchMicrophone(input: MicrophoneInput): String? {
+        val current = _state.value
+        if (!current.isRecording) return "No active recording to switch."
+        if (!hasRecordAudioPermission()) return "Microphone permission is required."
+        if (input.kind == MicrophoneInputKind.BLUETOOTH && !hasBluetoothConnectPermission()) {
+            return "Bluetooth permission is required for that microphone."
+        }
+        val plan = activePlan ?: return "No active recording to switch."
+        if (!input.isDefault && plan.effectiveConfig.channels.channelCount > input.maxChannels) {
+            return "${input.displayName} does not support stereo."
+        }
+        val device = if (input.isDefault) {
+            null
+        } else {
+            capabilityProber.resolveInput(input.id)
+                ?: return "${input.displayName} is no longer available."
+        }
+
+        activeInput = input
+        activeInputDevice = device
+        _state.value = current.copy(input = input)
+
+        // A paused take has no live backend; the override applies on resume.
+        if (current.isPaused) return null
+        return if (rotateChunk()) {
+            null
+        } else {
+            "Couldn't switch to ${input.displayName}. Recording paused."
+        }
+    }
+
     /** Compatibility entry point for callers that only know the legacy quality setting. */
     suspend fun start(
         quality: RecordingQuality = RecordingQuality.HIGH,
@@ -136,10 +193,30 @@ class RecordingController(
         if (!hasRecordAudioPermission()) return false
 
         val plan = RecordingPipelinePlanner.plan(config, capabilityProber.probe())
-        return startWithPlan(plan, noiseReduction)
+        val input = plan.effectiveConfig.input
+        val device = if (input.isDefault) {
+            null
+        } else {
+            if (input.kind == MicrophoneInputKind.BLUETOOTH && !hasBluetoothConnectPermission()) {
+                _lastStartError.value = "Bluetooth permission is required to use that microphone."
+                return false
+            }
+            capabilityProber.resolveInput(input.id).also {
+                if (it == null) {
+                    _lastStartError.value = "${input.displayName} is no longer available."
+                    return false
+                }
+            }
+        }
+        return startWithPlan(plan, noiseReduction, input, device)
     }
 
-    private fun startWithPlan(plan: RecordingPipelinePlan, noiseReduction: Boolean): Boolean {
+    private fun startWithPlan(
+        plan: RecordingPipelinePlan,
+        noiseReduction: Boolean,
+        input: MicrophoneInput,
+        device: AudioDeviceInfo?
+    ): Boolean {
         if (!plan.canStart) {
             _lastStartError.value = plan.primaryError
                 ?: "This recording configuration isn't available on this device."
@@ -148,6 +225,8 @@ class RecordingController(
 
         _lastStartError.value = null
         activePlan = plan
+        activeInput = input
+        activeInputDevice = device
         activeQuality = plan.effectiveConfig.quality
         activeNoiseReduction = noiseReduction
         chunks.clear()
@@ -175,7 +254,8 @@ class RecordingController(
             peaks = emptyList(),
             currentFile = currentChunkFile,
             quality = activeQuality,
-            format = plan.effectiveConfig.format
+            format = plan.effectiveConfig.format,
+            input = activeInput
         )
 
         if (!startForegroundService()) {
@@ -196,6 +276,8 @@ class RecordingController(
         runCatching { chunkSessionDir?.deleteRecursively() }
         chunkSessionDir = null
         activePlan = null
+        activeInput = MicrophoneInput.DEFAULT
+        activeInputDevice = null
         _lastStartError.value = message
         _state.value = RecorderState()
     }
@@ -236,6 +318,12 @@ class RecordingController(
             if (plan.effectiveConfig.channels.channelCount > 1) {
                 mediaRecorder.setAudioChannels(plan.effectiveConfig.channels.channelCount)
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val device = activeInputDevice
+                if (device != null && !mediaRecorder.setPreferredDevice(device)) {
+                    throw IllegalStateException("MediaRecorder rejected the selected microphone")
+                }
+            }
             mediaRecorder.setOutputFile(file.absolutePath)
             mediaRecorder.prepare()
             mediaRecorder.start()
@@ -264,7 +352,8 @@ class RecordingController(
                 file = file,
                 sampleRate = plan.effectiveConfig.quality.sampleRate,
                 channels = plan.effectiveConfig.channels.channelCount,
-                audioSource = source
+                audioSource = source,
+                preferredDevice = activeInputDevice
             )
         }.getOrDefault(false)
 
@@ -337,15 +426,16 @@ class RecordingController(
      * [AudioChunkMerger] later concatenates the encoded samples by timestamp,
      * so no silence is inserted at the boundary — the saved file is seamless.
      */
-    private fun rotateChunk() {
+    private fun rotateChunk(): Boolean {
         closeCurrentChunk()
         if (!startNewChunk()) {
             // Never keep "recording" with no output file — that silently drops
             // audio. Surface it as a paused take the user can stop or resume.
             pause(PauseReason.INTERRUPTION)
-            return
+            return false
         }
         _state.value = _state.value.copy(currentFile = currentChunkFile)
+        return true
     }
 
     /** Reads the chosen interval and starts the rotation loop for a new take. */
@@ -522,6 +612,8 @@ class RecordingController(
         reviewFile = null
         pendingTitle = null
         chunkSessionDir = null
+        activeInput = MicrophoneInput.DEFAULT
+        activeInputDevice = null
         stopForegroundService()
 
         if (finalized.isEmpty()) {
@@ -579,6 +671,8 @@ class RecordingController(
         chunkSessionDir?.let { runCatching { it.deleteRecursively() } }
         chunkSessionDir = null
         activePlan = null
+        activeInput = MicrophoneInput.DEFAULT
+        activeInputDevice = null
         _lastStartError.value = null
         _state.value = RecorderState()
         _pendingBookmarks.value = emptyList()
